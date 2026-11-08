@@ -117,6 +117,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, h.status]);
   const picked = view.type === "detail" ? h.lanterns.find((l) => l.id === view.id) : undefined;
+  // 시트를 닫아도 그 등불 곁에 머물러요: 카메라와 작은 자리는 그대로, 아래 시트만 닫혀요.
+  // 다른 장소나 전체로 옮겨 갈 때 놓아줘요.
+  const [kept, setKept] = useState<string | null>(null);
+  useEffect(() => setKept(null), [focus, story]);
+  const focusId = view.type === "detail" ? view.id : kept;
+  const focused = focusId ? h.lanterns.find((l) => l.id === focusId) : undefined;
   // 등불을 열면 그 등불이 있는 곳으로 (공유 링크로 들어온 그리움 등불이면 추모관)
   const pickedWorld = picked ? worldOf(picked) : null;
   useEffect(() => {
@@ -125,15 +131,15 @@ export default function App() {
   const here = h.lanterns.filter((l) => worldOf(l) === world);
   // 열린 등불의 자리 번호와 앞뒤 등불, 곁에 놓일 작은 자리
   const nav = picked ? neighbors(h.lanterns, picked.id) : null;
-  const shrine: ShrineInfo | null = picked
+  const shrine: ShrineInfo | null = focused
     ? {
-        id: picked.id,
-        who: picked.who.trim() || "그 사람",
-        line: picked.line ?? "",
-        no: nav?.no ?? placeOf(picked.place),
-        photo: h.photoUrls[picked.id],
-        count: h.warmthCount.get(picked.id) ?? 0,
-        color: COLORS[colorOf(picked.color)],
+        id: focused.id,
+        who: focused.who.trim() || "그 사람",
+        line: focused.line ?? "",
+        no: neighbors(h.lanterns, focused.id)?.no ?? placeOf(focused.place),
+        photo: h.photoUrls[focused.id],
+        count: h.warmthCount.get(focused.id) ?? 0,
+        color: COLORS[colorOf(focused.color)],
       }
     : null;
   // 새 등불 걸기를 연 순간을 세요 (고치기는 빼고)
@@ -156,7 +162,12 @@ export default function App() {
   };
   const recording = record != null && clip == null;
   const editing = view.type === "form" && view.id ? h.lanterns.find((l) => l.id === view.id) : undefined;
-  const close = useCallback(() => setView({ type: "none" }), []);
+  const close = useCallback(() => {
+    setView((v) => {
+      if (v.type === "detail") setKept(v.id);
+      return { type: "none" };
+    });
+  }, []);
   const endStory = useCallback((then: "write" | "look") => {
     track("story_end", { then });
     markStorySeen();
@@ -176,7 +187,7 @@ export default function App() {
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} shrine={shrine} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme} world={story != null ? "all" : world}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme} world={story != null ? "all" : world}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {

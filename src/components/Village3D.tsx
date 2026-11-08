@@ -37,6 +37,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   useEffect(() => {
     const village = new Village(stage.current!, tags.current!, (id) => pick.current(id), theme);
     v.current = village;
+    if (import.meta.env.DEV) (window as unknown as { __village?: Village }).__village = village; // 개발 중 확인용
     return () => {
       village.dispose();
       v.current = null;
