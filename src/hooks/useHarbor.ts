@@ -305,6 +305,8 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
 
   // ---------- 이야기하기 (그리움 등불의 주인만) ----------
   const [talks, setTalks] = useState<Record<string, Talk[]>>({});
+  const talksRef = useRef(talks);
+  talksRef.current = talks;
 
   /** 지난 이야기를 불러와요 (최근 100개, 오래된 것부터) */
   const loadTalks = useCallback(async (lanternId: string) => {
@@ -323,7 +325,8 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
       if (demo) {
         const l = lanternsRef.current.find((x) => x.id === lanternId);
         await new Promise((r) => setTimeout(r, 900));
-        reply = templateReply({ who: l?.who ?? "", isPet: l?.place === "무지개", species: speciesOf(l?.species) }, text, Date.now() >>> 10);
+        const recent = (talksRef.current[lanternId] ?? []).filter((t) => t.role === "them").slice(-4).map((t) => t.body);
+        reply = templateReply({ who: l?.who ?? "", isPet: l?.place === "무지개", species: speciesOf(l?.species) }, text, Date.now() >>> 10, recent);
       } else {
         const { data } = await supabase.auth.getSession();
         const res = await fetch("/api/talk", {

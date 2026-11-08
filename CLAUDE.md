@@ -23,7 +23,7 @@
 - `discharge/`, `src/discharge/`: 전역일 계산기 (검색으로 들어오는 글 페이지, 3D 없이 가볍게)
 - `api/feedback.ts`, `src/components/Feedback.tsx`: 의견 남기기 (Supabase `feedback` 저장 + Resend 메일, 받는 주소는 환경 변수 `FEEDBACK_TO`에만)
 - `rainbow/`, `src/rainbow/`: 무지개마을 소개 글 페이지 (반려동물 추모 검색 유입, `/?for=pet` 으로 등불 걸기 연결)
-- `api/talk.ts`, `src/lib/talk.ts`, `src/components/TalkSheet.tsx`: 이야기하기. 그리움 등불의 주인만, 떠나보낸 사람(아이)에게 카톡처럼 말을 걸고 그 마음을 빌린 짧은 답장을 받는다(`talks` 테이블, 주인만 읽기, 하루 30번). Claude API(`ANTHROPIC_API_KEY`, 모델은 `TALK_MODEL`, 기본 claude-opus-5-5, effort low)로 쓰고, 키가 없거나 실패하면 미리 써 둔 답장. 진짜 그 사람이 아니라는 안내를 늘 보이고, 다시 만나자는 약속·죽음 쪽으로 이끄는 말은 쓰지 않는다. 위험한 말(`isDanger`)엔 AI 를 부르지 않고 등대지기가 상담 전화를 안내한다.
+- `api/talk.ts`, `src/lib/talk.ts`, `src/components/TalkSheet.tsx`: 이야기하기. 그리움 등불의 주인만, 떠나보낸 사람(아이)에게 카톡처럼 말을 걸고 그 마음을 빌린 짧은 답장을 받는다(`talks` 테이블, 주인만 읽기, 하루 30번). 기본은 무료: 내가 한 말의 주제(안부, 보고 싶어, 미안해, 밥, 산책, 꿈, 날씨…)를 알아듣고 미리 써 둔 답장을 골라 짜 맞춘다(`templateReply`, 최근 답장은 되풀이하지 않음). `ANTHROPIC_API_KEY` 를 넣을 때만 (유료) Claude 가 쓴다(`TALK_MODEL`, 기본 claude-opus-5-5, effort low). 진짜 그 사람이 아니라는 안내를 늘 보이고, 다시 만나자는 약속·죽음 쪽으로 이끄는 말은 쓰지 않는다. 위험한 말(`isDanger`)엔 AI 를 부르지 않고 등대지기가 상담 전화를 안내한다.
 - `api/ping.ts`: Vercel Cron 이 하루 한 번 불러 Supabase 무료 프로젝트가 멈추지 않게 해요
 - `src/lib/track.ts`: 숫자 세기. 행동 이름과 유입 경로만 `events` 에 남기고, 요약은 `analytics` 스키마(공개 API 밖)에서 본다. 이름·일기·사진 같은 내용은 절대 넣지 않는다.
 - `src/lib/waiting.ts`: 날짜 계산, 조사(을/를) 처리
