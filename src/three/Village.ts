@@ -1409,10 +1409,10 @@ export class Village {
       this.follow = null;
       this.setShrine(null);
       this.lampClear.clear();
-      // 닫아도 멀리 물러나지 않아요. 그 자리에서 시트가 사라진 만큼 등불을 화면 가운데로 올려 볼 뿐.
-      // 가리던 나무는 다른 곳으로 옮겨 갈 때 되돌려요.
-      const it = this.items.get(was);
-      if (it) this.flyTo(this.camera.position.clone(), it.lamp.clone().add(new THREE.Vector3(0, -0.8, 0)), 700);
+      // 등불을 놓아줄 때는 카메라를 움직이지 않아요. 바로 이어서 오는 장소 이동(전체, 하늘, 무지개마을…)을
+      // 덮어쓰지 않게요. (시트만 닫을 때는 등불을 놓지 않으니 그 자리에 그대로 머물러요.)
+      this.treeClear = null;
+      this.applyTreeClear();
     }
   }
 
