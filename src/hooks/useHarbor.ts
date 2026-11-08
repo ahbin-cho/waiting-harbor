@@ -3,6 +3,8 @@ import { configured, supabase, type Lantern, type Message, type Note, type Offer
 import { today, ymd } from "../lib/waiting";
 import { track, trackReady } from "../lib/track";
 import { isOffering, type OfferingKind } from "../lib/offerings";
+import { templateReply, type Talk } from "../lib/talk";
+import { speciesOf } from "../lib/pets";
 import { DEMO_ME, demoLanterns, demoMessages, demoMissing, demoNotes, demoOfferings, demoOnline, demoWarmth } from "../lib/demo";
 
 /** Supabase 설정이 없으면 체험 모드로 열려요. 아무것도 저장되지 않아요. */
@@ -301,6 +303,57 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     track("feedback_sent");
   }, []);
 
+  // ---------- 이야기하기 (그리움 등불의 주인만) ----------
+  const [talks, setTalks] = useState<Record<string, Talk[]>>({});
+
+  /** 지난 이야기를 불러와요 (최근 100개, 오래된 것부터) */
+  const loadTalks = useCallback(async (lanternId: string) => {
+    if (demo) return setTalks((m) => (m[lanternId] ? m : { ...m, [lanternId]: [] }));
+    const { data, error } = await supabase.from("talks").select("*").eq("lantern_id", lanternId).order("created_at", { ascending: false }).limit(100);
+    if (!error) setTalks((m) => ({ ...m, [lanternId]: (data as Talk[]).reverse() }));
+  }, []);
+
+  /** 말을 보내면 내 말이 바로 보이고, 답장이 오면 이어 붙어요 */
+  const sendTalk = useCallback(
+    async (lanternId: string, text: string) => {
+      const now = new Date().toISOString();
+      const mine: Talk = { id: -Date.now(), lantern_id: lanternId, role: "me", body: text, created_at: now };
+      setTalks((m) => ({ ...m, [lanternId]: [...(m[lanternId] ?? []), mine] }));
+      let reply: string;
+      if (demo) {
+        const l = lanternsRef.current.find((x) => x.id === lanternId);
+        await new Promise((r) => setTimeout(r, 900));
+        reply = templateReply({ who: l?.who ?? "", isPet: l?.place === "무지개", species: speciesOf(l?.species) }, text, Date.now() >>> 10);
+      } else {
+        const { data } = await supabase.auth.getSession();
+        const res = await fetch("/api/talk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+          body: JSON.stringify({ lanternId, text }),
+        });
+        if (!res.ok) {
+          // 보내지 못한 말은 거둬요
+          setTalks((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((t) => t.id !== mine.id) }));
+          throw new Error(res.status === 429 ? "limit" : "failed");
+        }
+        reply = ((await res.json()) as { reply: string }).reply;
+        track("talk_sent");
+      }
+      const them: Talk = { id: -Date.now() - 1, lantern_id: lanternId, role: "them", body: reply, created_at: new Date().toISOString() };
+      setTalks((m) => ({ ...m, [lanternId]: [...(m[lanternId] ?? []), them] }));
+    },
+    [],
+  );
+
+  /** 이야기를 모두 지워요 */
+  const clearTalks = useCallback(async (lanternId: string) => {
+    if (!demo) {
+      const { error } = await supabase.from("talks").delete().eq("lantern_id", lanternId);
+      if (error) throw error;
+    }
+    setTalks((m) => ({ ...m, [lanternId]: [] }));
+  }, []);
+
   // ---------- 등불 사진 ----------
   /** 볼 수 있는 사진 주소 (Storage 의 임시 주소, 한 시간짜리) */
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
@@ -383,5 +436,5 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     setLanterns((all) => all.map((x) => (x.id === l.id ? { ...x, photo_public: isPublic } : x)));
   }, []);
 
-  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote, messages, loadMessages, addMessage, removeMessage, warmth, offerings, myOffers, leaveOffering };
+  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote, messages, loadMessages, addMessage, removeMessage, warmth, offerings, myOffers, leaveOffering, talks, loadTalks, sendTalk, clearTalks };
 }

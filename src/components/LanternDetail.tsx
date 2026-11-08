@@ -21,10 +21,12 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, me, daily, offerings, myOffer, onOffer, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
+export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, onOffer, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   /** 지금 보는 사람 (자기가 남긴 말을 지울 수 있게) */
   me: string | null;
+  /** 내 그리움 등불이면: 떠나보낸 사람(아이)에게 말 걸기 */
+  onTalk?: () => void;
   /** 내 등불이면 오늘의 한마디 */
   daily?: DailyWord;
   /** 놓고 간 것들 (종류별 수), 오늘 내가 놓은 것, 놓기 */
@@ -221,6 +223,11 @@ export function LanternDetail({ lantern, me, daily, offerings, myOffer, onOffer,
 
       <div className="big">{miss ? `떠난 지 ${gone}일` : ddayText(n)}</div>
       <p className="small">{story}</p>
+      {onTalk && (
+        <div className="row warm-row">
+          <button className="btn" onClick={onTalk}>{who}에게 말 걸기</button>
+        </div>
+      )}
       {daily && (
         <div className="daily-in">
           <p className="daily-from">오늘의 한마디 · {daily.from}</p>

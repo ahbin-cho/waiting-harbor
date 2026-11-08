@@ -13,6 +13,7 @@ import { Sheet } from "./components/Sheet";
 import { Story } from "./components/Story";
 import { Feedback } from "./components/Feedback";
 import { ShareSheet } from "./components/ShareSheet";
+import { TalkSheet } from "./components/TalkSheet";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
 import { THEME_LABEL, THEME_ORDER, applyUiTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
@@ -22,7 +23,7 @@ import { canRecord } from "./lib/clip";
 import { track } from "./lib/track";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string };
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string } | { type: "talk"; id: string };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -378,6 +379,7 @@ export default function App() {
             }}
             onEdit={() => setView({ type: "form", id: picked.id })}
             onShare={() => setView({ type: "share", id: picked.id })}
+            onTalk={picked.user_id === h.me && picked.mode === "miss" ? () => setView({ type: "talk", id: picked.id }) : undefined}
             onRecord={canRecord() ? () => startRecord(picked.id) : undefined}
             photoUrl={h.photoUrls[picked.id]}
             onLoadPhoto={() => h.loadPhoto(picked)}
@@ -423,6 +425,22 @@ export default function App() {
             )}
           </>
         )}
+        {view.type === "talk" && (() => {
+          const l = h.lanterns.find((x) => x.id === view.id);
+          return l ? (
+            <TalkSheet
+              lantern={l}
+              photoUrl={h.photoUrls[l.id]}
+              talks={h.talks[l.id]}
+              onLoad={() => h.loadTalks(l.id)}
+              onSend={(text) => h.sendTalk(l.id, text)}
+              onClear={() => h.clearTalks(l.id)}
+              onBack={() => setView({ type: "detail", id: l.id })}
+              onClose={close}
+              demo={demo}
+            />
+          ) : null;
+        })()}
         {view.type === "share" && (() => {
           const l = h.lanterns.find((x) => x.id === view.id);
           return l ? <ShareSheet lantern={l} demo={demo} onBack={() => setView({ type: "detail", id: l.id })} /> : null;

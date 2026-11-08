@@ -328,6 +328,24 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
 .scene.focusing .daily{display:none}
 /* 놓고 가기 */
 .offer .chips{margin-bottom:6px}
+/* 이야기하기: 카톡처럼 말풍선. 내 말은 오른쪽, 답장은 왼쪽에 얼굴과 함께 */
+.talk-note{margin:0 0 12px}
+.talk-log{list-style:none;margin:0;padding:12px 0;display:flex;flex-direction:column;gap:10px;min-height:180px;max-height:46vh;overflow:auto}
+.talk-hint{align-self:center;text-align:center;font-size:.85rem;color:var(--muted);padding:24px 8px;line-height:1.6}
+.talk-row{display:flex;align-items:flex-end;gap:8px;max-width:100%}
+.talk-row.me{justify-content:flex-end}
+.talk-face{flex:none;width:36px;height:36px;border-radius:14px;object-fit:cover;display:grid;place-items:center;background:var(--field);border:1px solid var(--line);font-family:var(--display);font-weight:700;color:var(--ink);align-self:flex-start}
+.talk-name{display:block;font-size:.75rem;color:var(--muted);margin:0 0 4px 2px}
+.bubble{margin:0;padding:9px 13px;border-radius:16px;font-size:.95rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-width:min(72vw,360px)}
+.bubble.me{background:var(--lamp);color:var(--lamp-ink);border-top-right-radius:4px}
+.bubble.them{background:var(--field);border:1px solid var(--line);color:var(--ink);border-top-left-radius:4px}
+.bubble.typing{letter-spacing:.2em;color:var(--muted)}
+.talk-time{flex:none;font-size:.7rem;color:var(--faint);font-variant-numeric:tabular-nums}
+.talk-input{display:flex;gap:8px;align-items:flex-end;margin-top:8px}
+.talk-input textarea{flex:1;min-height:46px;height:46px;max-height:120px;resize:none;margin:0;padding-top:11px;padding-bottom:11px}
+.talk-keeper{align-self:stretch;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--paper)}
+.talk-keeper b{display:block;font-family:var(--display);font-size:.95rem;margin-bottom:4px}
+.talk-keeper p{margin:0;font-size:.9rem;line-height:1.6;color:var(--ink)}
 /* 남긴 마음 */
 .say{margin-bottom:14px}
 .say textarea{min-height:72px}

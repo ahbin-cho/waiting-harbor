@@ -37,6 +37,10 @@ Vite + React + TypeScript, three.js (3D 마을), Supabase (DB, 익명 로그인,
    npm run dev
    ```
 
+## 이야기하기 답장 (선택)
+
+추모관의 내 등불에서 "○○에게 말 걸기"를 누르면, 떠나보낸 사람(아이)의 마음을 빌린 짧은 답장이 와요. Vercel 환경 변수에 `ANTHROPIC_API_KEY`(Claude API 키)를 넣으면 Claude 가 답장을 쓰고, 없으면 미리 써 둔 짧은 답장 중에서 골라요. 모델은 `TALK_MODEL` 로 바꿀 수 있어요 (기본 `claude-opus-5-5`, 더 아끼려면 `claude-haiku-5-5`). 한 사람이 등불마다 하루 30번까지 보낼 수 있어요.
+
 ## 예시 데이터 넣기 (선택)
 
 마을이 비어 보이면 Supabase SQL Editor 에서 `supabase/seed.sql` 을 실행하세요. 익명 마을 사람 10명과 등불 19개(기다림 10, 하늘의 풍등 3, 무지개마을 아이 6), 일기, 응원·추모의 말, 온기가 들어가요. 날짜는 실행한 날 기준이고, 여러 번 실행해도 한 번만 들어가요. 파일 맨 아래 주석을 풀면 원하는 등불을 직접 하나씩 더 넣을 수 있어요. 지울 때는 `supabase/unseed.sql` 을 실행하세요.
