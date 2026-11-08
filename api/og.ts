@@ -45,10 +45,12 @@ async function homeCard() {
 }
 
 export default async function handler(req: Request) {
-  const id = new URL(req.url).searchParams.get("id");
+  const q = new URL(req.url).searchParams;
+  const id = q.get("id");
   if (!id) return homeCard();
   const l = await getLantern(id);
   if (!l) return new Response("not found", { status: 404 });
+  if (q.get("s") === "1") return storyCard(l, new URL(req.url).host);
 
   const f = facts(l);
   const color = COLORS[l.color] ?? COLORS.촛불;
@@ -95,6 +97,53 @@ export default async function handler(req: Request) {
   return new ImageResponse(card as never, {
     width: 1200,
     height: 630,
+    fonts: [
+      { name: "Gaegu", data: gaegu, weight: 700, style: "normal" },
+      { name: "Pen", data: pen, weight: 400, style: "normal" },
+      { name: "Plex", data: plex, weight: 400, style: "normal" },
+    ],
+    headers: { "cache-control": "public, max-age=3600, s-maxage=3600" },
+  });
+}
+
+/** 인스타 스토리 크기(1080×1920) 세로 카드: 가운데 등불, 아래 이름과 날짜, 한 줄 */
+async function storyCard(l: Awaited<ReturnType<typeof getLantern>> & object, host: string) {
+  const f = facts(l);
+  const color = COLORS[l.color] ?? COLORS.촛불;
+  const title = titleOf(l);
+  const line = l.line.length > 30 ? `${l.line.slice(0, 29)}…` : l.line;
+  const where = l.place === "무지개" ? "무지개마을에서 지내요" : f.miss ? "하늘에 띄운 풍등" : `${l.place}에 걸린 등불`;
+  const brand = "기다림 항구";
+  const [gaegu, pen, plex] = await Promise.all([
+    font("Gaegu", 700, title + f.dday + brand),
+    font("Nanum+Pen+Script", 400, line || " "),
+    font("IBM+Plex+Sans+KR", 400, where + host),
+  ]);
+  const card = h(
+    "div",
+    { width: "100%", height: "100%", flexDirection: "column", alignItems: "center", background: "linear-gradient(180deg,#0A1028 0%,#151C42 45%,#3A3060 70%,#0F1A40 71%,#05081A 100%)", color: "#EDE5D6", padding: "140px 90px 120px" },
+    h("div", { fontFamily: "Gaegu", fontSize: "52px", color: "#9499BA", letterSpacing: "-0.04em" }, brand),
+    h(
+      "div",
+      { width: "560px", height: "720px", alignItems: "center", justifyContent: "center", position: "relative", marginTop: "60px" },
+      h("div", { position: "absolute", width: "640px", height: "640px", borderRadius: "320px", background: `radial-gradient(circle, ${color}88 0%, ${color}22 45%, transparent 70%)` }),
+      h(
+        "div",
+        { flexDirection: "column", alignItems: "center" },
+        h("div", { width: "110px", height: "22px", borderRadius: "6px", background: "#241712" }),
+        h("div", { width: "270px", height: "330px", borderRadius: "50%", marginTop: "-8px", background: `radial-gradient(circle at 50% 55%, #FFF6E6 0%, ${color} 50%, ${color}AA 100%)` }),
+        h("div", { width: "110px", height: "22px", borderRadius: "6px", background: "#241712", marginTop: "-8px" }),
+      ),
+    ),
+    h("div", { fontFamily: "Plex", fontSize: "34px", color: "#9499BA", marginTop: "40px" }, where),
+    h("div", { fontFamily: "Gaegu", fontSize: "84px", marginTop: "18px", letterSpacing: "-0.06em", textAlign: "center" }, title),
+    h("div", { fontFamily: "Gaegu", fontSize: f.miss ? "120px" : "180px", lineHeight: 1, color, marginTop: "18px", letterSpacing: "-0.08em" }, f.dday),
+    ...(line ? [h("div", { fontFamily: "Pen", fontSize: "64px", marginTop: "40px", textAlign: "center" }, line)] : []),
+    h("div", { fontFamily: "Plex", fontSize: "30px", color: "#646A90", marginTop: "auto" }, host),
+  );
+  return new ImageResponse(card as never, {
+    width: 1080,
+    height: 1920,
     fonts: [
       { name: "Gaegu", data: gaegu, weight: 700, style: "normal" },
       { name: "Pen", data: pen, weight: 400, style: "normal" },

@@ -221,6 +221,16 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
   /** 볼 수 있는 사진 주소 (Storage 의 임시 주소, 한 시간짜리) */
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
+  /** 공유 링크로 들어왔는데 목록에 없을 때: 그 등불 하나만 불러와서 목록에 더해요 */
+  const fetchLantern = useCallback(async (id: string): Promise<Lantern | null> => {
+    if (demo || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+    const { data } = await supabase.from("lanterns").select("*").eq("id", id).maybeSingle();
+    if (!data) return null;
+    const row = data as Lantern;
+    setLanterns((prev) => (prev.some((x) => x.id === row.id) ? prev : [...prev, row].sort((a, b) => a.created_at.localeCompare(b.created_at))));
+    return row;
+  }, []);
+
   const loadPhoto = useCallback(async (l: Lantern) => {
     if (demo || !l.photo_path) return;
     // 같은 사진 주소를 일주일 동안 다시 써요. 주소가 같으면 브라우저가 기억해 둔 사진을 써서 다시 내려받지 않아요.
@@ -289,5 +299,5 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     setLanterns((all) => all.map((x) => (x.id === l.id ? { ...x, photo_public: isPublic } : x)));
   }, []);
 
-  return { photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
+  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
 }
