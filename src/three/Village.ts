@@ -128,6 +128,8 @@ export class Village {
   private down: { x: number; y: number; t: number } | null = null;
   private ro: ResizeObserver;
   private paused = false;
+  /** 상세를 보는 동안 움직이는 아이를 따라가기 위한 직전 위치 */
+  private follow: THREE.Vector3 | null = null;
   /** 10초 영상 찍는 중: 등불 주위를 천천히 돌아요 */
   private cine: { id: string; t0: number; dur: number; a0: number; onFrame: (c: HTMLCanvasElement, k: number) => void; done: () => void } | null = null;
   private p: Palette = PALETTES.night;
@@ -650,6 +652,7 @@ export class Village {
     const color = new THREE.Color(COLORS[colorOf(l.color)]);
     const phase = Math.random() * 10;
     const pet = makePet(speciesOf(l.species), color, i, phase);
+    pet.update(performance.now() / 1000, false); // 처음부터 제자리에 두어서, 바로 다가갈 수 있게
     const group = new THREE.Group();
     group.add(pet.root, ...pet.extras);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -664,7 +667,7 @@ export class Village {
     const it: Item = {
       // mat 은 근처 빛(PointLight) 색을 정하는 데만 써요. 아이 자체는 빛 재질(pets.ts)로 그려요.
       id: l.id, data: l, place, group, swing: pet.root, body: pet.body, mat: new THREE.MeshStandardMaterial({ color }), glow, hit,
-      lamp: new THREE.Vector3(), tag, glowLevel: 0.5, phase, idx: i, baseY: 0, lift: 0, look, pet,
+      lamp: pet.root.position.clone().setY(pet.root.position.y + pet.headY * 0.6 * PET_SCALE), tag, glowLevel: 0.5, phase, idx: i, baseY: 0, lift: 0, look, pet,
     };
     this.items.set(l.id, it);
     return it;
@@ -773,10 +776,13 @@ export class Village {
       // 등불에 바짝 다가가요. 아래쪽 시트에 가리지 않게 등불이 화면 위쪽에 오도록 조금 아래를 봐요.
       const flat = this.camera.position.clone().sub(it.lamp).setY(0).normalize();
       if (!flat.lengthSq()) flat.set(0, 0, 1);
+      // 시트가 화면 아래 2/3쯤을 덮으니, 등불이 화면 위쪽 1/3 안에 오도록 한참 아래를 봐요
       const pos = it.lamp.clone().addScaledVector(flat, 20).add(new THREE.Vector3(0, 3.5, 0));
-      const target = it.lamp.clone().add(new THREE.Vector3(0, -3.2, 0));
+      const target = it.lamp.clone().add(new THREE.Vector3(0, -3.6, 0));
       this.flyTo(pos, target, 1100);
+      this.follow = it.pet ? it.lamp.clone() : null;
     } else if (was) {
+      this.follow = null;
       const it = this.items.get(was);
       if (it) this.focusPlace(it.place);
     }
@@ -875,6 +881,21 @@ export class Village {
         const dist = 17 - k * 5, up = 4.2 - k * 1.6;
         this.camera.position.set(it.lamp.x + Math.cos(a) * dist, it.lamp.y + up, it.lamp.z + Math.sin(a) * dist);
         this.controls.target.copy(it.lamp).add(new THREE.Vector3(0, -1.2, 0));
+      }
+    }
+    // 무지개마을 아이를 보는 동안: 아이가 움직인 만큼 카메라도 같이 옮겨요
+    if (this.follow && this.selected && !this.cine) {
+      const it = this.items.get(this.selected);
+      if (it) {
+        const d = it.lamp.clone().sub(this.follow);
+        this.follow.copy(it.lamp);
+        if (this.tween) {
+          this.tween.to[0].add(d);
+          this.tween.to[1].add(d);
+        } else {
+          this.camera.position.add(d);
+          this.controls.target.add(d);
+        }
       }
     }
     // 마을 밖으로 너무 멀리 가지 않게

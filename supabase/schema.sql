@@ -170,6 +170,79 @@ $$;
 drop policy if exists "feedback insert" on public.feedback;
 create policy "feedback insert" on public.feedback for insert with check (auth.uid() = user_id and public.my_feedback_today() < 5);
 
+-- 숫자 세기: 방문, 등불 걸기 같은 행동만 남겨요. 이름·일기·사진 같은 내용은 담지 않아요.
+-- 누구나 자기 행동만 남길 수 있고, 읽기는 운영자만 (대시보드 SQL Editor 에서 analytics 요약으로) 봐요.
+create table if not exists public.events (
+  id         bigint generated always as identity primary key,
+  user_id    uuid default auth.uid() references auth.users(id) on delete set null,
+  name       text not null check (name in (
+    'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
+    'share_click', 'clip_made', 'photo_added', 'feedback_sent'
+  )),
+  props      jsonb not null default '{}' check (octet_length(props::text) <= 400),
+  via        text not null default '' check (char_length(via) <= 60),   -- 어디서 왔는지 (share, rainbow, discharge, 검색 사이트 이름, utm_source)
+  created_at timestamptz not null default now()
+);
+create index if not exists events_name_time_idx on public.events (name, created_at);
+create index if not exists events_user_idx on public.events (user_id, created_at);
+alter table public.events enable row level security;
+drop policy if exists "events insert" on public.events;
+create policy "events insert" on public.events for insert with check (auth.uid() = user_id);
+
+-- 운영자용 요약. 공개 API 에 나가지 않는 analytics 스키마에 둬요.
+create schema if not exists analytics;
+revoke all on schema analytics from public, anon, authenticated;
+
+-- 날짜별 (한국 시간): 방문한 사람, 등불 걸기 연 사람, 등불을 건 사람, 다시 온 사람, 공유
+create or replace view analytics.daily as
+with e as (
+  select (created_at at time zone 'Asia/Seoul')::date as day, user_id, name, via from public.events
+), firsts as (
+  select user_id, min((created_at at time zone 'Asia/Seoul')::date) as first_day from public.events where name = 'visit' group by user_id
+)
+select
+  e.day,
+  count(distinct e.user_id) filter (where e.name = 'visit')                                       as visitors,
+  count(distinct e.user_id) filter (where e.name = 'visit' and f.first_day = e.day)               as new_visitors,
+  count(distinct e.user_id) filter (where e.name = 'visit' and f.first_day < e.day)               as returning_visitors,
+  count(distinct e.user_id) filter (where e.name = 'form_open')                                   as opened_form,
+  count(*)                  filter (where e.name = 'lantern_created')                             as lanterns_created,
+  count(*)                  filter (where e.name = 'note_written')                                as notes,
+  count(*)                  filter (where e.name = 'warmth_sent')                                 as warmth,
+  count(*)                  filter (where e.name = 'share_click')                                 as shares,
+  count(distinct e.user_id) filter (where e.name = 'visit' and e.via = 'share')                   as from_share_links,
+  count(*)                  filter (where e.name = 'clip_made')                                   as clips,
+  round(100.0 * count(distinct e.user_id) filter (where e.name = 'lantern_created')
+        / nullif(count(distinct e.user_id) filter (where e.name = 'visit'), 0), 1)               as lantern_rate_pct
+from e left join firsts f using (user_id)
+group by e.day
+order by e.day desc;
+
+-- 처음 온 사람이 7일 안에 어디까지 갔는지 (처음 온 날 기준, 최근 8주)
+create or replace view analytics.funnel_7d as
+with firsts as (
+  select user_id, min(created_at) as first_at from public.events where name = 'visit' group by user_id
+)
+select
+  date_trunc('week', f.first_at at time zone 'Asia/Seoul')::date as week,
+  count(*)                                                                                         as new_visitors,
+  count(*) filter (where exists (select 1 from public.events x where x.user_id = f.user_id and x.name = 'form_open'       and x.created_at < f.first_at + interval '7 days')) as opened_form,
+  count(*) filter (where exists (select 1 from public.events x where x.user_id = f.user_id and x.name = 'lantern_created' and x.created_at < f.first_at + interval '7 days')) as hung_lantern,
+  count(*) filter (where exists (select 1 from public.events x where x.user_id = f.user_id and x.name = 'visit' and x.created_at >= f.first_at + interval '1 day' and x.created_at < f.first_at + interval '7 days')) as came_back,
+  count(*) filter (where exists (select 1 from public.events x where x.user_id = f.user_id and x.name = 'share_click'     and x.created_at < f.first_at + interval '7 days')) as shared
+from firsts f
+where f.first_at > now() - interval '8 weeks'
+group by 1
+order by 1 desc;
+
+-- 어디서 들어왔는지 (최근 30일)
+create or replace view analytics.sources_30d as
+select coalesce(nullif(via, ''), '(직접)') as via, count(distinct user_id) as visitors
+from public.events
+where name = 'visit' and created_at > now() - interval '30 days'
+group by 1
+order by 2 desc;
+
 -- updated_at 자동 갱신
 create or replace function public.touch_updated_at() returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end $$;

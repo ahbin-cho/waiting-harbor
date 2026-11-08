@@ -4,6 +4,7 @@ import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parse
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
 import { shrinkPhoto } from "../lib/photo";
+import { track } from "../lib/track";
 
 const md = (s: string) => {
   const d = parseDate(s);
@@ -107,6 +108,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 
   // 카톡, 인스타 등으로 보내요. 폰에선 공유 창이 뜨고, 안 되면 링크를 복사해요.
   async function share() {
+    track("share_click", { mine: isMine, mode: lantern.mode });
     const url = `${location.origin}/l/${lantern.id}`;
     const text = `${titleOf(lantern)} · ${ddayText(n)}`;
     try {
