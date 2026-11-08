@@ -45,7 +45,7 @@ header{
   padding:22px max(20px,env(safe-area-inset-right,0px)) 28px max(20px,env(safe-area-inset-left,0px));
   background:linear-gradient(to bottom,rgba(5,8,26,.85),rgba(5,8,26,0));
 }
-h1{font-family:var(--display);font-weight:700;font-size:2rem;line-height:1.1;margin:0;letter-spacing:-.06em}
+h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;margin:0;letter-spacing:-.06em}
 .title-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .title-row .text-btn{pointer-events:auto}
 .stats{margin:8px 0 0;font-size:.8rem;color:var(--faint)}
@@ -66,9 +66,9 @@ h1{font-family:var(--display);font-weight:700;font-size:2rem;line-height:1.1;mar
   position:absolute;left:0;top:0;opacity:0;text-align:center;white-space:nowrap;will-change:transform,opacity;
   text-shadow:0 1px 6px rgba(0,0,0,.9);transition:opacity .2s linear;
 }
-.tag b{display:block;font-family:var(--display);font-weight:700;font-size:1.05rem;line-height:1.15}
+.tag b{display:block;font-family:var(--display);font-weight:700;font-size:.92rem;line-height:1.15}
 .tag span{display:block;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.tag.mine b{font-family:var(--hand);font-size:1.3rem;line-height:1}
+.tag.mine b{font-family:var(--hand);font-size:1.1rem;line-height:1}
 
 .empty{position:absolute;left:20px;right:20px;top:46%;z-index:4;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;pointer-events:none}
 
@@ -103,13 +103,13 @@ h1{font-family:var(--display);font-weight:700;font-size:2rem;line-height:1.1;mar
 }
 .sheet.open{transform:none}
 @media (prefers-reduced-motion: reduce){.sheet{transition:none}}
-.sheet h2{font-family:var(--display);font-weight:700;font-size:1.7rem;margin:0 0 6px;line-height:1.25;text-wrap:balance;white-space:pre-line}
+.sheet h2{font-family:var(--display);font-weight:700;font-size:1.35rem;margin:0 0 6px;line-height:1.25;text-wrap:balance;white-space:pre-line}
 .sheet .kind{color:var(--muted);font-size:.85rem;line-height:1.6}
 .here-now{display:block;color:var(--ink)}
-.big{font-family:var(--display);font-weight:700;font-size:3rem;line-height:1;margin:18px 0 6px}
+.big{font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1;margin:14px 0 4px}
 .small{font-size:.85rem;color:var(--muted);line-height:1.65}
 .note-line{
-  margin:20px 0;padding:2px 2px 0;font-family:var(--hand);font-size:1.7rem;line-height:38px;color:var(--ink);
+  margin:20px 0;padding:2px 2px 0;font-family:var(--hand);font-size:1.25rem;line-height:30px;color:var(--ink);
   background:repeating-linear-gradient(to bottom,transparent 0 37px,var(--line) 37px 38px);
 }
 .row{display:flex;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
@@ -120,7 +120,7 @@ input,textarea{
   border:1px solid var(--line);border-radius:8px;padding:11px 12px;
 }
 input::placeholder,textarea::placeholder{color:var(--faint)}
-textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-size:1.45rem}
+textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-size:1.15rem}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .chip{font:inherit;font-size:.88rem;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:8px 12px;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
@@ -162,7 +162,7 @@ textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-si
 .story-skip{position:absolute;top:max(16px,env(safe-area-inset-top,0px));right:max(20px,env(safe-area-inset-right,0px));
   font:inherit;font-size:.82rem;background:none;border:0;color:var(--muted);padding:8px 0;cursor:pointer}
 .story-card{padding:0 max(24px,env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px));max-width:560px}
-.story-text{font-family:var(--display);font-size:1.45rem;line-height:1.55;margin:0;white-space:pre-line;animation:storyIn .9s ease both}
+.story-text{font-family:var(--display);font-size:1.2rem;line-height:1.55;margin:0;white-space:pre-line;animation:storyIn .9s ease both}
 .story-more{margin:14px 0 0;font-size:.78rem;color:var(--faint)}
 .story-dots{display:flex;gap:6px;list-style:none;padding:0;margin:18px 0 0}
 .story-dots li{width:5px;height:5px;border-radius:50%;background:var(--line)}
@@ -175,7 +175,7 @@ textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-si
 .steps li{flex:1;height:3px;border-radius:2px;background:var(--line)}
 .steps li.done{background:var(--muted)}
 .steps li.on{background:var(--ink)}
-.sheet h2.ask{font-size:1.75rem;margin-bottom:6px}
+.sheet h2.ask{font-size:1.4rem;margin-bottom:6px}
 .answer{margin-top:18px;min-height:120px}
 .choices{display:flex;flex-direction:column;gap:8px}
 .choice{font:inherit;text-align:left;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;padding:13px 14px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
@@ -183,7 +183,7 @@ textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-si
 .choice span{font-size:.82rem;color:var(--muted)}
 .choice[aria-pressed="true"]{border-color:var(--ink);background:var(--field)}
 .choice:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-.answer input#who{font-family:var(--hand);font-size:1.8rem;padding:8px 12px}
+.answer input#who{font-family:var(--hand);font-size:1.35rem;padding:8px 12px}
 .answer textarea{height:110px}
 
 /* Gaegu 는 글자 사이가 넓어서 조금 좁혀요 */
@@ -192,7 +192,7 @@ textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-si
 /* 앱이 뜨기 전, 그리고 자바스크립트를 읽지 않는 곳에서 보이는 본문 */
 .seo-copy{max-width:34em;padding:40px max(24px,env(safe-area-inset-right,0px)) 40px max(24px,env(safe-area-inset-left,0px));color:var(--muted);line-height:1.75;font-size:.95rem;height:100%;overflow:auto}
 .seo-copy h1{color:var(--ink);margin-bottom:16px}
-.seo-copy h2{font-family:var(--display);color:var(--ink);font-size:1.4rem;margin:28px 0 8px}
+.seo-copy h2{font-family:var(--display);color:var(--ink);font-size:1.2rem;margin:28px 0 8px}
 .seo-copy ul{padding-left:1.1em}
 
 /* 등불 상세: 기다림의 길, 일기 */
@@ -206,7 +206,7 @@ textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-si
 .note-line{margin-top:0}
 .compose{margin-top:6px;padding:16px;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;gap:10px}
 .compose .section{margin:0}
-.ask-line{margin:0;font-family:var(--display);font-size:1.3rem;line-height:1.35;letter-spacing:-.03em;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.ask-line{margin:0;font-family:var(--display);font-size:1.05rem;line-height:1.35;letter-spacing:-.03em;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .ask-line .text-btn{font-family:var(--body);font-size:.75rem;letter-spacing:0}
 .compose textarea{height:120px}
 .compose-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.8rem;color:var(--muted)}
@@ -219,7 +219,7 @@ textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-si
 .diary li:first-child{border-top:0;padding-top:4px}
 .diary-day{font-size:.75rem;color:var(--faint);font-variant-numeric:tabular-nums;display:flex;gap:8px}
 .diary-day em{font-style:normal;color:var(--muted)}
-.diary-body{margin:0;font-family:var(--hand);font-size:1.45rem;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}
+.diary-body{margin:0;font-family:var(--hand);font-size:1.15rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .diary .text-btn{align-self:flex-start;font-size:.72rem;padding:0}
 .warmth-line{margin-top:20px}
 .shared{margin-top:10px;overflow-wrap:anywhere}
