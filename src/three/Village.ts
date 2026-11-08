@@ -1415,8 +1415,8 @@ export class Village {
     if (id) {
       const it = this.items.get(id);
       if (!it) return;
-      // 등불에 다가가요. 곁에 작은 자리(사진, 쪽지, 작은 등)가 함께 보이게 조금 오른쪽을 보고,
-      // 아래쪽 시트(화면 아래 절반)에 가리지 않게 등불이 화면 위쪽에 오도록 아래를 봐요.
+      // 등불에 다가가요. 곁에 작은 자리(사진, 쪽지, 작은 등)가 함께 보이게 조금 오른쪽을 봐요.
+      // 회전 중심은 늘 등불과 자리 사이에 둬요. 시트에 가리지 않게 올려 보이는 건 화면 밀어 올리기(setSheetCover)가 해요.
       const flat = this.camera.position.clone().sub(it.lamp).setY(0).normalize();
       if (!flat.lengthSq()) flat.set(0, 0, 1);
       this.selFlat.copy(flat);
@@ -1427,7 +1427,7 @@ export class Village {
       const mid = it.lamp.clone().lerp(spot, it.lift > 0 ? 0.92 : 0.58);
       const d = this.narrow ? 16.5 : 13.5;
       // 숲은 나무 위에서 조금 더 내려다봐요
-      const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, it.place === "숲" ? 8 : 4.6, 0));
+      const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, it.place === "숲" ? 6 : 2.8, 0));
       this.treeClear = { eye: pos.clone(), lamp: it.lamp.clone(), spot: spot.clone() };
       this.applyTreeClear();
       this.lampClear.clear();
@@ -1436,8 +1436,7 @@ export class Village {
         const a = segXZ(o.lamp.x, o.lamp.z, pos, it.lamp), b = segXZ(o.lamp.x, o.lamp.z, pos, spot);
         if ((a.d < 1.3 && a.t < 0.95) || (b.d < 1.7 && b.t < 0.97) || Math.hypot(o.lamp.x - spot.x, o.lamp.z - spot.z) < 2) this.lampClear.add(o.id);
       }
-      // 숲은 등불이 높이 매달려 있어서 위아래로 길어요. 조금 더 아래를 봐서 자리 받침까지 시트 위에 오게
-      const target = mid.clone().add(new THREE.Vector3(0, (this.narrow ? -3.3 : -2.9) - (PLACE_INFO[it.place].hang ? 1.1 : 0), 0));
+      const target = mid.clone();
       this.flyTo(pos, target, 1100);
       this.placeShrine();
       this.follow = it.pet ? it.lamp.clone() : null;
@@ -1515,6 +1514,23 @@ export class Village {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.applyCover();
+  }
+
+  /**
+   * 화면 아래를 덮는 시트의 높이(0~1). 덮인 만큼 화면을 위로 밀어 올려서, 보고 있는 것이
+   * 시트 위 남은 자리 가운데에 와요. 카메라가 도는 중심(controls.target)은 그대로라 손가락으로 돌려도 어긋나지 않아요.
+   */
+  setSheetCover(f: number) {
+    this.coverGoal = f;
+  }
+  private cover = 0;
+  private coverGoal = 0;
+  private applyCover() {
+    const w = this.host.clientWidth, h = this.host.clientHeight;
+    if (!w || !h) return;
+    if (this.cover < 0.002) this.camera.clearViewOffset();
+    else this.camera.setViewOffset(w, h, 0, (h * this.cover) / 2, w, h);
   }
 
   // ---------- 매 프레임 ----------
@@ -1699,6 +1715,12 @@ export class Village {
       l.intensity = it ? (l.userData.base as number) * (focus && focus !== it.id ? 0.3 : 1) * this.p.lampLight : 0;
     }
 
+    // 시트가 열리고 닫힐 때 화면을 부드럽게 올리고 내려요
+    if (Math.abs(this.cover - this.coverGoal) > 0.001) {
+      this.cover += (this.coverGoal - this.cover) * (still() ? 1 : 0.14);
+      if (Math.abs(this.cover - this.coverGoal) <= 0.001) this.cover = this.coverGoal;
+      this.applyCover();
+    }
     this.placeTags();
     this.renderer.render(this.scene, this.camera);
     if (this.cine) {

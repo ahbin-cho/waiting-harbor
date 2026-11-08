@@ -11,7 +11,7 @@ import type { OfferingKind } from "../lib/offerings";
 export type Focus = { place: Place | "all"; n: number };
 
 /** three.js 로 그린 3D 밤 마을. 이름표는 HTML 로 그 위에 얹어요. */
-export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, offerings, onPick, theme, world, record, onClip }: {
+export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, offerings, cover, onPick, theme, world, record, onClip }: {
   lanterns: Lantern[];
   me: string | null;
   online: Set<string>;
@@ -21,6 +21,8 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   selectedId: string | null;
   /** 열린 등불 곁의 작은 자리 (사진, 번호, 한 줄, 작은 등 수) */
   shrine: ShrineInfo | null;
+  /** 화면 아래를 덮는 시트 높이 (0~1). 그만큼 장면을 위로 밀어 올려 보여요 */
+  cover: number;
   /** 등불마다 놓고 간 것 (종류별 수) */
   offerings: Map<string, Partial<Record<OfferingKind, number>>>;
   onPick: (id: string) => void;
@@ -51,6 +53,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   useEffect(() => v.current?.setOfferings(offerings), [offerings]);
   useEffect(() => v.current?.setTheme(theme), [theme]);
   useEffect(() => v.current?.setWorld(world), [world]);
+  useEffect(() => v.current?.setSheetCover(cover), [cover]);
   const clipDone = useRef(onClip);
   clipDone.current = onClip;
   useEffect(() => {
