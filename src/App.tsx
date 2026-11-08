@@ -18,7 +18,9 @@ export default function App() {
   const [hint, setHint] = useState(
     demo ? "체험 모드라 걸어 둔 등불은 새로고침하면 사라져요." : "불빛을 누르면 그 사람의 기다림이 보여요.",
   );
-  const [story, setStory] = useState<number | null>(() => (storySeen() ? null : 0));
+  // 공유 링크(/l/아이디)로 들어오면 ?l=아이디 로 열려요. 이야기는 건너뛰고 그 등불로 바로 가요.
+  const [deepLink, setDeepLink] = useState(() => new URLSearchParams(location.search).get("l"));
+  const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink ? null : 0));
   const [shot, setShot] = useState<{ name: Shot; n: number } | null>(null);
   useEffect(() => {
     if (story != null) setShot({ name: STORY[story].shot, n: Date.now() });
@@ -36,6 +38,15 @@ export default function App() {
   });
 
   const mine = h.lanterns.find((l) => l.user_id === h.me);
+
+  useEffect(() => {
+    if (!deepLink || h.status !== "ready") return;
+    const found = h.lanterns.some((l) => l.user_id === deepLink);
+    if (found) setView({ type: "detail", id: deepLink });
+    else setHint("그 등불은 이미 내려졌어요.");
+    history.replaceState(null, "", location.pathname);
+    setDeepLink(null);
+  }, [deepLink, h.status, h.lanterns]);
   const picked = view.type === "detail" ? h.lanterns.find((l) => l.user_id === view.id) : undefined;
   const close = useCallback(() => setView({ type: "none" }), []);
   const endStory = useCallback((then: "write" | "look") => {
@@ -107,11 +118,16 @@ export default function App() {
             isHere={h.online.has(picked.user_id)}
             warmth={h.warmthCount.get(picked.user_id) ?? 0}
             sent={h.sentToday(picked.user_id)}
+            notes={h.notes[picked.user_id]}
+            onLoadNotes={() => h.loadNotes(picked.user_id)}
+            onAddNote={h.addNote}
+            onRemoveNote={h.removeNote}
             onWarm={async () => {
               await h.sendWarmth(picked.user_id);
               pulse(picked.user_id);
             }}
             onEdit={() => setView({ type: "form" })}
+            canShare={!demo}
             onClose={close}
           />
         )}
