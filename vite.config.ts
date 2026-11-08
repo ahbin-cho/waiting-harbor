@@ -14,9 +14,12 @@ function seo(): Plugin {
     env.SITE_URL ||
     (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:5173")
   ).replace(/\/$/, "");
+  // 검색 등록 인증 코드는 원래 페이지에 공개로 들어가는 값이라 기본값을 코드에 둬요. 환경 변수가 있으면 그걸 써요.
+  // "google-site-verification=…" 처럼 앞부분까지 붙여 넣어도 값만 떼어 써요.
+  const clean = (v?: string) => v?.trim().replace(/^[a-z-]+-site-verification=/i, "");
   const verify = [
-    ["google-site-verification", env.GOOGLE_SITE_VERIFICATION],
-    ["naver-site-verification", env.NAVER_SITE_VERIFICATION],
+    ["google-site-verification", clean(env.GOOGLE_SITE_VERIFICATION) || "u2fXDDS4E4pddcAmYCj8OwICB7p-PJFFZu92zQatiS0"],
+    ["naver-site-verification", clean(env.NAVER_SITE_VERIFICATION)],
   ]
     .filter(([, v]) => v)
     .map(([n, v]) => `<meta name="${n}" content="${v}" />`)
