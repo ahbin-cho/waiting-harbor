@@ -44,12 +44,6 @@ Vite + React + TypeScript, three.js (3D 마을), Supabase (DB, 익명 로그인,
 
 검색으로 들어오는 글 페이지: `/rainbow/`(무지개마을, 반려동물 추모), `/discharge/`(전역일 계산기).
 
-## 카카오톡 공유 버튼 (선택)
-"보내기" 화면에 카카오톡 버튼을 띄우려면:
-1. https://developers.kakao.com 에서 애플리케이션을 만들어요.
-2. 앱 설정 → 플랫폼 → Web 에 사이트 주소(예: `https://waiting-harbor-xxxx.vercel.app`)를 등록해요.
-3. 앱 키의 **JavaScript 키**를 Vercel 환경 변수 `VITE_KAKAO_JS_KEY` 에 넣고 다시 배포해요.
-
 ## 숫자 보기
 방문, 등불 걸기, 일기, 온기, 공유 같은 행동이 Supabase `events` 테이블에 쌓여요 (이름·일기·사진 같은 내용은 담지 않아요).
 Supabase SQL Editor 에서 아래처럼 봐요.

@@ -15,7 +15,8 @@ export default async function handler(req: Request) {
   const app = `${u.origin}/?l=${l.id}`;
   const title = `${titleOf(l)} · ${facts(l).dday} | 기다림 항구`;
   const desc = summary(l);
-  const img = `${u.origin}/api/og?id=${l.id}&v=${facts(l).left}`;
+  // 미리보기 그림은 늘 뜨는 사이트 대표 카드. 제목과 설명이 그 등불을 알려줘요.
+  const img = `${u.origin}/og.png`;
   const e = escapeHtml;
 
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
