@@ -184,7 +184,8 @@ export class Shrine {
         })),
       })),
     );
-    if (floating) plate.position.set(0, 0.3, -0.17);
+    // 등판 앞면(z -0.17)보다 조금 앞에: 같은 면에 겹치면 깜빡여요
+    if (floating) plate.position.set(0, 0.3, -0.11);
     else plate.position.set(0.05, 0.16, 0.76);
     g.add(plate);
 

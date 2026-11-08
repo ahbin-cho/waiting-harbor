@@ -13,11 +13,11 @@ import { PALETTES, type Palette, type ThemeName } from "../lib/theme";
 
 
 const LIGHT_POOL = 6;   // 진짜 빛을 내는 등불 수 (가까운 순)
-const LABEL_NEAR = 38;  // 이 거리 안에서 이름이 또렷해요
-const LABEL_FAR = 52;   // 이 거리 밖에서는 이름이 사라져요
+const LABEL_NEAR = 44;  // 이 거리 안에서 이름이 또렷해요
+const LABEL_FAR = 66;   // 이 거리 밖에서는 이름이 사라져요
 const LAMP_SCALE = 1.7; // 마을 크기에 맞춘 등불 크기
 const PET_SCALE = 1.6;  // 무지개마을 아이들 크기
-const OPEN_NEAR = 46;   // 이보다 멀리서 누르면 먼저 그 장소로 다가가요
+const OPEN_NEAR = 64;   // 이보다 멀리서 누르면 먼저 그 장소로 다가가요 (항구는 부두 끝 너머에서 봐서 조금 멀어요)
 
 type Item = {
   id: string;
@@ -45,6 +45,13 @@ type Tween = { from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.V
 
 const still = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+/** 바닥에서 점 (px, pz) 와 선분 a-b 사이 거리, 그리고 선분 위 위치(0~1) */
+function segXZ(px: number, pz: number, a: THREE.Vector3, b: THREE.Vector3) {
+  const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz || 1;
+  const t = THREE.MathUtils.clamp(((px - a.x) * dx + (pz - a.z) * dz) / L, 0, 1);
+  return { d: Math.hypot(a.x + dx * t - px, a.z + dz * t - pz), t };
+}
 
 function rng(seed: number) {
   let s = seed;
@@ -182,6 +189,10 @@ export class Village {
   /** 나무: 등불을 열면 카메라와 등불 사이를 가리는 나무를 잠시 비켜 둬요 */
   private trees: { spots: [number, number, number][]; meshes: THREE.InstancedMesh[]; saved: THREE.Matrix4[][] } | null = null;
   private treeClear: { eye: THREE.Vector3; lamp: THREE.Vector3; spot: THREE.Vector3 } | null = null;
+  /** 무지개마을·추모관 섬의 작은 것들(집, 덤불, 나무): 열린 아이나 등불을 가리면 잠시 숨겨요 */
+  private props: { o: THREE.Object3D; c: THREE.Vector3; r: number }[] = [];
+  /** 열린 등불과 작은 자리를 가리는 다른 등불 (열려 있는 동안 숨겨요) */
+  private lampClear = new Set<string>();
   /** 열린 등불에서 카메라 쪽 (바닥 방향) */
   private selFlat = new THREE.Vector3(0, 0, 1);
   private down: { x: number; y: number; t: number } | null = null;
@@ -217,8 +228,18 @@ export class Village {
     this.scene.add(this.env);
     this.buildSky();
     this.buildLand();
+    this.props = [];
+    const n0 = this.env.children.length;
     this.buildRainbow();
     this.buildMemorial();
+    // 새로 놓인 것들 가운데 작은 것만 (섬 땅처럼 큰 건 빼고)
+    const box = new THREE.Box3(), sph = new THREE.Sphere();
+    for (const o of this.env.children.slice(n0)) {
+      if (!(o instanceof THREE.Mesh || o instanceof THREE.Group)) continue;
+      box.setFromObject(o).getBoundingSphere(sph);
+      if (sph.radius > 0 && sph.radius < 7) this.props.push({ o, c: sph.center.clone(), r: sph.radius });
+    }
+    this.applyTreeClear();
 
     for (let i = 0; i < LIGHT_POOL; i++) {
       const l = new THREE.PointLight(0xffb867, 0, 11, 1.8);
@@ -1066,8 +1087,18 @@ export class Village {
     this.renderer.toneMappingExposure = p.exposure;
     this.buildSky();
     this.buildLand();
+    this.props = [];
+    const n0 = this.env.children.length;
     this.buildRainbow();
     this.buildMemorial();
+    // 새로 놓인 것들 가운데 작은 것만 (섬 땅처럼 큰 건 빼고)
+    const box = new THREE.Box3(), sph = new THREE.Sphere();
+    for (const o of this.env.children.slice(n0)) {
+      if (!(o instanceof THREE.Mesh || o instanceof THREE.Group)) continue;
+      box.setFromObject(o).getBoundingSphere(sph);
+      if (sph.radius > 0 && sph.radius < 7) this.props.push({ o, c: sph.center.clone(), r: sph.radius });
+    }
+    this.applyTreeClear();
     for (const it of this.items.values()) {
       it.group.traverse((o) => {
         if (o.userData.pole) ((o as THREE.Mesh).material as THREE.MeshStandardMaterial).color.set(p.pier);
@@ -1115,12 +1146,7 @@ export class Village {
     if (!tr) return;
     const c = this.treeClear;
     const zero = new THREE.Matrix4().makeScale(0, 0, 0);
-    // 바닥에서 점 p 와 선분 a-b 사이 거리, 그리고 선분 위 위치(0~1)
-    const seg = (px: number, pz: number, a: THREE.Vector3, b: THREE.Vector3) => {
-      const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz || 1;
-      const t = THREE.MathUtils.clamp(((px - a.x) * dx + (pz - a.z) * dz) / L, 0, 1);
-      return { d: Math.hypot(a.x + dx * t - px, a.z + dz * t - pz), t };
-    };
+    const seg = segXZ;
     tr.spots.forEach(([x, z, sc], i) => {
       let hide = false;
       if (c) {
@@ -1138,18 +1164,31 @@ export class Village {
       m.instanceMatrix.needsUpdate = true;
       m.computeBoundingSphere();
     });
+    for (const p of this.props) {
+      let hide = false;
+      if (c) {
+        const a = seg(p.c.x, p.c.z, c.eye, c.lamp), b = seg(p.c.x, p.c.z, c.eye, c.spot);
+        hide = (a.d < p.r + 0.4 && a.t < 0.95) || (b.d < p.r + 0.6 && b.t < 0.97);
+      }
+      p.o.visible = !hide;
+    }
   }
 
   /** 작은 자리가 놓일 곳 (받침 바닥 기준). 카메라에서 볼 때 등불 오른쪽, 항구에선 부두 위 */
   private shrineSpot(it: Item, flat: THREE.Vector3) {
     const right = this.rightOf(flat);
-    if (it.place === "하늘" || it.pet) return it.lamp.clone().addScaledVector(right, 2.1).add(new THREE.Vector3(0, -1.7, 0));
+    if (it.place === "하늘" || it.pet) {
+      // 떠 있는 자리: 등불(아이) 곁 공중에, 땅에 묻히지 않게
+      const p = it.lamp.clone().addScaledVector(right, 2.1).add(new THREE.Vector3(0, -1.7, 0));
+      p.y = Math.max(p.y, groundAt(p.x, p.z) + 0.6);
+      return p;
+    }
     if (it.place === "항구") {
-      // 부두 가운데, 카메라에서 조금 먼 쪽으로 부두를 따라 옮겨서 물 위에 뜨지 않게
+      // 부두는 좁고 등불이 줄지어 있어서, 등불이 걸린 난간 바깥 물 위에 작은 뗏목처럼 띄워요
       const h = harborSlot(it.idx);
-      const fw = new THREE.Vector3(Math.sin(h.yaw), 0, Math.cos(h.yaw));
-      const way = fw.dot(flat) > 0 ? -1 : 1;
-      return new THREE.Vector3(it.group.position.x - Math.cos(h.yaw) * h.side, h.deck, it.group.position.z + Math.sin(h.yaw) * h.side).addScaledVector(fw, way * 1.6);
+      const out = Math.sign(h.side) || 1;
+      const off = PIER.w / 2 - Math.abs(h.side) + 2.3;
+      return new THREE.Vector3(it.group.position.x + Math.cos(h.yaw) * out * off, 0.22, it.group.position.z - Math.sin(h.yaw) * out * off);
     }
     const p = it.group.position.clone().addScaledVector(right, 2.1).addScaledVector(flat, 0.7);
     p.y = Math.max(0.2, groundAt(p.x, p.z)) - 0.05;
@@ -1278,6 +1317,12 @@ export class Village {
       const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, it.place === "숲" ? 8 : 4.6, 0));
       this.treeClear = { eye: pos.clone(), lamp: it.lamp.clone(), spot: spot.clone() };
       this.applyTreeClear();
+      this.lampClear.clear();
+      for (const o of this.items.values()) {
+        if (o.id === id || o.pet) continue;
+        const a = segXZ(o.lamp.x, o.lamp.z, pos, it.lamp), b = segXZ(o.lamp.x, o.lamp.z, pos, spot);
+        if ((a.d < 1.3 && a.t < 0.95) || (b.d < 1.7 && b.t < 0.97) || Math.hypot(o.lamp.x - spot.x, o.lamp.z - spot.z) < 2) this.lampClear.add(o.id);
+      }
       // 숲은 등불이 높이 매달려 있어서 위아래로 길어요. 조금 더 아래를 봐서 자리 받침까지 시트 위에 오게
       const target = mid.clone().add(new THREE.Vector3(0, (this.narrow ? -3.3 : -2.9) - (PLACE_INFO[it.place].hang ? 1.1 : 0), 0));
       this.flyTo(pos, target, 1100);
@@ -1286,6 +1331,7 @@ export class Village {
     } else if (was) {
       this.follow = null;
       this.setShrine(null);
+      this.lampClear.clear();
       // 닫아도 멀리 물러나지 않아요. 그 자리에서 시트가 사라진 만큼 등불을 화면 가운데로 올려 볼 뿐.
       // 가리던 나무는 다른 곳으로 옮겨 갈 때 되돌려요.
       const it = this.items.get(was);
@@ -1428,7 +1474,8 @@ export class Village {
     }
     this.sailFerry(calm ? null : t);
     if (this.shrine) {
-      if (this.shrine.floating) this.placeShrine(); // 하늘 등불과 아이들은 움직이니 따라가요
+      const sel = this.shrineInfo ? this.items.get(this.shrineInfo.id) : undefined;
+      if (this.shrine.floating || sel?.pet) this.placeShrine(); // 하늘 등불과 아이들은 움직이니 따라가요
       // 사람이 마을을 돌려 봐도 작은 자리는 늘 이쪽을 바라봐요
       const g = this.shrine.group, cp = this.camera.position;
       const want = Math.atan2(cp.x - g.position.x, cp.z - g.position.z) - 0.12;
@@ -1440,8 +1487,10 @@ export class Village {
     const focus = this.selected;
     for (const it of this.items.values()) {
       // 다른 곳(기다림/추모관)의 등불은 숨겨요
-      const vis = this.shown(it);
+      const vis = this.shown(it) && !(this.selected && this.lampClear.has(it.id));
       it.group.visible = vis;
+      // 멀리서도 누르기 쉽게, 멀수록 누르는 자리를 조금 키워요
+      it.hit.scale.setScalar(THREE.MathUtils.clamp(this.camera.position.distanceTo(it.lamp) / 24, 1, 2.2));
       if (it.refl) it.refl.visible = vis;
       if (!vis) continue;
       if (it.pet) {
@@ -1542,7 +1591,7 @@ export class Village {
   private placeTags() {
     const w = this.host.clientWidth, h = this.host.clientHeight;
     for (const it of this.items.values()) {
-      if (!this.shown(it)) {
+      if (!this.shown(it) || (this.selected && this.lampClear.has(it.id))) {
         it.tag.style.opacity = "0";
         continue;
       }
