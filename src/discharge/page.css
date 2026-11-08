@@ -1,0 +1,43 @@
+/* 글자로 읽는 페이지(전역일 계산기 등). 앱과 같은 토큰을 쓰고, 스크롤이 돼요. */
+html:has(body.page),body.page{height:auto;overflow:auto}
+body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260px,var(--paper) 520px);background-attachment:scroll;min-height:100%}
+:root[data-theme="night"] body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260px,var(--paper) 520px)}
+.page-wrap{max-width:600px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 48px max(20px,env(safe-area-inset-left,0px))}
+.page-nav{display:flex;justify-content:space-between;align-items:center}
+.page-nav .home{font-family:var(--display);font-weight:700;font-size:1.15rem;letter-spacing:-.05em;color:var(--ink);text-decoration:none}
+.page-head{position:static;margin:34px 0 22px;padding:0;background:none;pointer-events:auto}
+.page-head h1{font-size:2rem}
+.page-head .lede{margin:8px 0 0;color:var(--muted);line-height:1.6}
+.calc{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px}
+.calc label:first-child{margin-top:0}
+.branch-chips{display:flex;flex-wrap:wrap;gap:8px}
+.choice-chip{font:inherit;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;padding:9px 12px;cursor:pointer;display:flex;gap:6px;align-items:baseline}
+.choice-chip span{font-size:.78rem;color:var(--muted)}
+.choice-chip[aria-pressed="true"]{border-color:var(--ink);background:var(--field)}
+.choice-chip:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.result{margin-top:22px;display:flex;flex-direction:column;gap:6px}
+.result .label{margin:14px 0 0;font-size:.8rem;color:var(--muted)}
+.result .date{margin:0;font-size:1.25rem;font-weight:500;font-variant-numeric:tabular-nums}
+.result .dday{margin:0;font-family:var(--display);font-weight:700;font-size:2.4rem;letter-spacing:-.05em;line-height:1.1}
+.result .hint{margin:4px 0 0;font-size:.82rem;color:var(--muted)}
+.bar-line{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:8px 0 4px}
+.bar-line i{display:block;height:100%;background:var(--lamp)}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0 0}
+.facts dt{font-size:.72rem;color:var(--muted)}
+.facts dd{margin:2px 0 0;font-weight:500;font-variant-numeric:tabular-nums}
+@media (max-width:420px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.marks{list-style:none;padding:0;margin:0}
+.marks li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:.9rem;font-variant-numeric:tabular-nums}
+.marks li:first-child{border-top:0}
+.marks li.past{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--line)}
+.result .btn{align-self:flex-start;margin-top:16px;text-decoration:none;display:inline-block}
+.guide{margin-top:40px;line-height:1.75;color:var(--ink)}
+.guide h2{font-family:var(--display);font-size:1.4rem;letter-spacing:-.04em;margin:32px 0 10px}
+.guide h3{font-size:1rem;margin:18px 0 4px}
+.guide p{margin:0 0 10px;color:var(--muted)}
+.guide b{color:var(--ink);font-weight:500}
+.guide a,.page-foot a{color:var(--ink)}
+.guide table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.guide th,.guide td{text-align:left;padding:8px 0;border-bottom:1px solid var(--line)}
+.guide th{font-size:.8rem;color:var(--muted);font-weight:400}
+.page-foot{margin-top:48px;font-size:.82rem;color:var(--muted)}

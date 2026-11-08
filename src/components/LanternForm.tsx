@@ -21,17 +21,19 @@ type Step = (typeof STEPS)[number];
  * 등불 걸기. 등대지기가 한 번에 하나씩 물어봐요.
  * 고칠 때는 마지막 질문(한 줄)부터 열리고, 이전으로 돌아가 다른 것도 고칠 수 있어요.
  */
-export function LanternForm({ initial, onSave, onRemove, onClose }: {
+export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
   initial?: Lantern;
+  /** 전역일 계산기 등에서 넘어온 값 (날짜, 기다림 종류) */
+  preset?: Partial<Values>;
   onSave: (v: Values) => Promise<void>;
   onRemove: () => Promise<void>;
   onClose: () => void;
 }) {
   const [step, setStep] = useState<number>(initial ? STEPS.length - 1 : 0);
   const [who, setWho] = useState(initial?.who ?? "");
-  const [kind, setKind] = useState(initial?.kind ?? KINDS[0]);
-  const [start, setStart] = useState(initial?.start_date ?? ymd(today()));
-  const [end, setEnd] = useState(initial?.end_date ?? "");
+  const [kind, setKind] = useState(initial?.kind ?? preset?.kind ?? KINDS[0]);
+  const [start, setStart] = useState(initial?.start_date ?? preset?.start_date ?? ymd(today()));
+  const [end, setEnd] = useState(initial?.end_date ?? preset?.end_date ?? "");
   const [line, setLine] = useState(initial?.line ?? "");
   const [place, setPlace] = useState(placeOf(initial?.place));
   const [color, setColor] = useState(colorOf(initial?.color));

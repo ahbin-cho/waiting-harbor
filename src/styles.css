@@ -10,6 +10,7 @@
   --ink:#EDE5D6; --muted:#9499BA; --faint:#5F6588;
   --paper:#0F1329; --line:rgba(237,229,214,.14); --field:rgba(237,229,214,.04);
   --danger:#FF9C86;
+  --fade-top:5,8,26; --fade-bottom:3,6,26; --veil:rgba(2,4,14,.25); --tag-shadow:rgba(0,0,0,.9); --lamp-ink:#2A170A;
   --display:"Gaegu","Nanum Pen Script","Apple SD Gothic Neo",sans-serif; /* 등대지기의 글씨: 제목, 이야기, 질문 */
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   --hand:"Nanum Pen Script","Gaegu",cursive; /* 사람들이 직접 쓴 한 줄 */
@@ -18,6 +19,18 @@
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
   background:var(--sky-top);
+}
+/* 새벽 테마: 해가 막 뜨는 항구. 하늘색과 복숭아빛, 맑은 청회색 바다. 글자는 짙은 남색. */
+:root[data-theme="dawn"]{
+  --sky-top:#8FB0D9; --sky-mid:#C3CDE6; --sky-low:#F3D2C4; --haze:#E7D9E0;
+  --sea:#5F84AD; --sea-deep:#46688F;
+  --land:#56685C; --land-far:#9AA4C4; --tree-back:#3F604E; --pier:#6E5A49; --pier-top:#7C6755; --tower:#EEEAE2;
+  --moon:#FFF4E2;
+  --ink:#1E2436; --muted:#4F5870; --faint:#7C8399;
+  --paper:#F7F8FB; --line:rgba(30,36,54,.14); --field:rgba(30,36,54,.04);
+  --danger:#B8402C;
+  --fade-top:197,212,234; --fade-bottom:247,248,251; --veil:rgba(30,36,54,.12); --tag-shadow:rgba(255,255,255,.95);
+  color-scheme: light;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%}
@@ -35,7 +48,7 @@ body{
 }
 /* 종이처럼 거친 결 */
 .scene::after{
-  content:"";position:absolute;inset:0;pointer-events:none;z-index:15;opacity:.09;mix-blend-mode:overlay;
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:15;opacity:var(--grain,.09);mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -43,7 +56,7 @@ body{
 header{
   position:absolute;top:0;left:0;right:0;z-index:5;pointer-events:none;
   padding:22px max(20px,env(safe-area-inset-right,0px)) 28px max(20px,env(safe-area-inset-left,0px));
-  background:linear-gradient(to bottom,rgba(5,8,26,.85),rgba(5,8,26,0));
+  background:linear-gradient(to bottom,rgba(var(--fade-top),.85),rgba(var(--fade-top),0));
 }
 h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;margin:0;letter-spacing:-.06em}
 .title-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -64,7 +77,7 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;m
 .tags{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .tag{
   position:absolute;left:0;top:0;opacity:0;text-align:center;white-space:nowrap;will-change:transform,opacity;
-  text-shadow:0 1px 6px rgba(0,0,0,.9);transition:opacity .2s linear;
+  text-shadow:0 1px 6px var(--tag-shadow);transition:opacity .2s linear;
 }
 .tag b{display:block;font-family:var(--display);font-weight:700;font-size:.92rem;line-height:1.15}
 .tag span{display:block;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -77,20 +90,20 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;m
   position:absolute;left:0;right:0;bottom:0;z-index:5;pointer-events:none;
   padding:28px max(20px,env(safe-area-inset-right,0px)) 18px max(20px,env(safe-area-inset-left,0px));
   display:flex;gap:14px;align-items:flex-end;
-  background:linear-gradient(to top,rgba(3,6,26,.9),rgba(3,6,26,0));
+  background:linear-gradient(to top,rgba(var(--fade-bottom),.9),rgba(var(--fade-bottom),0));
 }
 .hint{font-size:.8rem;color:var(--muted);flex:1;line-height:1.6;min-width:0}
 .bar .btn{pointer-events:auto}
 .btn{
   font:inherit;font-size:.95rem;border:0;border-radius:8px;padding:12px 18px;cursor:pointer;
-  background:var(--lamp);color:#2A170A;white-space:nowrap;
+  background:var(--lamp);color:var(--lamp-ink);white-space:nowrap;
 }
 .btn:active:not([disabled]){transform:translateY(1px)}
 .btn[disabled]{opacity:.45;cursor:default}
 .btn:focus-visible,.ghost:focus-visible,.chip:focus-visible,.place:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
 /* 바텀시트 */
-.veil{position:fixed;inset:0;background:rgba(2,4,14,.25);display:none;z-index:20}
+.veil{position:fixed;inset:0;background:var(--veil);display:none;z-index:20}
 .scene header,.scene .bar,.scene .empty{transition:opacity .4s ease}
 .scene.focusing header,.scene.focusing .bar{opacity:0;pointer-events:none}
 .veil.open{display:block}
@@ -158,7 +171,7 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 
 /* 등대지기의 이야기 */
 .story{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer;
-  background:linear-gradient(to top,rgba(3,6,26,.92) 0%,rgba(3,6,26,.6) 32%,rgba(3,6,26,0) 60%)}
+  background:linear-gradient(to top,rgba(var(--fade-bottom),.92) 0%,rgba(var(--fade-bottom),.6) 32%,rgba(var(--fade-bottom),0) 60%)}
 .story-skip{position:absolute;top:max(16px,env(safe-area-inset-top,0px));right:max(20px,env(safe-area-inset-right,0px));
   font:inherit;font-size:.82rem;background:none;border:0;color:var(--muted);padding:8px 0;cursor:pointer}
 .story-card{padding:0 max(24px,env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px));max-width:560px}
@@ -223,3 +236,6 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .diary .text-btn{align-self:flex-start;font-size:.72rem;padding:0}
 .warmth-line{margin-top:20px}
 .shared{margin-top:10px;overflow-wrap:anywhere}
+
+/* 테마 고르기 */
+.title-tools{display:flex;gap:14px;pointer-events:auto}

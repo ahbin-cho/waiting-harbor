@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko" data-theme="dawn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#8FB0D9" />
+    <link rel="icon" href="/favicon.svg" />
+    <title>전역일 계산기 · 군별 복무기간으로 전역 날짜와 D-day 계산 | 기다림 항구</title>
+    <meta name="description" content="입대일과 군별(육군·해병대 18개월, 해군 20개월, 공군 21개월, 사회복무요원 21개월)을 고르면 전역일, D-day, 복무율, 100일·절반·전역 D-100 날짜를 바로 계산해요." />
+    <link rel="canonical" href="%SITE_URL%/discharge/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="기다림 항구" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:url" content="%SITE_URL%/discharge/" />
+    <meta property="og:title" content="전역일 계산기 | 기다림 항구" />
+    <meta property="og:description" content="입대일만 고르면 전역일, D-day, 복무율, 100일과 전역 D-100까지 바로 나와요." />
+    <meta property="og:image" content="%SITE_URL%/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "전역일은 어떻게 계산하나요?", "acceptedAnswer": { "@type": "Answer", "text": "입대일에 복무 개월 수를 더한 날의 하루 전이 전역일이에요. 예를 들어 2026년 1월 6일에 육군(18개월)으로 입대하면 2027년 7월 5일이 전역일이에요. 그 달에 같은 날이 없으면 그 달의 마지막 날이 전역일이 돼요." } },
+          { "@type": "Question", "name": "군별 복무기간은 얼마인가요?", "acceptedAnswer": { "@type": "Answer", "text": "육군과 해병대는 18개월, 해군은 20개월, 공군은 21개월, 사회복무요원은 21개월이에요." } },
+          { "@type": "Question", "name": "계산 결과가 실제 전역일과 다를 수 있나요?", "acceptedAnswer": { "@type": "Answer", "text": "이 계산기는 참고용이에요. 제도 변경이나 개인 사정에 따라 달라질 수 있으니 정확한 날짜는 병무청이나 소속 부대 안내로 확인해 주세요." } }
+        ]
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500&family=Nanum+Pen+Script&display=swap" rel="stylesheet" />
+  </head>
+  <body class="page">
+    <div class="page-wrap">
+      <nav class="page-nav">
+        <a href="/" class="home">기다림 항구</a>
+        <button id="theme" class="text-btn" type="button">새벽</button>
+      </nav>
+
+      <header class="page-head">
+        <h1>전역일 계산기</h1>
+        <p class="lede">입대일과 복무 형태를 고르면 전역일과 남은 날이 바로 나와요.</p>
+      </header>
+
+      <section class="calc" aria-label="전역일 계산">
+        <label for="start">입대일</label>
+        <input id="start" type="date" />
+        <span class="label-text">복무 형태</span>
+        <div id="branches" class="branch-chips" role="group" aria-label="복무 형태"></div>
+        <div id="result" class="result" aria-live="polite"></div>
+      </section>
+
+      <article class="guide">
+        <h2>군별 복무기간</h2>
+        <table>
+          <thead><tr><th>구분</th><th>복무기간</th></tr></thead>
+          <tbody>
+            <tr><td>육군</td><td>18개월</td></tr>
+            <tr><td>해병대</td><td>18개월</td></tr>
+            <tr><td>해군</td><td>20개월</td></tr>
+            <tr><td>공군</td><td>21개월</td></tr>
+            <tr><td>사회복무요원</td><td>21개월</td></tr>
+          </tbody>
+        </table>
+
+        <h2>전역일은 이렇게 계산해요</h2>
+        <p>입대일에 복무 개월 수를 더한 날의 <b>하루 전</b>이 전역일이에요. 2026년 1월 6일에 육군으로 입대하면 18개월 뒤인 2027년 7월 6일의 하루 전, <b>2027년 7월 5일</b>이 전역일이에요.</p>
+        <p>그 달에 같은 날이 없으면(예: 8월 31일 입대 후 2월) 그 달의 마지막 날이 전역일이 돼요.</p>
+
+        <h2>자주 묻는 것</h2>
+        <h3>계산 결과가 실제 전역일과 다를 수 있나요?</h3>
+        <p>이 계산기는 참고용이에요. 제도 변경이나 개인 사정에 따라 달라질 수 있으니 정확한 날짜는 병무청이나 소속 부대 안내로 확인해 주세요.</p>
+        <h3>기다리는 사람도 쓸 수 있나요?</h3>
+        <p>네. 군대 간 애인이나 가족의 입대일을 넣으면 돌아오는 날이 나와요. 그 날을 <a href="/">기다림 항구</a>에 등불로 걸어 두면 날이 가까워질수록 등불이 밝아져요.</p>
+      </article>
+
+      <footer class="page-foot">
+        <a href="/">기다림 항구</a> · 돌아올 사람을 기다리는 사람들이 등불을 걸어두는 밤 마을
+      </footer>
+    </div>
+    <script type="module" src="/src/discharge/main.ts"></script>
+  </body>
+</html>

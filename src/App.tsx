@@ -6,7 +6,8 @@ import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
 import { Story } from "./components/Story";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
-import { pick } from "./lib/waiting";
+import { KINDS, pick } from "./lib/waiting";
+import { THEME_LABEL, THEME_ORDER, applyUiTheme, resolveTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
 import { demo, useHarbor } from "./hooks/useHarbor";
 
 type View = { type: "none" } | { type: "detail"; id: string } | { type: "form" };
@@ -20,8 +21,30 @@ export default function App() {
   );
   // 공유 링크(/l/아이디)로 들어오면 ?l=아이디 로 열려요. 이야기는 건너뛰고 그 등불로 바로 가요.
   const [deepLink, setDeepLink] = useState(() => new URLSearchParams(location.search).get("l"));
-  const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink ? null : 0));
+  // 전역일 계산기에서 "이 날을 기다리는 등불 걸기"로 오면 날짜가 채워진 채로 등불 걸기가 열려요
+  const [preset, setPreset] = useState(() => {
+    const q = new URLSearchParams(location.search);
+    const ok = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined);
+    const start_date = ok(q.get("start")), end_date = ok(q.get("end"));
+    return end_date ? { start_date, end_date, kind: (KINDS as readonly string[]).includes(q.get("kind") ?? "") ? q.get("kind")! : undefined } : null;
+  });
+  const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink || preset ? null : 0));
   const [shot, setShot] = useState<{ name: Shot; n: number } | null>(null);
+  // 테마: 밤 / 새벽 / 시간 따라. 시간 따라는 10분마다 다시 확인해요.
+  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(() => savedTheme());
+  const [clock, setClock] = useState(() => new Date().getHours());
+  const theme = resolveTheme(themeChoice, clock);
+  useEffect(() => applyUiTheme(theme), [theme]);
+  useEffect(() => {
+    if (themeChoice !== "auto") return;
+    const t = setInterval(() => setClock(new Date().getHours()), 600_000);
+    return () => clearInterval(t);
+  }, [themeChoice]);
+  const nextTheme = () => {
+    const c = THEME_ORDER[(THEME_ORDER.indexOf(themeChoice) + 1) % THEME_ORDER.length];
+    setThemeChoice(c);
+    saveTheme(c);
+  };
   useEffect(() => {
     if (story != null) setShot({ name: STORY[story].shot, n: Date.now() });
   }, [story]);
@@ -47,6 +70,15 @@ export default function App() {
     history.replaceState(null, "", location.pathname);
     setDeepLink(null);
   }, [deepLink, h.status, h.lanterns]);
+
+  useEffect(() => {
+    if (!preset || h.status !== "ready") return;
+    history.replaceState(null, "", location.pathname);
+    // 이미 등불이 있으면 내 등불을 보여주고, 없으면 등불 걸기를 열어요
+    setView(mine ? { type: "detail", id: mine.user_id } : { type: "form" });
+    if (mine) setPreset(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset, h.status]);
   const picked = view.type === "detail" ? h.lanterns.find((l) => l.user_id === view.id) : undefined;
   const close = useCallback(() => setView({ type: "none" }), []);
   const endStory = useCallback((then: "write" | "look") => {
@@ -64,12 +96,15 @@ export default function App() {
 
   return (
     <div className={`scene${view.type === "detail" || story != null ? " focusing" : ""}`}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} onPick={(id) => setView({ type: "detail", id })} />
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} onPick={(id) => setView({ type: "detail", id })} theme={theme} />
 
       <header>
         <div className="title-row">
           <h1>기다림 항구</h1>
-          <button className="text-btn" onClick={() => setStory(0)}>이야기 다시 듣기</button>
+          <div className="title-tools">
+            <button className="text-btn" onClick={nextTheme} aria-label={`테마 바꾸기. 지금은 ${THEME_LABEL[themeChoice]}`}>{THEME_LABEL[themeChoice]}</button>
+            <button className="text-btn" onClick={() => setStory(0)}>이야기</button>
+          </div>
         </div>
         <p className="stats">등불 {h.lanterns.length}개, 지금 {h.hereCount}명이 깨어 있어요.</p>
         <nav className="places" aria-label="장소로 이동">
@@ -94,6 +129,7 @@ export default function App() {
         {view.type === "form" && (
           <LanternForm
             initial={mine}
+            preset={preset ?? undefined}
             onSave={async (v) => {
               const first = !mine;
               await h.saveLantern(v);
@@ -108,7 +144,10 @@ export default function App() {
               }
             }}
             onRemove={h.removeLantern}
-            onClose={close}
+            onClose={() => {
+              setPreset(null);
+              close();
+            }}
           />
         )}
         {view.type === "detail" && picked && (
