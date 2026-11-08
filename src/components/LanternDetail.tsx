@@ -3,7 +3,7 @@ import type { Lantern } from "../lib/supabase";
 import { daysLeft, daysSince, ddayText, pick, titleOf } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 
-export function LanternDetail({ lantern, isMine, isHere, warmth, sent, onWarm, onEdit, onClose }: {
+export function LanternDetail({ lantern, isMine, isHere, warmth, sent, onWarm, onEdit, onClose, canShare }: {
   lantern: Lantern;
   isMine: boolean;
   isHere: boolean;
@@ -12,9 +12,11 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, onWarm, o
   onWarm: () => Promise<void>;
   onEdit: () => void;
   onClose: () => void;
+  canShare: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [shared, setShared] = useState("");
   const n = daysLeft(lantern);
   const since = daysSince(lantern);
   const who = lantern.who.trim() || "그 사람";
@@ -28,6 +30,26 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, onWarm, o
       setErr("온기를 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // 카톡, 인스타 등으로 보내요. 폰에선 공유 창이 뜨고, 안 되면 링크를 복사해요.
+  async function share() {
+    const url = `${location.origin}/l/${lantern.user_id}`;
+    const text = `${titleOf(lantern)} · ${ddayText(n)}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "기다림 항구", text, url });
+        return;
+      }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShared("링크를 복사했어요. 카톡이나 인스타에 붙여 넣으면 등불 카드가 보여요.");
+    } catch {
+      setShared(url);
     }
   }
 
@@ -56,8 +78,10 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, onWarm, o
             {sent ? "오늘 온기를 보냈어요" : "온기 보내기"}
           </button>
         )}
+        {canShare && <button className="ghost" onClick={share}>{isMine ? "내 등불 보내기" : "공유하기"}</button>}
         <button className="ghost" onClick={onClose}>닫기</button>
       </div>
+      {shared && <p className="small shared" role="status">{shared}</p>}
     </>
   );
 }
