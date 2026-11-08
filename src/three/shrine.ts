@@ -26,7 +26,7 @@ export type ShrineInfo = {
    * 기다림 등불이면 추모의 등판 대신 항구 터미널의 "도착 안내판"이 서요.
    * dday: "D-145" 같은 말, arrive: "4월 2일 도착", pct: 기다린 만큼(0~1, 바다의 작은 배 자리), arrived: 돌아왔는지
    */
-  wait?: { dday: string; arrive: string; pct: number; arrived: boolean };
+  wait?: { dday: string; arrive: string; pct: number; arrived: boolean; mode: "ship" | "plane" };
 };
 
 /** 모서리가 둥근 판: 가로 w, 세로 h 는 둥글게, 두께 d 는 앞뒤로 (액자, 이름판 받침) */
@@ -340,7 +340,7 @@ export class Shrine {
       c.fillStyle = ink;
       c.textBaseline = "middle";
       c.font = '700 60px "Gaegu", sans-serif';
-      c.fillText(w.arrived ? "도착했어요" : "입항 예정", 40, 56);
+      c.fillText(w.arrived ? "도착했어요" : w.mode === "plane" ? "도착 예정" : "입항 예정", 40, 56);
       c.textAlign = "right";
       c.font = '700 44px "Gaegu", sans-serif';
       c.fillStyle = soft;
@@ -363,38 +363,78 @@ export class Shrine {
         const [first] = wrap(c, info.line.trim(), 560, 1);
         c.fillText(first ?? "", x0, 492);
       }
-      // 아래 바다: 물결과 오른쪽 항구, 기다린 만큼 다가온 작은 배
-      const seaY = 612;
-      c.strokeStyle = soft;
-      c.lineWidth = 3;
-      for (const dy of [0, 22]) {
+      const t = Math.max(0, Math.min(1, w.arrived ? 1 : w.pct));
+      if (w.mode === "plane") {
+        // 하늘길: 왼쪽 위에서 오른쪽 활주로로 내려오는 점선, 기다린 만큼 다가온 비행기
+        const ax = 50, ay = 520, bx2 = 880, by = 640;
+        const arc = (u: number) => ({ x: ax + (bx2 - ax) * u, y: ay + (by - ay) * u * u - Math.sin(Math.PI * u) * 40 });
+        c.strokeStyle = soft;
+        c.lineWidth = 4;
+        c.setLineDash([14, 14]);
         c.beginPath();
-        for (let x = 30; x <= 900; x += 6) {
-          const y = seaY + dy + Math.sin(x / 28 + dy) * 5;
-          if (x === 30) c.moveTo(x, y);
-          else c.lineTo(x, y);
+        for (let u = 0; u <= 1.0001; u += 0.02) {
+          const q = arc(u);
+          if (u === 0) c.moveTo(q.x, q.y);
+          else c.lineTo(q.x, q.y);
         }
         c.stroke();
+        c.setLineDash([]);
+        // 활주로와 관제탑
+        c.fillStyle = ink;
+        c.fillRect(870, 648, 130, 8);
+        for (let k = 0; k < 4; k++) c.fillRect(880 + k * 30, 662, 16, 4);
+        c.fillRect(968, 560, 14, 84);
+        c.fillRect(956, 548, 38, 18);
+        // 비행기: 점선을 따라, 진행 방향으로 기울어요
+        const at = arc(t), nx = arc(Math.min(1, t + 0.01));
+        const ang = t >= 1 ? 0 : Math.atan2(nx.y - at.y, nx.x - at.x);
+        c.save();
+        c.translate(at.x, t >= 1 ? 632 : at.y);
+        c.rotate(ang);
+        c.fillStyle = info.color;
+        c.beginPath();
+        c.ellipse(0, 0, 50, 10, 0, 0, Math.PI * 2); // 몸통
+        c.fill();
+        c.beginPath();
+        c.moveTo(6, -4); c.lineTo(-14, -42); c.lineTo(-24, -42); c.lineTo(-10, -4); c.closePath(); // 위 날개
+        c.moveTo(6, 4); c.lineTo(-14, 42); c.lineTo(-24, 42); c.lineTo(-10, 4); c.closePath(); // 아래 날개
+        c.moveTo(-38, -4); c.lineTo(-50, -22); c.lineTo(-56, -22); c.lineTo(-48, -2); c.closePath(); // 꼬리
+        c.fill();
+        c.restore();
+      } else {
+        // 아래 바다: 물결과 오른쪽 항구, 기다린 만큼 다가온 작은 배
+        const seaY = 612;
+        c.strokeStyle = soft;
+        c.lineWidth = 3;
+        for (const dy of [0, 22]) {
+          c.beginPath();
+          for (let x = 30; x <= 900; x += 6) {
+            const y = seaY + dy + Math.sin(x / 28 + dy) * 5;
+            if (x === 30) c.moveTo(x, y);
+            else c.lineTo(x, y);
+          }
+          c.stroke();
+        }
+        // 항구: 부두와 작은 등대
+        c.fillStyle = ink;
+        c.fillRect(912, seaY - 6, 82, 10);
+        c.fillRect(958, seaY - 74, 18, 68);
+        c.beginPath();
+        c.moveTo(952, seaY - 74); c.lineTo(982, seaY - 74); c.lineTo(967, seaY - 96); c.closePath();
+        c.fill();
+        // 작은 배 (도착하면 항구 바로 앞)
+        const bx = 60 + t * 790;
+        c.fillStyle = info.color;
+        c.beginPath();
+        c.moveTo(bx - 46, seaY - 18); c.lineTo(bx + 46, seaY - 18); c.lineTo(bx + 30, seaY + 6); c.lineTo(bx - 30, seaY + 6); c.closePath();
+        c.fill();
+        c.beginPath();
+        c.moveTo(bx - 2, seaY - 22); c.lineTo(bx - 2, seaY - 84); c.lineTo(bx + 36, seaY - 26); c.closePath();
+        c.fill();
+        // 지나온 물살
+        c.fillStyle = soft;
+        for (let k = 1; k <= 4; k++) c.fillRect(bx - 46 - k * 26, seaY - 4 + (k % 2) * 4, 12, 3);
       }
-      // 항구: 부두와 작은 등대
-      c.fillStyle = ink;
-      c.fillRect(912, seaY - 6, 82, 10);
-      c.fillRect(958, seaY - 74, 18, 68);
-      c.beginPath();
-      c.moveTo(952, seaY - 74); c.lineTo(982, seaY - 74); c.lineTo(967, seaY - 96); c.closePath();
-      c.fill();
-      // 작은 배 (도착하면 항구 바로 앞)
-      const bx = 60 + Math.max(0, Math.min(1, w.arrived ? 1 : w.pct)) * 790;
-      c.fillStyle = info.color;
-      c.beginPath();
-      c.moveTo(bx - 46, seaY - 18); c.lineTo(bx + 46, seaY - 18); c.lineTo(bx + 30, seaY + 6); c.lineTo(bx - 30, seaY + 6); c.closePath();
-      c.fill();
-      c.beginPath();
-      c.moveTo(bx - 2, seaY - 22); c.lineTo(bx - 2, seaY - 84); c.lineTo(bx + 36, seaY - 26); c.closePath();
-      c.fill();
-      // 지나온 물살
-      c.fillStyle = soft;
-      for (let k = 1; k <= 4; k++) c.fillRect(bx - 46 - k * 26, seaY - 4 + (k % 2) * 4, 12, 3);
     }));
     const face = new THREE.Mesh(keep(new THREE.PlaneGeometry(BW, BH)), keep(new THREE.MeshBasicMaterial({ map: tex, color: 0xe2e2e2 })));
     face.position.set(0, CY, 0.05);

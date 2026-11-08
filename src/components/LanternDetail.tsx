@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Lantern, Message, Note } from "../lib/supabase";
 import type { DailyWord } from "../lib/daily";
 import { OFFER_ONE, offeringSummary, offeringsFor, type OfferingKind } from "../lib/offerings";
-import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays } from "../lib/waiting";
+import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays, fliesHome } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
 import { shrinkPhoto } from "../lib/photo";
@@ -279,9 +279,13 @@ export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, 
       <div className="journey" aria-label={`기다림의 ${pct}%를 지나왔어요`}>
         <div className="journey-line">
           <i style={{ width: `${pct}%` }} />
-          {/* 돌아오는 배: 기다린 만큼 항구 쪽으로 와 있어요 */}
+          {/* 돌아오는 배(또는 비행기): 기다린 만큼 다가와 있어요 */}
           <b className="boat" style={{ left: `${pct}%` }} aria-hidden="true">
-            <svg viewBox="0 0 24 16"><path d="M1 10h22l-4 5H5z" /><path d="M11 1v8h8z" /></svg>
+            {fliesHome(lantern.kind) ? (
+              <svg viewBox="0 0 24 16"><path d="M2 8.5c0-1 1-1.5 2-1.5h15c2 0 4 .7 4 1.5s-2 1.5-4 1.5H4c-1 0-2-.5-2-1.5z" /><path d="M12 7 7 1h2.5l6 6zM12 10l-5 6h2.5l6-6zM4 7 2 3h1.5L6.5 7z" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 16"><path d="M1 10h22l-4 5H5z" /><path d="M11 1v8h8z" /></svg>
+            )}
           </b>
         </div>
         <div className="journey-ends">
