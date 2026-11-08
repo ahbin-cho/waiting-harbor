@@ -135,7 +135,7 @@ export default function App() {
               await h.saveLantern(v);
               if (first && h.me) {
                 // 새 등불이 켜지면 그 앞으로 날아가요
-                setHint(`${pick(v.who, "을", "를")} 기다리는 등불이 켜졌어요.`);
+                setHint(v.mode === "miss" ? `${pick(v.who, "을", "를")} 그리워하는 풍등을 하늘에 띄웠어요.` : `${pick(v.who, "을", "를")} 기다리는 등불이 켜졌어요.`);
                 const id = h.me;
                 setTimeout(() => {
                   setView({ type: "detail", id });

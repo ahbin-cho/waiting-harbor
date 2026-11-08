@@ -33,7 +33,20 @@ export const demoLanterns = (): Lantern[] =>
     place,
     color,
     shape,
+    mode: "wait",
     created_at: new Date(Date.now() - (sample.length - i) * 60_000).toISOString(),
+  }));
+
+/** 체험용 그리움 등불: 하늘에 떠 있어요 */
+const missing: [string, string, number, number, string, string][] = [
+  ["할아버지", "가족", -9000, -400, "할아버지가 깎아 주던 사과 모양을 아직 기억해요.", "달빛"],
+  ["콩이", "반려동물", -4200, -88, "산책 시간이 되면 아직도 현관을 봐요.", "노을"],
+];
+export const demoMissing = (): Lantern[] =>
+  missing.map(([who, kind, start, end, line, color], i) => ({
+    user_id: `demo-miss-${i}`, who, kind, start_date: shift(start), end_date: shift(end), line,
+    place: "하늘", color, shape: "풍등", mode: "miss",
+    created_at: new Date(Date.now() - (10 + i) * 60_000).toISOString(),
   }));
 
 export const demoWarmth = (): Warmth[] =>
@@ -55,6 +68,9 @@ export const demoNotes = (): Note[] => {
     ["demo-0", -10, "100일째. 달력에 동그라미 치는 손이 익숙해졌어요."],
     ["demo-2", -4, "엄마가 보내준 반찬 사진에 김치가 세 통이에요. 한 통은 내 거래요."],
     ["demo-3", 0, "내일이에요. 공항 가는 첫차 시간 세 번 확인했어요."],
+    ["demo-miss-1", -1, "오늘 공원에서 너랑 닮은 강아지를 봤어. 한참 따라 걸었어."],
+    ["demo-miss-1", -30, "사료 그릇을 아직 못 치웠어. 치우면 정말 끝나는 것 같아서."],
+    ["demo-miss-0", -5, "할아버지 기일이 다가와요. 올해는 제가 사과를 깎아 갈게요."],
   ];
   return rows.map(([lantern_id, d, body], i) => ({ id: -(i + 1), lantern_id, body, public: true, day: shift(d), created_at: new Date(Date.now() + d * 86_400_000).toISOString() }));
 };

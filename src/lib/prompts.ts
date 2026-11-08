@@ -14,8 +14,21 @@ const ASK = [
   () => "이번 주에 가장 길게 느껴진 날은 언제였어요?",
 ];
 
+// 떠나보낸 사람에게: 기억을 꺼내는 질문들. 재촉하거나 극복을 권하지 않아요.
+const MISS_ASK = [
+  (w: string) => `오늘 ${pick(w, "이", "가")} 생각난 순간이 있었어요?`,
+  (w: string) => `${pick(w, "과", "와")} 함께한 날 중에 자주 떠오르는 장면이 있어요?`,
+  (w: string) => `${pick(w, "이", "가")} 좋아하던 게 있었어요?`,
+  (w: string) => `${w}에게 요즘 내 이야기를 들려준다면요?`,
+  (w: string) => `${w}에게 고마웠던 일 하나를 적어 볼까요?`,
+  () => "오늘 하루는 어땠어요? 짧게 적어도 괜찮아요.",
+  (w: string) => `${pick(w, "이", "가")} 지금 곁에 있다면 무슨 말을 해 줄 것 같아요?`,
+  () => "요즘 잠은 잘 자고 있어요?",
+];
+
 /** 오늘의 질문 (하루 동안은 같은 질문) */
-export function todaysAsk(who: string, shift = 0) {
+export function todaysAsk(who: string, shift = 0, miss = false) {
+  const list = miss ? MISS_ASK : ASK;
   const day = Math.floor(Date.now() / 86_400_000);
-  return ASK[(((day + shift) % ASK.length) + ASK.length) % ASK.length](who.trim() || "그 사람");
+  return list[(((day + shift) % list.length) + list.length) % list.length](who.trim() || "그 사람");
 }

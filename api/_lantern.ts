@@ -10,6 +10,7 @@ export type SharedLantern = {
   start_date: string;
   end_date: string;
   line: string;
+  mode: string;
 };
 
 export const COLORS: Record<string, string> = {
@@ -22,7 +23,7 @@ export async function getLantern(id: string | null): Promise<SharedLantern | nul
   const url = process.env.VITE_SUPABASE_URL, key = process.env.VITE_SUPABASE_ANON_KEY;
   if (!id || !UUID.test(id) || !url || !key) return null;
   const res = await fetch(
-    `${url}/rest/v1/lanterns?user_id=eq.${id}&select=user_id,who,kind,place,color,shape,start_date,end_date,line&limit=1`,
+    `${url}/rest/v1/lanterns?user_id=eq.${id}&select=user_id,who,kind,place,color,shape,start_date,end_date,line,mode&limit=1`,
     { headers: { apikey: key, Accept: "application/json" } },
   );
   if (!res.ok) return null;
@@ -45,8 +46,11 @@ export function facts(l: SharedLantern) {
   const t = todayKST();
   const left = Math.round((parse(l.end_date) - t) / DAY);
   const since = Math.max(1, Math.round((t - parse(l.start_date)) / DAY) + 1);
-  const dday = left > 0 ? `D-${left}` : left === 0 ? "오늘 돌아와요" : "다시 만났어요";
-  return { left, since, dday };
+  const gone = Math.max(0, -left);
+  const together = Math.max(1, Math.round((parse(l.end_date) - parse(l.start_date)) / DAY) + 1);
+  const miss = l.mode === "miss";
+  const dday = miss ? `떠난 지 ${gone}일` : left > 0 ? `D-${left}` : left === 0 ? "오늘 돌아와요" : "다시 만났어요";
+  return { left, since, dday, gone, together, miss };
 }
 
 export function pick(word: string, withBatchim: string, without: string) {
@@ -55,10 +59,11 @@ export function pick(word: string, withBatchim: string, without: string) {
   return word + (has ? withBatchim : without);
 }
 
-export const titleOf = (l: SharedLantern) => `${pick(l.who.trim() || "누군가", "을", "를")} 기다리는 사람`;
+export const titleOf = (l: SharedLantern) => `${pick(l.who.trim() || "누군가", "을", "를")} ${l.mode === "miss" ? "그리워하는" : "기다리는"} 사람`;
 
 export function summary(l: SharedLantern) {
   const f = facts(l);
+  if (f.miss) return `함께한 날 ${f.together.toLocaleString()}일. 하늘에 띄운 풍등이에요.`;
   if (f.left > 0) return `기다린 지 ${f.since}일째, ${f.left}일 남았어요. ${l.place}에 걸린 등불이에요.`;
   if (f.left === 0) return `오늘 ${pick(l.who, "이", "가")} 돌아와요. ${l.place}에 걸린 등불이에요.`;
   return `${f.since}일을 기다려 다시 만났어요. 등불은 하늘로 올라갔어요.`;

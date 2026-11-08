@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Lantern } from "../lib/supabase";
 import { COLORS, colorOf, shapeOf, type LampShape } from "../lib/looks";
-import { ISLANDS, PIER, PLACE_INFO, fbm, groundAt, jitter, pierAt, placeOf, slotOf, type Place } from "../lib/places";
-import { daysLeft, ddayText, progressOf } from "../lib/waiting";
+import { ISLANDS, PIER, PLACE_INFO, fbm, groundAt, jitter, pierAt, placeOf, skyY, slotOf, type Place } from "../lib/places";
+import { badgeText, daysLeft, glowOf, isMiss } from "../lib/waiting";
 import type { Shot } from "../lib/story";
 import { PALETTES, type Palette, type ThemeName } from "../lib/theme";
 
@@ -94,6 +94,8 @@ const GEO: Record<LampShape, THREE.BufferGeometry> = {
   둥근: new THREE.SphereGeometry(0.32, 14, 10).scale(1, 1.25, 1),
   네모: new THREE.CylinderGeometry(0.3, 0.3, 0.62, 4, 1).rotateY(Math.PI / 4),
   별: starGeometry(),
+  // 풍등: 위는 좁고 아래가 트인 종이 등. 안쪽 불빛이 비쳐 보여요.
+  풍등: new THREE.CylinderGeometry(0.27, 0.36, 0.78, 16, 1, true),
 };
 const CAP = new THREE.CylinderGeometry(0.14, 0.18, 0.08, 10);
 const POLE = new THREE.CylinderGeometry(0.035, 0.045, 1, 6).translate(0, 0.5, 0);
@@ -409,7 +411,7 @@ export class Village {
   }
 
   private upsert(l: Lantern, place: Place, i: number) {
-    const look = `${colorOf(l.color)}/${shapeOf(l.shape)}/${place}`;
+    const look = `${colorOf(l.color)}/${shapeOf(l.shape)}/${place}/${l.mode}`;
     let it = this.items.get(l.user_id);
     if (it && it.look !== look) {
       this.remove(it);
@@ -422,17 +424,18 @@ export class Village {
     const [x, z] = slotOf(place, i);
     const info = PLACE_INFO[place];
     const pierU = (0.1 + i * 0.05);
-    const ground = place === "항구" ? pierAt(pierU).deck : Math.max(0.2, groundAt(x, z));
+    const ground = place === "항구" ? pierAt(pierU).deck : place === "하늘" ? skyY(i) : Math.max(0.2, groundAt(x, z));
     it.idx = i;
     it.group.position.set(x, ground, z);
     // 기둥은 조금씩 기울고, 높이도 조금씩 달라요
     it.group.rotation.set(jitter(i + place.length * 31, 4) * 0.07, 0, jitter(i + place.length * 31, 5) * 0.07);
-    it.baseY = (info.hang ? 2.6 : 1.45) + jitter(i + place.length * 31, 6) * (info.hang ? 0.5 : 0.15);
+    it.baseY = place === "하늘" ? 0 : (info.hang ? 2.6 : 1.45) + jitter(i + place.length * 31, 6) * (info.hang ? 0.5 : 0.15);
 
-    // 밝기: 돌아올 날이 가까울수록. 그날이 지나면 기둥을 떠나 하늘로 올라가요.
-    const n = daysLeft(l);
-    it.glowLevel = n != null && n <= 0 ? 1 : 0.3 + 0.7 * progressOf(l);
-    it.lift = n != null && n < 0 ? Math.min(6, 1.5 + -n * 0.8) : 0;
+    // 밝기: 기다림은 돌아올 날이 가까울수록, 그리움은 떠난 날이나 처음 만난 날이 다가올수록.
+    // 돌아온 사람의 등불은 기둥을 떠나 하늘로 올라가요.
+    it.glowLevel = glowOf(l);
+    const left = isMiss(l) ? 1 : daysLeft(l) ?? 1;
+    it.lift = !isMiss(l) && left < 0 ? Math.min(6, 1.5 + -left * 0.8) : 0;
     it.swing.position.y = it.baseY + it.lift;
     it.lamp.set(x, ground + it.swing.position.y * LAMP_SCALE, z);
 
@@ -442,7 +445,7 @@ export class Village {
     const b = document.createElement("b");
     b.textContent = l.who;
     const s = document.createElement("span");
-    s.textContent = ddayText(n);
+    s.textContent = badgeText(l);
     it.tag.append(b, s);
   }
 
@@ -450,12 +453,15 @@ export class Village {
     const color = new THREE.Color(COLORS[colorOf(l.color)]);
     const shape = shapeOf(l.shape);
     const hang = PLACE_INFO[place].hang;
+    const sky = place === "하늘";
     const group = new THREE.Group();
     group.scale.setScalar(LAMP_SCALE);
     const swing = new THREE.Group();
     group.add(swing);
 
-    if (hang) {
+    if (sky) {
+      // 하늘 등불은 기둥도 끈도 없이 떠 있어요
+    } else if (hang) {
       const cord = new THREE.Mesh(CORD, new THREE.MeshBasicMaterial({ color: 0x8a8070 }));
       cord.scale.y = 1.4;
       cord.position.y = 0.35;
@@ -468,10 +474,15 @@ export class Village {
       group.add(pole);
     }
 
-    const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1, roughness: 0.6 });
+    const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1, roughness: 0.6, side: shape === "풍등" ? THREE.DoubleSide : THREE.FrontSide });
     const body = new THREE.Mesh(GEO[shape], mat);
     swing.add(body);
-    if (shape !== "별") {
+    if (shape === "풍등") {
+      // 아래쪽에 작은 불씨
+      const flame = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff1d0 }));
+      flame.position.y = -0.3;
+      swing.add(flame);
+    } else if (shape !== "별") {
       const capMat = new THREE.MeshStandardMaterial({ color: 0x241712, roughness: 1 });
       const top = new THREE.Mesh(CAP, capMat);
       top.position.y = 0.38;
@@ -578,6 +589,10 @@ export class Village {
       target.divideScalar(here.length).add(new THREE.Vector3(0, -0.6, 0));
     }
     // 숲은 나무에 가리지 않게 조금 더 위에서 내려다봐요
+    if (place === "하늘") {
+      // 하늘 등불은 바다 쪽 낮은 곳에서 올려다봐요
+      return this.flyTo(target.clone().add(new THREE.Vector3(4, -9, 30).multiplyScalar(this.narrow ? 1.25 : 1)), target);
+    }
     const off = (place === "숲" ? new THREE.Vector3(3, 15, 17) : place === "항구" ? new THREE.Vector3(12, 8, 18) : new THREE.Vector3(5, 8, 22)).multiplyScalar(this.narrow ? 1.3 : 1);
     this.flyTo(target.clone().add(off), target);
   }
@@ -606,6 +621,7 @@ export class Village {
     if (name === "overview") return this.overview();
     if (name === "forest") return this.focusPlace("숲");
     if (name === "hill") return this.focusPlace("언덕");
+    if (name === "sky") return this.focusPlace("하늘");
     if (name === "lighthouse") {
       const top = this.lighthouse.clone().add(new THREE.Vector3(0, 5.5, 0));
       return this.flyTo(top.clone().add(new THREE.Vector3(-12, 1.5, 17).multiplyScalar(this.narrow ? 1.3 : 1)), top, slow);
@@ -708,8 +724,10 @@ export class Village {
         it.swing.rotation.set(0, 0, 0);
       }
       if (!calm) it.body.rotation.y = t * 0.25 + it.phase;
+      // 하늘 등불은 바람을 타고 천천히 오르내려요
+      if (it.place === "하늘") it.swing.position.y = calm ? 0 : Math.sin(t * 0.35 + it.phase) * 0.35;
       // 하늘로 올라간 등불은 천천히 오르내려요
-      if (it.lift > 0) it.swing.position.y = it.baseY + it.lift + (calm ? 0 : Math.sin(t * 0.6 + it.phase) * 0.25);
+      else if (it.lift > 0) it.swing.position.y = it.baseY + it.lift + (calm ? 0 : Math.sin(t * 0.6 + it.phase) * 0.25);
 
       const dim = focus && focus !== it.id ? 0.25 : 1;
       it.mat.emissiveIntensity = (0.35 + 1.5 * it.glowLevel) * flick * dim * (home ? 1.2 : 1);

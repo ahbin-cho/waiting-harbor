@@ -54,7 +54,7 @@ export default async function handler(req: Request) {
   const color = COLORS[l.color] ?? COLORS.촛불;
   const title = titleOf(l);
   const line = l.line.length > 26 ? `${l.line.slice(0, 25)}…` : l.line;
-  const meta = `${l.place}에 걸린 등불 · 기다린 지 ${f.since}일째`;
+  const meta = f.miss ? `하늘에 띄운 풍등 · 함께한 날 ${f.together.toLocaleString()}일` : `${l.place}에 걸린 등불 · 기다린 지 ${f.since}일째`;
   const brand = "기다림 항구";
 
   const [gaegu, pen, plex] = await Promise.all([
@@ -85,7 +85,7 @@ export default async function handler(req: Request) {
       { flexDirection: "column", flex: 1, gap: "6px" },
       h("div", { fontFamily: "Plex", fontSize: "26px", color: "#9499BA" }, meta),
       h("div", { fontFamily: "Gaegu", fontSize: "66px", lineHeight: 1.15, marginTop: "8px", letterSpacing: "-0.06em" }, title),
-      h("div", { fontFamily: "Gaegu", fontSize: "150px", lineHeight: 1, color, marginTop: "4px", letterSpacing: "-0.08em" }, f.dday),
+      h("div", { fontFamily: "Gaegu", fontSize: f.miss ? "104px" : "150px", lineHeight: 1, color, marginTop: "4px", letterSpacing: "-0.08em" }, f.dday),
       ...(line ? [h("div", { fontFamily: "Pen", fontSize: "52px", marginTop: "18px", color: "#EDE5D6" }, line)] : []),
       h("div", { fontFamily: "Gaegu", fontSize: "30px", color: "#9499BA", marginTop: "28px", letterSpacing: "-0.04em" }, brand),
     ),

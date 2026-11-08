@@ -158,6 +158,7 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 }
 .preview.shape-둥근{border-radius:50% / 46%}
 .preview.shape-네모{border-radius:4px;width:48px}
+.preview.shape-풍등{border-radius:40% 40% 10% 10% / 30% 30% 8% 8%;width:46px;height:60px;clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)}
 .preview.shape-별{clip-path:polygon(50% 2%,61% 36%,98% 36%,68% 58%,79% 94%,50% 72%,21% 94%,32% 58%,2% 36%,39% 36%);box-shadow:none;width:66px}
 
 /* 작은 글자 버튼 */
@@ -239,3 +240,5 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 
 /* 테마 고르기 */
 .title-tools{display:flex;gap:14px;pointer-events:auto}
+
+.help-line{margin-top:18px;font-size:.75rem;color:var(--faint)}
