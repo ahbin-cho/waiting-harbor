@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { configured, supabase, type Lantern, type Warmth } from "../lib/supabase";
+import { configured, supabase, type Lantern, type Note, type Warmth } from "../lib/supabase";
 import { today, ymd } from "../lib/waiting";
-import { DEMO_ME, demoLanterns, demoOnline, demoWarmth } from "../lib/demo";
+import { DEMO_ME, demoLanterns, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
 
 /** Supabase 설정이 없으면 체험 모드로 열려요. 아무것도 저장되지 않아요. */
 export const demo = !configured;
@@ -92,6 +92,54 @@ export function useHarbor(onWarmed?: () => void) {
     return m;
   }, [warmth]);
 
+  // ---------- 기다림 일기 ----------
+  const [notes, setNotes] = useState<Record<string, Note[]>>(() => {
+    if (!demo) return {};
+    const m: Record<string, Note[]> = {};
+    for (const n of demoNotes()) (m[n.lantern_id] ??= []).push(n);
+    return m;
+  });
+
+  /** 등불을 열 때 그 등불의 일기를 불러와요 (최근 50개) */
+  const loadNotes = useCallback(async (lanternId: string) => {
+    if (demo) return;
+    const { data, error } = await supabase
+      .from("notes")
+      .select("*")
+      .eq("lantern_id", lanternId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (!error) setNotes((m) => ({ ...m, [lanternId]: data as Note[] }));
+  }, []);
+
+  const addNote = useCallback(
+    async (body: string, isPublic: boolean) => {
+      if (!me) throw new Error("no-user");
+      const row = { lantern_id: me, body, public: isPublic, day: ymd(today()) };
+      if (demo) {
+        const n: Note = { ...row, id: Date.now(), created_at: new Date().toISOString() };
+        setNotes((m) => ({ ...m, [me]: [n, ...(m[me] ?? [])] }));
+        return;
+      }
+      const { data, error } = await supabase.from("notes").insert(row).select().single();
+      if (error) throw error;
+      setNotes((m) => ({ ...m, [me]: [data as Note, ...(m[me] ?? [])] }));
+    },
+    [me],
+  );
+
+  const removeNote = useCallback(
+    async (id: number) => {
+      if (!me) return;
+      if (!demo) {
+        const { error } = await supabase.from("notes").delete().eq("id", id);
+        if (error) throw error;
+      }
+      setNotes((m) => ({ ...m, [me]: (m[me] ?? []).filter((n) => n.id !== id) }));
+    },
+    [me],
+  );
+
   const sentToday = useCallback(
     (to: string) => warmth.some((w) => w.from_id === me && w.to_id === to && w.day === ymd(today())),
     [warmth, me],
@@ -143,5 +191,5 @@ export function useHarbor(onWarmed?: () => void) {
     [me, warmth],
   );
 
-  return { me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth };
+  return { me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
 }

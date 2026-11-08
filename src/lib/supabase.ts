@@ -5,7 +5,7 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export const configured = Boolean(url && key);
 
-export const supabase = createClient(url ?? "http://localhost", key ?? "missing-key", {
+export const supabase = createClient(url || "http://localhost", key || "missing-key", {
   auth: { persistSession: true, autoRefreshToken: true },
 });
 
@@ -23,3 +23,6 @@ export type Lantern = {
 };
 
 export type Warmth = { from_id: string; to_id: string; day: string };
+
+/** 기다림 일기: 등불 주인이 날마다 남기는 글 */
+export type Note = { id: number; lantern_id: string; body: string; public: boolean; day: string; created_at: string };

@@ -1,5 +1,5 @@
 // Supabase 설정이 없을 때 보여주는 체험용 등불. 저장되지 않아요.
-import type { Lantern, Warmth } from "./supabase";
+import type { Lantern, Note, Warmth } from "./supabase";
 import { today, ymd } from "./waiting";
 
 export const DEMO_ME = "demo-me";
@@ -44,3 +44,17 @@ export const demoWarmth = (): Warmth[] =>
   }));
 
 export const demoOnline = () => new Set(["demo-1", "demo-3", "demo-6", DEMO_ME]);
+
+/** 체험용 기다림 일기 */
+export const demoNotes = (): Note[] => {
+  const rows: [string, number, string][] = [
+    ["demo-1", -1, "오늘 영상통화 하다가 둘 다 잠들었어요. 깨 보니 화면에 천장만 보였어요."],
+    ["demo-1", -3, "비행기표 캡처해서 배경화면으로 해 뒀어요. 볼 때마다 숫자가 줄어 있으면 좋겠다."],
+    ["demo-1", -8, "시차 때문에 내 아침이 그쪽 밤이에요. 잘 자라는 말로 하루를 시작해요."],
+    ["demo-0", -2, "편지 왔어요. 훈련 끝나고 쓴 거라 글씨가 엉망인데 그게 더 좋았어요."],
+    ["demo-0", -10, "100일째. 달력에 동그라미 치는 손이 익숙해졌어요."],
+    ["demo-2", -4, "엄마가 보내준 반찬 사진에 김치가 세 통이에요. 한 통은 내 거래요."],
+    ["demo-3", 0, "내일이에요. 공항 가는 첫차 시간 세 번 확인했어요."],
+  ];
+  return rows.map(([lantern_id, d, body], i) => ({ id: -(i + 1), lantern_id, body, public: true, day: shift(d), created_at: new Date(Date.now() + d * 86_400_000).toISOString() }));
+};

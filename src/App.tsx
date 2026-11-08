@@ -118,6 +118,10 @@ export default function App() {
             isHere={h.online.has(picked.user_id)}
             warmth={h.warmthCount.get(picked.user_id) ?? 0}
             sent={h.sentToday(picked.user_id)}
+            notes={h.notes[picked.user_id]}
+            onLoadNotes={() => h.loadNotes(picked.user_id)}
+            onAddNote={h.addNote}
+            onRemoveNote={h.removeNote}
             onWarm={async () => {
               await h.sendWarmth(picked.user_id);
               pulse(picked.user_id);

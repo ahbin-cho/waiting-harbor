@@ -41,6 +41,26 @@ create table if not exists public.warmth (
 alter table public.lanterns enable row level security;
 alter table public.warmth   enable row level security;
 
+-- 기다림 일기: 등불 주인이 날마다 남기는 글. '나만 보기'로 쓴 글은 본인만 봐요.
+create table if not exists public.notes (
+  id         bigint generated always as identity primary key,
+  lantern_id uuid not null default auth.uid() references public.lanterns(user_id) on delete cascade,
+  body       text not null check (char_length(body) between 1 and 300),
+  public     boolean not null default true,
+  day        date not null default current_date,
+  created_at timestamptz not null default now()
+);
+create index if not exists notes_lantern_idx on public.notes (lantern_id, created_at desc);
+alter table public.notes enable row level security;
+drop policy if exists "notes read" on public.notes;
+create policy "notes read"   on public.notes for select using (public or auth.uid() = lantern_id);
+drop policy if exists "notes insert" on public.notes;
+create policy "notes insert" on public.notes for insert with check (auth.uid() = lantern_id);
+drop policy if exists "notes update" on public.notes;
+create policy "notes update" on public.notes for update using (auth.uid() = lantern_id) with check (auth.uid() = lantern_id);
+drop policy if exists "notes delete" on public.notes;
+create policy "notes delete" on public.notes for delete using (auth.uid() = lantern_id);
+
 -- 누구나 등불을 볼 수 있고, 자기 등불만 고칠 수 있어요
 drop policy if exists "lanterns read" on public.lanterns;
 create policy "lanterns read"   on public.lanterns for select using (true);
@@ -69,7 +89,7 @@ create trigger lanterns_touch before update on public.lanterns
 do $$
 declare t text;
 begin
-  foreach t in array array['lanterns', 'warmth'] loop
+  foreach t in array array['lanterns', 'warmth', 'notes'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

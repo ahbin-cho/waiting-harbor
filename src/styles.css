@@ -194,3 +194,32 @@ textarea{resize:none;height:84px;line-height:1.3;font-family:var(--hand);font-si
 .seo-copy h1{color:var(--ink);margin-bottom:16px}
 .seo-copy h2{font-family:var(--display);color:var(--ink);font-size:1.4rem;margin:28px 0 8px}
 .seo-copy ul{padding-left:1.1em}
+
+/* 등불 상세: 기다림의 길, 일기 */
+.section{margin:26px 0 8px;font-size:.8rem;color:var(--muted);letter-spacing:.02em}
+.section small{color:var(--faint);margin-left:4px}
+.journey{margin:16px 0 4px}
+.journey-line{position:relative;height:2px;background:var(--line);border-radius:1px}
+.journey-line i{position:absolute;left:0;top:0;bottom:0;background:var(--muted);border-radius:1px}
+.journey-line b{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--ink)}
+.journey-ends{display:flex;justify-content:space-between;margin-top:8px;font-size:.75rem;color:var(--faint);font-variant-numeric:tabular-nums}
+.note-line{margin-top:0}
+.compose{margin-top:6px;padding:16px;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;gap:10px}
+.compose .section{margin:0}
+.ask-line{margin:0;font-family:var(--display);font-size:1.3rem;line-height:1.35;letter-spacing:-.03em;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.ask-line .text-btn{font-family:var(--body);font-size:.75rem;letter-spacing:0}
+.compose textarea{height:120px}
+.compose-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.8rem;color:var(--muted)}
+.toggle{display:flex;align-items:center;gap:8px;margin:0;font-size:.8rem;color:var(--muted);cursor:pointer}
+.toggle input{width:auto;accent-color:var(--ink)}
+.count{font-variant-numeric:tabular-nums;color:var(--faint)}
+.compose .btn{align-self:flex-start}
+.diary{list-style:none;padding:0;margin:0;display:flex;flex-direction:column}
+.diary li{padding:14px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.diary li:first-child{border-top:0;padding-top:4px}
+.diary-day{font-size:.75rem;color:var(--faint);font-variant-numeric:tabular-nums;display:flex;gap:8px}
+.diary-day em{font-style:normal;color:var(--muted)}
+.diary-body{margin:0;font-family:var(--hand);font-size:1.45rem;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}
+.diary .text-btn{align-self:flex-start;font-size:.72rem;padding:0}
+.warmth-line{margin-top:20px}
+.shared{margin-top:10px;overflow-wrap:anywhere}
