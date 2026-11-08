@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { configured, supabase, type Lantern, type Note, type Warmth } from "../lib/supabase";
+import { configured, supabase, type Lantern, type Message, type Note, type Warmth } from "../lib/supabase";
 import { today, ymd } from "../lib/waiting";
 import { track, trackReady } from "../lib/track";
-import { DEMO_ME, demoLanterns, demoMissing, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
+import { DEMO_ME, demoLanterns, demoMessages, demoMissing, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
 
 /** Supabase 설정이 없으면 체험 모드로 열려요. 아무것도 저장되지 않아요. */
 export const demo = !configured;
@@ -148,6 +148,50 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
       if (error) throw error;
     }
     setNotes((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((n) => n.id !== id) }));
+  }, []);
+
+  // ---------- 남긴 마음: 다른 사람이 등불 앞에 남기는 응원과 추모의 말 ----------
+  const [messages, setMessages] = useState<Record<string, Message[]>>(() => {
+    if (!demo) return {};
+    const m: Record<string, Message[]> = {};
+    for (const n of demoMessages()) (m[n.lantern_id] ??= []).push(n);
+    return m;
+  });
+
+  /** 등불을 열 때 남긴 마음을 불러와요 (최근 50개) */
+  const loadMessages = useCallback(async (lanternId: string) => {
+    if (demo) return setMessages((m) => (m[lanternId] ? m : { ...m, [lanternId]: [] }));
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("lantern_id", lanternId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (!error) setMessages((m) => ({ ...m, [lanternId]: data as Message[] }));
+  }, []);
+
+  const addMessage = useCallback(
+    async (lanternId: string, body: string) => {
+      if (!me) throw new Error("no-user");
+      if (demo) {
+        const n: Message = { id: Date.now(), lantern_id: lanternId, from_id: me, body, created_at: new Date().toISOString() };
+        setMessages((m) => ({ ...m, [lanternId]: [n, ...(m[lanternId] ?? [])] }));
+        return;
+      }
+      const { data, error } = await supabase.from("messages").insert({ lantern_id: lanternId, from_id: me, body }).select().single();
+      if (error) throw error;
+      track("message_left");
+      setMessages((m) => ({ ...m, [lanternId]: [data as Message, ...(m[lanternId] ?? [])] }));
+    },
+    [me],
+  );
+
+  const removeMessage = useCallback(async (lanternId: string, id: number) => {
+    if (!demo) {
+      const { error } = await supabase.from("messages").delete().eq("id", id);
+      if (error) throw error;
+    }
+    setMessages((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((n) => n.id !== id) }));
   }, []);
 
   const sentToday = useCallback(
@@ -299,5 +343,5 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     setLanterns((all) => all.map((x) => (x.id === l.id ? { ...x, photo_public: isPublic } : x)));
   }, []);
 
-  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
+  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote, messages, loadMessages, addMessage, removeMessage };
 }

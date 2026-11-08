@@ -25,9 +25,9 @@ alter table public.lanterns add constraint lanterns_place_check check (place in 
 alter table public.lanterns add column if not exists color text not null default '촛불';
 alter table public.lanterns add column if not exists shape text not null default '둥근';
 alter table public.lanterns drop constraint if exists lanterns_color_check;
-alter table public.lanterns add constraint lanterns_color_check check (color in ('촛불', '노을', '달빛', '벚꽃', '라벤더', '하늘', '새싹'));
+alter table public.lanterns add constraint lanterns_color_check check (color in ('촛불', '노을', '달빛', '벚꽃', '라벤더', '하늘', '새싹', '바다', '유채'));
 alter table public.lanterns drop constraint if exists lanterns_shape_check;
-alter table public.lanterns add constraint lanterns_shape_check check (shape in ('둥근', '네모', '별', '풍등'));
+alter table public.lanterns add constraint lanterns_shape_check check (shape in ('둥근', '네모', '초롱', '별', '달', '연꽃', '집', '풍등'));
 
 -- 등불 종류: wait(돌아올 사람을 기다려요), miss(떠나보낸 사람을 그리워해요, 하늘에 띄우는 풍등)
 -- miss 에서 start_date 는 처음 만난 날, end_date 는 떠난 날이에요.
@@ -124,6 +124,29 @@ create policy "warmth read"   on public.warmth for select using (true);
 drop policy if exists "warmth insert" on public.warmth;
 create policy "warmth insert" on public.warmth for insert with check (auth.uid() = from_id and not public.owns_lantern(to_id));
 
+-- 남긴 마음: 다른 사람의 등불 앞에 남기는 짧은 말 (기다림엔 응원, 그리움엔 추모).
+-- 누구나 읽고, 자기 이름으로만 남겨요. 한 사람이 하루에 등불마다 세 번까지.
+-- 쓴 사람과 등불 주인은 지울 수 있어요.
+create table if not exists public.messages (
+  id         bigint generated always as identity primary key,
+  lantern_id uuid not null references public.lanterns(id) on delete cascade,
+  from_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  body       text not null check (char_length(btrim(body)) between 1 and 200),
+  created_at timestamptz not null default now()
+);
+create index if not exists messages_lantern_idx on public.messages (lantern_id, created_at desc);
+alter table public.messages enable row level security;
+create or replace function public.my_messages_today(lid uuid) returns bigint
+  language sql stable security definer set search_path = public as $$
+  select count(*) from public.messages where lantern_id = lid and from_id = auth.uid() and created_at > now() - interval '1 day'
+$$;
+drop policy if exists "messages read" on public.messages;
+create policy "messages read"   on public.messages for select using (true);
+drop policy if exists "messages insert" on public.messages;
+create policy "messages insert" on public.messages for insert with check (auth.uid() = from_id and public.my_messages_today(lantern_id) < 3);
+drop policy if exists "messages delete" on public.messages;
+create policy "messages delete" on public.messages for delete using (auth.uid() = from_id or public.owns_lantern(lantern_id));
+
 -- 등불 사진: 등불마다 한 장. 다른 사람에게 보일지는 등불 주인이 정해요 (photo_public).
 -- 파일은 Storage 'photos' 버킷의 {user_id}/{등불 id}.jpg 에 있어요.
 alter table public.lanterns add column if not exists photo_path text;
@@ -177,13 +200,19 @@ create table if not exists public.events (
   user_id    uuid default auth.uid() references auth.users(id) on delete set null,
   name       text not null check (name in (
     'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
-    'share_click', 'clip_made', 'photo_added', 'feedback_sent'
+    'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left'
   )),
   props      jsonb not null default '{}' check (octet_length(props::text) <= 400),
   via        text not null default '' check (char_length(via) <= 60),   -- 어디서 왔는지 (share, rainbow, discharge, 검색 사이트 이름, utm_source)
   created_at timestamptz not null default now()
 );
 create index if not exists events_name_time_idx on public.events (name, created_at);
+-- 이미 만들어 둔 표에도 새 행동 이름을 받아요
+alter table public.events drop constraint if exists events_name_check;
+alter table public.events add constraint events_name_check check (name in (
+  'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
+  'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left'
+));
 create index if not exists events_user_idx on public.events (user_id, created_at);
 alter table public.events enable row level security;
 drop policy if exists "events insert" on public.events;

@@ -229,6 +229,11 @@ export default function App() {
             onLoadNotes={() => h.loadNotes(picked.id)}
             onAddNote={(body, open) => h.addNote(picked.id, body, open)}
             onRemoveNote={(id) => h.removeNote(picked.id, id)}
+            me={h.me}
+            messages={h.messages[picked.id]}
+            onLoadMessages={() => h.loadMessages(picked.id)}
+            onAddMessage={(body) => h.addMessage(picked.id, body)}
+            onRemoveMessage={(id) => h.removeMessage(picked.id, id)}
             onWarm={async () => {
               await h.sendWarmth(picked.id);
               pulse(picked.id);
