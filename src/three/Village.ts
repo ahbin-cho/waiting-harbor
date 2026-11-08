@@ -1388,8 +1388,10 @@ export class Village {
       this.selFlat.copy(flat);
       // 등불과 곁의 작은 자리 사이 가운데를 봐요
       const spot = this.shrineSpot(it, flat).add(new THREE.Vector3(0, 1.5, 0));
-      const mid = it.lamp.clone().lerp(spot, 0.5);
-      const d = this.narrow ? 15 : 13;
+      // 등불보다 곁의 자리(안내판, 액자) 쪽으로 조금 더 기울여서 둘 다 화면에 들어오게
+      // 돌아온 사람의 등불은 하늘로 올라가 있어서, 그때는 안내판을 중심으로 봐요
+      const mid = it.lamp.clone().lerp(spot, it.lift > 0 ? 0.92 : 0.58);
+      const d = this.narrow ? 16.5 : 13.5;
       // 숲은 나무 위에서 조금 더 내려다봐요
       const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, it.place === "숲" ? 8 : 4.6, 0));
       this.treeClear = { eye: pos.clone(), lamp: it.lamp.clone(), spot: spot.clone() };
