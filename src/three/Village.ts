@@ -1101,7 +1101,15 @@ export class Village {
   }
 
   /** 바다 쪽 비스듬한 곳에서 마을 전체를 내려다봐요 */
+  /** 닫은 뒤 다른 곳으로 옮겨 갈 때 비켜 둔 나무를 되돌려요 */
+  private releaseTrees() {
+    if (!this.treeClear || this.selected) return;
+    this.treeClear = null;
+    this.applyTreeClear();
+  }
+
   overview(instant = false) {
+    this.releaseTrees();
     const target = new THREE.Vector3(-2, 0, -10);
     const dir = new THREE.Vector3(0.22, 0.52, 0.83).normalize();
     const pos = target.clone().addScaledVector(dir, this.narrow ? 185 : 100);
@@ -1112,6 +1120,7 @@ export class Village {
   }
 
   focusPlace(place: Place) {
+    this.releaseTrees();
     const c = PLACE_INFO[place];
     const y = place === "항구" ? pierAt(0.3).deck : Math.max(0, groundAt(c.x, c.z));
     const target = new THREE.Vector3(c.x, y + 2.2, c.z);
@@ -1172,10 +1181,10 @@ export class Village {
     } else if (was) {
       this.follow = null;
       this.setShrine(null);
-      this.treeClear = null;
-      this.applyTreeClear();
+      // 닫아도 멀리 물러나지 않아요. 그 자리에서 시트가 사라진 만큼 등불을 화면 가운데로 올려 볼 뿐.
+      // 가리던 나무는 다른 곳으로 옮겨 갈 때 되돌려요.
       const it = this.items.get(was);
-      if (it) this.focusPlace(it.place);
+      if (it) this.flyTo(this.camera.position.clone(), it.lamp.clone().add(new THREE.Vector3(0, -0.8, 0)), 700);
     }
   }
 
