@@ -9,6 +9,7 @@ import react from "@vitejs/plugin-react";
  */
 function seo(): Plugin {
   const env = process.env;
+  const today = new Date().toISOString().slice(0, 10);
   const site = (
     env.SITE_URL ||
     (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:5173")
@@ -37,7 +38,7 @@ function seo(): Plugin {
       this.emitFile({
         type: "asset",
         fileName: "sitemap.xml",
-        source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${site}/discharge/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>\n</urlset>\n`,
+        source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${site}/discharge/</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>\n  <url><loc>${site}/rainbow/</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>\n</urlset>\n`,
       });
     },
   };
@@ -48,7 +49,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       // 3D 마을(index.html)과 글로 된 페이지들을 따로 만들어요
-      input: { main: "index.html", discharge: "discharge/index.html" },
+      input: { main: "index.html", discharge: "discharge/index.html", rainbow: "rainbow/index.html" },
     },
   },
 });

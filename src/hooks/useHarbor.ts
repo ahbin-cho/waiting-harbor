@@ -173,8 +173,11 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
 
   const removeLantern = useCallback(async (id: string) => {
     if (!demo) {
+      // 등불을 내리면 사진 파일도 같이 지워요 (저장 공간이 쌓이지 않게)
+      const photo = lanternsRef.current.find((x) => x.id === id)?.photo_path;
       const { error } = await supabase.from("lanterns").delete().eq("id", id);
       if (error) throw error;
+      if (photo) await supabase.storage.from("photos").remove([photo]);
     }
     setLanterns((prev) => prev.filter((x) => x.id !== id));
   }, []);
@@ -212,9 +215,25 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
 
   const loadPhoto = useCallback(async (l: Lantern) => {
     if (demo || !l.photo_path) return;
+    // 같은 사진 주소를 일주일 동안 다시 써요. 주소가 같으면 브라우저가 기억해 둔 사진을 써서 다시 내려받지 않아요.
+    // (사진을 바꾸면 파일 이름이 바뀌어서 옛 사진이 보이는 일은 없어요)
+    const key = `harbor-photo:${l.photo_path}`;
+    try {
+      const hit = JSON.parse(localStorage.getItem(key) ?? "null") as { url: string; until: number } | null;
+      if (hit && hit.until > Date.now()) return setPhotoUrls((m) => ({ ...m, [l.id]: hit.url }));
+    } catch {
+      /* 저장소를 못 쓰면 매번 새 주소를 받아요 */
+    }
     // 볼 권한이 없으면(나만 보기 사진) 주소를 못 받아요. 그 경우 사진 칸을 비워 둬요.
-    const { data } = await supabase.storage.from("photos").createSignedUrl(l.photo_path, 3600);
-    if (data?.signedUrl) setPhotoUrls((m) => ({ ...m, [l.id]: data.signedUrl }));
+    const week = 7 * 24 * 3600;
+    const { data } = await supabase.storage.from("photos").createSignedUrl(l.photo_path, week);
+    if (!data?.signedUrl) return;
+    setPhotoUrls((m) => ({ ...m, [l.id]: data.signedUrl }));
+    try {
+      localStorage.setItem(key, JSON.stringify({ url: data.signedUrl, until: Date.now() + (week - 3600) * 1000 }));
+    } catch {
+      /* 괜찮아요 */
+    }
   }, []);
 
   /** 사진 넣기·바꾸기(blob), 지우기(null) */
@@ -232,13 +251,14 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
         patch({ photo_path: blob ? `demo/${l.id}.jpg` : null, photo_public: isPublic });
         return;
       }
-      const path = `${me}/${l.id}.jpg`;
+      // 바꿀 때마다 새 파일 이름: 브라우저가 사진을 오래 기억해도 옛 사진이 보이지 않아요
+      const path = `${me}/${l.id}-${Date.now().toString(36)}.jpg`;
       if (blob) {
-        const up = await supabase.storage.from("photos").upload(path, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "60" });
+        const up = await supabase.storage.from("photos").upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
         if (up.error) throw up.error;
-      } else if (l.photo_path) {
-        await supabase.storage.from("photos").remove([l.photo_path]);
       }
+      // 예전 사진 파일은 지워요 (바꿨을 때도, 지웠을 때도)
+      if (l.photo_path) await supabase.storage.from("photos").remove([l.photo_path]);
       const { error } = await supabase.from("lanterns").update({ photo_path: blob ? path : null, photo_public: isPublic }).eq("id", l.id);
       if (error) throw error;
       patch({ photo_path: blob ? path : null, photo_public: isPublic });

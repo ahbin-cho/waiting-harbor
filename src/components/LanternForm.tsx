@@ -41,15 +41,15 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
   onRemove: () => Promise<void>;
   onClose: () => void;
 }) {
-  const [mode, setMode] = useState<Mode>(initial?.mode === "miss" ? "miss" : "wait");
+  const [mode, setMode] = useState<Mode>((initial?.mode ?? preset?.mode) === "miss" ? "miss" : "wait");
   const [kind, setKind] = useState<string>(initial?.kind ?? preset?.kind ?? KINDS[0]);
   const [species, setSpecies] = useState<Species>(speciesOf(initial?.species ?? "강아지"));
   const pet = mode === "miss" && kind === "반려동물";
   const steps = STEPS[pet ? "pet" : mode];
   const [step, setStep] = useState<number>(initial ? steps.length - 1 : preset ? 1 : 0);
   const [who, setWho] = useState(initial?.who ?? "");
-  const [start, setStart] = useState(initial?.start_date ?? preset?.start_date ?? ymd(today()));
-  const [end, setEnd] = useState(initial?.end_date ?? preset?.end_date ?? "");
+  const [start, setStart] = useState(initial?.start_date ?? preset?.start_date ?? (preset?.mode === "miss" ? "" : ymd(today())));
+  const [end, setEnd] = useState(initial?.end_date ?? preset?.end_date ?? (preset?.mode === "miss" ? ymd(today()) : ""));
   const [line, setLine] = useState(initial?.line ?? "");
   const [place, setPlace] = useState(placeOf(initial?.place));
   const [color, setColor] = useState(colorOf(initial?.color));

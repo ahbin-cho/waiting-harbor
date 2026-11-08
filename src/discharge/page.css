@@ -41,3 +41,7 @@ body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260p
 .guide th,.guide td{text-align:left;padding:8px 0;border-bottom:1px solid var(--line)}
 .guide th{font-size:.8rem;color:var(--muted);font-weight:400}
 .page-foot{margin-top:48px;font-size:.82rem;color:var(--muted)}
+.guide .cta{margin:32px 0 0}
+.guide .cta .btn{display:inline-block;text-decoration:none;color:var(--lamp-ink)}
+.guide td:first-child{width:7.5em;color:var(--ink);font-weight:500}
+.guide td{vertical-align:top;color:var(--muted)}

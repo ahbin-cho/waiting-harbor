@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { Village3D, type Focus } from "./components/Village3D";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import type { Focus } from "./components/Village3D";
+// 3D 마을(three.js)은 무거워서 화면이 먼저 뜬 뒤에 따로 불러와요. 첫 화면이 빨라지고 검색 점수(속도)에도 좋아요.
+const Village3D = lazy(() => import("./components/Village3D").then((m) => ({ default: m.Village3D })));
 import { PLACES, placeOf } from "./lib/places";
 import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
@@ -30,6 +32,8 @@ export default function App() {
     const q = new URLSearchParams(location.search);
     const ok = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined);
     const start_date = ok(q.get("start")), end_date = ok(q.get("end"));
+    // 무지개마을 소개 페이지에서 오면 "반려동물 그리워하기"로 바로 열려요
+    if (q.get("for") === "pet") return { mode: "miss", kind: "반려동물" } as { mode: string; kind: string; start_date?: string; end_date?: string };
     return end_date ? { start_date, end_date, kind: (KINDS as readonly string[]).includes(q.get("kind") ?? "") ? q.get("kind")! : undefined } : null;
   });
   const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink || preset ? null : 0));
@@ -110,6 +114,7 @@ export default function App() {
 
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
+      <Suspense fallback={null}>
       <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme}
         record={record}
         onClip={(r) => {
@@ -119,6 +124,7 @@ export default function App() {
             setClip({ url: URL.createObjectURL(r.blob), file: new File([r.blob], name, { type: r.blob.type }) });
           } else setClip(r);
         }} />
+      </Suspense>
       {recording && <p className="rec-note" role="status">영상을 만들고 있어요. 10초만 기다려 주세요.</p>}
 
       <header>

@@ -1,7 +1,23 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/l/:id", "destination": "/api/lantern?id=:id" },
-    { "source": "/discharge", "destination": "/discharge/index.html" }
+    {
+      "source": "/l/:id",
+      "destination": "/api/lantern?id=:id"
+    },
+    {
+      "source": "/discharge",
+      "destination": "/discharge/index.html"
+    },
+    {
+      "source": "/rainbow",
+      "destination": "/rainbow/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/ping",
+      "schedule": "17 3 * * *"
+    }
   ]
 }

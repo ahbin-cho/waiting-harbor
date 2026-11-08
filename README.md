@@ -37,6 +37,18 @@ Vite + React + TypeScript, three.js (3D 마을), Supabase (DB, 익명 로그인,
    npm run dev
    ```
 
+## 검색 등록 (배포 후 한 번)
+1. **구글**: https://search.google.com/search-console 에서 "URL 접두어"로 사이트 주소를 추가하고, "HTML 태그" 인증 코드(content 값)를 Vercel 환경 변수 `GOOGLE_SITE_VERIFICATION`에 넣고 다시 배포해요. 인증 뒤 Sitemaps 에 `sitemap.xml` 을 제출해요.
+2. **네이버**: https://searchadvisor.naver.com 에서 사이트를 등록하고, "HTML 태그" 인증 코드를 `NAVER_SITE_VERIFICATION`에 넣고 다시 배포해요. 인증 뒤 "요청 → 사이트맵 제출"에 `sitemap.xml` 을 넣어요.
+3. 사이트 주소를 정해 두려면 `SITE_URL`(예: `https://waiting-harbor.vercel.app`)도 넣어요. 없으면 Vercel 운영 주소를 써요.
+
+검색으로 들어오는 글 페이지: `/rainbow/`(무지개마을, 반려동물 추모), `/discharge/`(전역일 계산기).
+
+## 무료 요금제로 운영하기
+- Supabase 무료 프로젝트는 1주일 동안 활동이 없으면 멈춰요. `vercel.json` 의 Cron 이 하루 한 번 `/api/ping` 을 불러 깨워 둬요.
+- 사진은 긴 쪽 1024px, 한 장 약 150KB 이하로 줄여 올리고, 등불을 내리거나 사진을 바꾸면 예전 파일을 지워요.
+- 대시보드의 Organization → Usage 에서 DB·저장소·내려받기 사용량을 가끔 확인해요.
+
 ## 의견 메일 받기 (선택)
 "의견" 버튼으로 받은 말은 Supabase `feedback` 테이블에 쌓이고, 아래를 설정하면 메일로도 와요.
 1. https://resend.com 에 가입하고 API 키를 만들어요.

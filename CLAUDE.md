@@ -20,6 +20,8 @@
 - `src/lib/theme.ts`: 테마(밤/노을, 글 페이지용 새벽) 색과 저장
 - `discharge/`, `src/discharge/`: 전역일 계산기 (검색으로 들어오는 글 페이지, 3D 없이 가볍게)
 - `api/feedback.ts`, `src/components/Feedback.tsx`: 의견 남기기 (Supabase `feedback` 저장 + Resend 메일, 받는 주소는 환경 변수 `FEEDBACK_TO`에만)
+- `rainbow/`, `src/rainbow/`: 무지개마을 소개 글 페이지 (반려동물 추모 검색 유입, `/?for=pet` 으로 등불 걸기 연결)
+- `api/ping.ts`: Vercel Cron 이 하루 한 번 불러 Supabase 무료 프로젝트가 멈추지 않게 해요
 - `src/lib/waiting.ts`: 날짜 계산, 조사(을/를) 처리
 - `supabase/schema.sql`: 테이블, RLS 정책, Realtime 설정
 
@@ -36,7 +38,7 @@
 - 그리움 등불의 말투는 더 조심스럽게. 축하나 극복을 권하는 말, D-day 같은 카운트다운은 쓰지 않는다. 상세에는 상담 전화(109, 1577-0199)를 조용히 안내한다.
 - 폰트: 등대지기 글씨(제목, 이야기, 질문, 이름표)는 Gaegu, 본문은 IBM Plex Sans KR, 사람들이 직접 쓴 이름과 한 줄은 Nanum Pen Script. 명조/세리프 제목은 쓰지 않는다.
 - 빛나는 버튼, 유리 효과, 장식용 작은 글씨처럼 흔한 AI 디자인 장식은 쓰지 않는다.
-- 등불 사진은 등불마다 한 장, 처음엔 나만 보기. 올리기 전에 1280px JPEG 로 줄여 위치 정보(EXIF)를 지운다. 볼 권한은 Storage RLS(주인 또는 photo_public)로 막는다.
+- 등불 사진은 등불마다 한 장, 처음엔 나만 보기. 올리기 전에 1024px JPEG(약 150KB 이하)로 줄여 위치 정보(EXIF)를 지운다. 바꿀 때마다 새 파일 이름, 예전 파일과 등불을 내린 사진은 지운다. 볼 권한은 Storage RLS(주인 또는 photo_public)로 막는다.
 - 10초 영상(`src/lib/clip.ts`)은 등불 주위를 도는 세로 영상에 이름과 한 줄을 얹는다. 실제로 데이터가 나오는 녹화 형식을 먼저 확인한다.
 - 사용자 입력은 항상 텍스트로 렌더링 (dangerouslySetInnerHTML 금지).
 - DB 권한은 RLS 로 막는다. 클라이언트 검사는 편의일 뿐.
