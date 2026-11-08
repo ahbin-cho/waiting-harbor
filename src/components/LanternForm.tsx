@@ -3,8 +3,9 @@ import type { Lantern } from "../lib/supabase";
 import { KINDS, MISS_KINDS, parseDate, pick, today, ymd } from "../lib/waiting";
 import { GROUND_PLACES, PLACE_INFO, placeOf } from "../lib/places";
 import { COLORS, COLOR_NAMES, SHAPES, colorOf, shapeOf } from "../lib/looks";
+import { SPECIES, SPECIES_SAY, speciesOf, type Species } from "../lib/pets";
 
-type Values = Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode">;
+type Values = Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode" | "species">;
 type Mode = "wait" | "miss";
 
 // 기다림 종류는 DB 값 그대로 두고, 묻는 말만 사람 말투로
@@ -19,10 +20,12 @@ const KIND_SAY: Record<string, string> = {
   "그 밖의 그리움": "그 밖의 소중한 사람이에요",
 };
 
-// 그리움 등불은 하늘에 띄우는 풍등이라 장소와 모양을 묻지 않아요
-const STEPS: Record<Mode, readonly string[]> = {
+// 그리움 등불은 하늘에 띄우는 풍등이라 장소와 모양을 묻지 않아요.
+// 반려동물이면 어떤 아이였는지 묻고, 그 아이는 무지개마을에서 지내요.
+const STEPS: Record<Mode | "pet", readonly string[]> = {
   wait: ["mode", "who", "kind", "dates", "look", "place", "line"],
   miss: ["mode", "who", "kind", "dates", "look", "line"],
+  pet: ["mode", "who", "kind", "species", "dates", "look", "line"],
 };
 
 /**
@@ -39,10 +42,12 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<Mode>(initial?.mode === "miss" ? "miss" : "wait");
-  const steps = STEPS[mode];
+  const [kind, setKind] = useState<string>(initial?.kind ?? preset?.kind ?? KINDS[0]);
+  const [species, setSpecies] = useState<Species>(speciesOf(initial?.species ?? "강아지"));
+  const pet = mode === "miss" && kind === "반려동물";
+  const steps = STEPS[pet ? "pet" : mode];
   const [step, setStep] = useState<number>(initial ? steps.length - 1 : preset ? 1 : 0);
   const [who, setWho] = useState(initial?.who ?? "");
-  const [kind, setKind] = useState<string>(initial?.kind ?? preset?.kind ?? KINDS[0]);
   const [start, setStart] = useState(initial?.start_date ?? preset?.start_date ?? ymd(today()));
   const [end, setEnd] = useState(initial?.end_date ?? preset?.end_date ?? "");
   const [line, setLine] = useState(initial?.line ?? "");
@@ -111,7 +116,8 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
     try {
       await onSave({
         who: who.trim(), kind, start_date: start, end_date: end, line: line.trim(), mode,
-        place: miss ? "하늘" : place === "하늘" ? "항구" : place,
+        place: pet ? "무지개" : miss ? "하늘" : place === "하늘" || place === "무지개" ? "항구" : place,
+        species: pet ? species : null,
         shape: miss ? "풍등" : shape === "풍등" ? "둥근" : shape,
         color,
       });
@@ -143,7 +149,8 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
     dates: miss
       ? [`${pick(name, "과", "와")} 처음 만난 날,\n그리고 떠난 날을 알려 주세요.`, "그 두 날이 다가오면 등불이 밝아져요. 정확하지 않아도 괜찮아요."]
       : ["언제부터 기다렸어요?\n그리고 언제 돌아와요?", "그날이 가까워질수록 등불이 밝아져요."],
-    look: miss ? [`${name}에게 띄울 풍등의 빛을 골라요.`, ""] : [`${name}에게 걸어 둘 등불을 골라요.`, ""],
+    species: ["어떤 아이였어요?", `${pick(name, "은", "는")} 무지개다리 건너 무지개마을에서 지내요. 아이마다 지내는 모습이 달라요.`],
+    look: pet ? [`${name}의 빛깔을 골라요.`, "무지개마을에서 이 빛깔로 지내요."] : miss ? [`${name}에게 띄울 풍등의 빛을 골라요.`, ""] : [`${name}에게 걸어 둘 등불을 골라요.`, ""],
     place: ["어디에 걸어 둘까요?", ""],
     line: miss
       ? ["등불에 한 줄 남겨요.", `${name}에게 하고 싶은 말. 매일 바꿔 적을 수 있어요.`]
@@ -194,6 +201,17 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
           </div>
         )}
 
+        {at === "species" && (
+          <div className="choices">
+            {SPECIES.map((s) => (
+              <button key={s} type="button" className="choice" aria-pressed={s === species} onClick={() => setSpecies(s)}>
+                <b>{s}</b>
+                <span>{SPECIES_SAY[s]}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {at === "dates" && (
           <div className="two">
             <div>
@@ -209,7 +227,7 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
 
         {at === "look" && (
           <div className="look">
-            <span className={`preview shape-${miss ? "풍등" : shape}`} style={{ ["--c" as string]: COLORS[color] }} aria-hidden="true" />
+            <span className={`preview shape-${pet ? "둥근" : miss ? "풍등" : shape}`} style={{ ["--c" as string]: COLORS[color] }} aria-hidden="true" />
             <div className="look-pick">
               <div className="swatches" role="radiogroup" aria-label="불빛 색">
                 {COLOR_NAMES.map((c) => (
@@ -247,7 +265,7 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
       <div className="err" role="alert">{err}</div>
       <div className="row">
         <button className="btn" onClick={next} disabled={busy}>
-          {!last ? "다음" : initial ? "다시 걸기" : miss ? "하늘에 띄우기" : "등불 켜기"}
+          {!last ? "다음" : initial ? "다시 걸기" : pet ? "무지개마을로 보내기" : miss ? "하늘에 띄우기" : "등불 켜기"}
         </button>
         {step > 0 ? (
           <button className="ghost" onClick={() => setStep(step - 1)} disabled={busy}>이전</button>

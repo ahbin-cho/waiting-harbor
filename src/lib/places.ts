@@ -1,8 +1,8 @@
 // 등불을 걸 수 있는 장소와 지형. 좌표는 3D 마을 기준 (x: 왼쪽-오른쪽, z: 안쪽-바다쪽, y: 높이).
 // 섬, 부두, 등불 자리 모두 노이즈로 살짝씩 흐트러뜨려서 자로 그은 느낌이 나지 않게 해요.
 
-export const PLACES = ["항구", "숲", "언덕", "등대", "하늘"] as const;
-/** 땅에 거는 장소 (기다림 등불). 하늘은 그리움 등불만 띄워요. */
+export const PLACES = ["항구", "숲", "언덕", "등대", "하늘", "무지개"] as const;
+/** 땅에 거는 장소 (기다림 등불). 하늘은 그리움 등불, 무지개마을은 떠난 반려동물이 지내는 곳이에요. */
 export const GROUND_PLACES = ["항구", "숲", "언덕", "등대"] as const;
 export type Place = (typeof PLACES)[number];
 
@@ -39,6 +39,8 @@ export const ISLANDS = {
   언덕: { x: -40, z: -14, r: 26, h: 12, p: 1.3, seed: 3 },
   숲: { x: -8, z: -4, r: 19, h: 3.2, p: 0.8, seed: 9 },
   등대: { x: 36, z: -12, r: 17, h: 9, p: 2.2, seed: 17 },
+  // 바다 건너 무지개마을: 낮고 완만한 풀밭 섬
+  무지개: { x: 96, z: -40, r: 24, h: 3.2, p: 0.7, seed: 29 },
 } as const;
 type Island = (typeof ISLANDS)[keyof typeof ISLANDS];
 
@@ -82,6 +84,7 @@ export const PLACE_INFO: Record<Place, { x: number; z: number; blurb: string; ha
   언덕: { x: ISLANDS.언덕.x + 2, z: ISLANDS.언덕.z + 2, blurb: "멀리까지 내다보이는 언덕에 꽂아요.", hang: false },
   등대: { x: ISLANDS.등대.x, z: ISLANDS.등대.z, blurb: "길을 비춰주는 등대 곁에 세워요.", hang: false },
   하늘: { x: -4, z: -10, blurb: "마을 위 하늘에 띄워요.", hang: false },
+  무지개: { x: 96, z: -40, blurb: "무지개다리 건너, 떠난 아이들이 지내는 마을이에요.", hang: false },
 };
 
 export function placeOf(p: string | null | undefined): Place {
@@ -113,3 +116,18 @@ export function slotOf(place: Place, i: number): [number, number] {
   const a = k * 2.39996 + jitter(i, 3) * 0.25;
   return [c.x + r * Math.cos(a), c.z + r * Math.sin(a)];
 }
+
+// ---------- 무지개마을: 아이들이 지내는 곳들 (섬 가운데 기준 상대 좌표) ----------
+const R = ISLANDS.무지개;
+const at = (dx: number, dz: number): [number, number] => [R.x + dx, R.z + dz];
+export const RAINBOW = {
+  meadow: at(-6, 6),                              // 강아지가 뛰어노는 풀밭
+  cottages: [at(7, -6), at(12, 0), at(1, -12)],  // 고양이가 조는 지붕
+  birdTrees: [at(-10, -6), at(-14, 1), at(-5, -13)],
+  oak: at(-1, -2),                                // 곤충이 붙어 사는 큰 참나무
+  pond: at(9, 8),                                 // 물고기 연못
+  bushes: at(-1, 11),                             // 햄스터·토끼 덤불
+  rocks: at(15, 7),                               // 거북이·도마뱀이 볕 쬐는 바위
+  // 등대 절벽 끝과 섬 가장자리를 잇는 무지개다리
+  bridge: { from: [52, -20] as [number, number], to: at(-19, 8) },
+};

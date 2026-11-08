@@ -1,6 +1,6 @@
 // 처음 온 사람에게 등대지기가 들려주는 이야기. 장면마다 카메라가 그곳으로 움직여요.
 
-export type Shot = "overview" | "lighthouse" | "harbor" | "forest" | "hill" | "sky";
+export type Shot = "overview" | "lighthouse" | "harbor" | "forest" | "hill" | "sky" | "rainbow";
 
 export const STORY: { shot: Shot; text: string }[] = [
   { shot: "overview", text: "바다 건너로 떠난 사람이 많은 마을이 있었어요.\n남은 사람들은 저녁마다 부두에 나와 바다 쪽을 봤어요." },
@@ -9,6 +9,7 @@ export const STORY: { shot: Shot; text: string }[] = [
   { shot: "forest", text: "이제는 숲에도, 언덕에도 등불이 있어요.\n여기선 서로의 이름을 묻지 않아요.\n‘지수를 기다리는 사람’, ‘아빠를 기다리는 사람’. 그렇게 불러요." },
   { shot: "hill", text: "돌아올 날이 가까워질수록 등불은 밝아져요.\n그날이 오면 등불은 기둥을 떠나 하늘로 올라가요." },
   { shot: "sky", text: "돌아오지 않는 사람을 위한 등불도 있어요.\n그런 등불은 처음부터 하늘에 띄워요.\n떠난 날이 다가오면 조금 더 밝아져요." },
+  { shot: "rainbow", text: "등대 너머엔 무지개다리가 있어요.\n다리를 건너면, 먼저 떠난 아이들이 지내는 무지개마을이에요.\n강아지는 풀밭을 뛰고, 고양이는 지붕에서 졸아요." },
   { shot: "overview", text: "당신은 누구를 기다리고 있어요?\n혹은, 누구를 그리워하고 있어요?" },
 ];
 
