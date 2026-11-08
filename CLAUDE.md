@@ -17,8 +17,9 @@
 - `src/lib/places.ts`: 장소(항구/숲/언덕/등대), 노이즈 섬 지형, 휘어진 부두, 등불 자리
 - `src/lib/looks.ts`: 등불 꾸미기 (불빛 색 7가지, 모양 3가지)
 - `src/lib/pets.ts`, `src/three/pets.ts`: 무지개마을 아이들 (강아지, 고양이, 새, 물고기, 햄스터·토끼, 거북이·도마뱀, 곤충, 그 밖의 아이)
-- `src/lib/theme.ts`: 테마(밤/새벽/시간 따라) 색과 저장
+- `src/lib/theme.ts`: 테마(밤/노을, 글 페이지용 새벽) 색과 저장
 - `discharge/`, `src/discharge/`: 전역일 계산기 (검색으로 들어오는 글 페이지, 3D 없이 가볍게)
+- `api/feedback.ts`, `src/components/Feedback.tsx`: 의견 남기기 (Supabase `feedback` 저장 + Resend 메일, 받는 주소는 환경 변수 `FEEDBACK_TO`에만)
 - `src/lib/waiting.ts`: 날짜 계산, 조사(을/를) 처리
 - `supabase/schema.sql`: 테이블, RLS 정책, Realtime 설정
 
@@ -29,12 +30,14 @@
 - 등불 걸기는 한 번에 하나씩 묻는다 (누구 → 어디 있는지 → 날짜 → 등불 모양 → 장소 → 한 줄).
 - 모바일 우선. 화면은 돌려보고 확대하는 3D 밤 마을 하나, 상세와 입력은 바텀시트.
 - 처음엔 멀리서 마을 전체, 장소를 고르면 그곳으로, 등불을 열면 그 등불로 카메라가 다가간다.
-- 색은 styles.css 의 토큰만 쓴다. 테마는 밤(:root)과 새벽([data-theme="dawn"]), 그리고 시간 따라(6~18시 새벽). 3D 장면 색은 `src/lib/theme.ts` 의 PALETTES 가 같은 값을 따른다. 등불 색은 looks.ts 에만.
+- 색은 styles.css 의 토큰만 쓴다. 마을 테마는 밤(:root)과 노을([data-theme="dusk"]) 두 가지. 밝은 새벽([data-theme="dawn"])은 전역일 계산기 같은 글 페이지에만. 3D 장면 색은 `src/lib/theme.ts` 의 PALETTES 가 같은 값을 따른다. 등불 색은 looks.ts 에만.
 - 자로 그은 직선과 완벽한 대칭은 피한다. 지형, 부두, 등불 자리, 기울기는 노이즈로 조금씩 흐트러뜨린다.
 - 빛을 내는 건 등불뿐이다. 등불 밝기는 사람이 고른 색과 상관없이 `glowOf()` 로만 정한다.
 - 그리움 등불의 말투는 더 조심스럽게. 축하나 극복을 권하는 말, D-day 같은 카운트다운은 쓰지 않는다. 상세에는 상담 전화(109, 1577-0199)를 조용히 안내한다.
 - 폰트: 등대지기 글씨(제목, 이야기, 질문, 이름표)는 Gaegu, 본문은 IBM Plex Sans KR, 사람들이 직접 쓴 이름과 한 줄은 Nanum Pen Script. 명조/세리프 제목은 쓰지 않는다.
 - 빛나는 버튼, 유리 효과, 장식용 작은 글씨처럼 흔한 AI 디자인 장식은 쓰지 않는다.
+- 등불 사진은 등불마다 한 장, 처음엔 나만 보기. 올리기 전에 1280px JPEG 로 줄여 위치 정보(EXIF)를 지운다. 볼 권한은 Storage RLS(주인 또는 photo_public)로 막는다.
+- 10초 영상(`src/lib/clip.ts`)은 등불 주위를 도는 세로 영상에 이름과 한 줄을 얹는다. 실제로 데이터가 나오는 녹화 형식을 먼저 확인한다.
 - 사용자 입력은 항상 텍스트로 렌더링 (dangerouslySetInnerHTML 금지).
 - DB 권한은 RLS 로 막는다. 클라이언트 검사는 편의일 뿐.
 

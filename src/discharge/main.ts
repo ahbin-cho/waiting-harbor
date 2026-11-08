@@ -1,23 +1,10 @@
 import "../styles.css";
 import "./page.css";
 import { BRANCHES, between, compute, pretty, ymd, type BranchId } from "./calc";
-import { THEME_LABEL, applyUiTheme, resolveTheme, saveTheme, savedTheme, type ThemeChoice } from "../lib/theme";
+import { applyUiTheme } from "../lib/theme";
 
-// 테마: 앱과 같은 선택을 따르고, 처음이면 밝은 새벽으로 열려요
-let choice: ThemeChoice = savedTheme("dawn");
-const themeBtn = document.querySelector<HTMLButtonElement>("#theme")!;
-const order: ThemeChoice[] = ["dawn", "night", "auto"];
-const paintTheme = () => {
-  applyUiTheme(resolveTheme(choice));
-  themeBtn.textContent = THEME_LABEL[choice];
-  themeBtn.setAttribute("aria-label", `테마 바꾸기. 지금은 ${THEME_LABEL[choice]}`);
-};
-themeBtn.addEventListener("click", () => {
-  choice = order[(order.indexOf(choice) + 1) % order.length];
-  saveTheme(choice);
-  paintTheme();
-});
-paintTheme();
+// 글로 읽는 페이지라 늘 밝은 새벽 색으로 보여줘요
+applyUiTheme("dawn");
 
 const startEl = document.querySelector<HTMLInputElement>("#start")!;
 const chips = document.querySelector<HTMLDivElement>("#branches")!;

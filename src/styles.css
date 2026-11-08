@@ -20,6 +20,11 @@
   padding-bottom:env(safe-area-inset-bottom,0px);
   background:var(--sky-top);
 }
+/* 노을 테마: 해가 막 진 항구. 화면 시트는 밤과 같고, 하늘과 위아래 그라데이션만 노을빛이에요. */
+:root[data-theme="dusk"]{
+  --sky-top:#2D3566; --sky-mid:#6B5A86; --sky-low:#E8956F;
+  --fade-top:45,53,102; --fade-bottom:28,24,52;
+}
 /* 새벽 테마: 해가 막 뜨는 항구. 하늘색과 복숭아빛, 맑은 청회색 바다. 글자는 짙은 남색. */
 :root[data-theme="dawn"]{
   --sky-top:#8FB0D9; --sky-mid:#C3CDE6; --sky-low:#F3D2C4; --haze:#E7D9E0;
@@ -248,3 +253,30 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .my-list .choice{width:100%}
 .bar .bar-ghost{pointer-events:auto;white-space:nowrap}
 .bar-ghost small{color:var(--muted);margin-left:2px}
+
+/* 의견 남기기 */
+textarea.plain{font-family:var(--body);font-size:1rem;height:120px;line-height:1.6}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+
+/* 10초 영상 */
+.scene.recording .tags{opacity:0}
+.rec-note{position:absolute;left:0;right:0;bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:6;text-align:center;font-size:.85rem;color:var(--ink);text-shadow:0 1px 6px var(--tag-shadow);margin:0}
+video.clip{display:block;width:min(100%,280px);aspect-ratio:9/16;margin:16px auto 8px;border-radius:12px;background:#000}
+
+/* 상세 시트 오른쪽 위 도구 */
+.sheet:focus{outline:none}
+.sheet-tools{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 16px;margin:-8px 0 10px}
+.sheet-tools .text-btn{font-size:.85rem;padding:4px 0}
+.warm-row{margin-top:14px}
+
+/* 테마 고르기: 밤 · 노을, 고른 쪽에 밑줄 */
+.theme-switch{display:inline-flex;gap:10px}
+.theme-switch .text-btn{text-decoration-color:transparent}
+.theme-switch .text-btn[aria-pressed="true"]{color:var(--ink);text-decoration-color:var(--ink)}
+
+/* 등불 사진 */
+.photo-box .section small{margin-left:8px;color:var(--faint)}
+img.photo{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:12px;background:var(--field)}
+.photo-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:10px}
+.file-btn{position:relative;cursor:pointer}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}

@@ -3,6 +3,7 @@ import type { Lantern, Note } from "../lib/supabase";
 import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
+import { shrinkPhoto } from "../lib/photo";
 
 const md = (s: string) => {
   const d = parseDate(s);
@@ -18,7 +19,7 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, canShare }: {
+export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, canShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   isMine: boolean;
   isHere: boolean;
@@ -32,6 +33,13 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   onEdit: () => void;
   onClose: () => void;
   canShare: boolean;
+  /** 10초 영상 만들기 (지원하지 않는 브라우저면 없음) */
+  onRecord?: () => void;
+  /** 사진: 볼 수 있는 주소(없으면 없거나 나만 보기), 불러오기, 넣기·지우기, 공개 여부 */
+  photoUrl?: string;
+  onLoadPhoto: () => void;
+  onPhoto: (blob: Blob | null, isPublic: boolean) => Promise<void>;
+  onPhotoPublic: (isPublic: boolean) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -49,7 +57,23 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   const gone = daysGone(lantern);
   const ann = nextAnniversary(lantern);
 
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoPublic = !!lantern.photo_public;
+  async function pickPhoto(file?: File) {
+    if (!file) return;
+    setPhotoBusy(true);
+    setErr("");
+    try {
+      await onPhoto(await shrinkPhoto(file), lantern.photo_path ? photoPublic : false);
+    } catch {
+      setErr("사진을 올리지 못했어요. 다른 사진으로 다시 해 주세요.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   useEffect(() => {
+    onLoadPhoto();
     onLoadNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lantern.id]);
@@ -112,6 +136,14 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 
   return (
     <>
+      {/* 오른쪽 위: 고치기, 보내기, 영상, 닫기 */}
+      <div className="sheet-tools">
+        {isMine && <button className="text-btn" onClick={onEdit}>고치기</button>}
+        {canShare && <button className="text-btn" onClick={share}>보내기</button>}
+        {onRecord && <button className="text-btn" onClick={onRecord}>10초 영상</button>}
+        <button className="text-btn" onClick={onClose} aria-label="닫기">닫기</button>
+      </div>
+      {shared && <p className="small shared" role="status">{shared}</p>}
       <p className="where">
         {lantern.place === "무지개" ? `무지개마을에서 지내요 · ${lantern.species ?? "반려동물"}` : miss ? `하늘에 띄운 풍등 · ${lantern.kind}` : `${placeOf(lantern.place)}에 걸린 등불 · ${lantern.kind}`}
       </p>
@@ -121,6 +153,13 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 
       <div className="big">{miss ? `떠난 지 ${gone}일` : ddayText(n)}</div>
       <p className="small">{story}</p>
+      {!isMine && (
+        <div className="row warm-row">
+          <button className="btn" onClick={warm} disabled={busy || sent}>
+            {sent ? "오늘 온기를 보냈어요" : "온기 보내기"}
+          </button>
+        </div>
+      )}
 
       {/* 기다림의 길: 시작한 날 → 오늘 → 돌아오는 날 (그리움은 함께한 시간) */}
       {miss ? (
@@ -142,6 +181,31 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
           <span>{md(lantern.end_date)} 돌아와요</span>
         </div>
       </div>
+      )}
+
+      {(photoUrl || isMine) && (
+        <div className="photo-box">
+          <p className="section">사진{isMine && lantern.photo_path && <small>{photoPublic ? "마을 사람들도 봐요" : "나만 봐요"}</small>}</p>
+          {photoUrl && <img className="photo" src={photoUrl} alt={`${who} 사진`} />}
+          {isMine && (
+            <div className="photo-tools">
+              <label className="text-btn file-btn">
+                {photoBusy ? "올리는 중" : lantern.photo_path ? "사진 바꾸기" : "사진 한 장 넣기"}
+                <input type="file" accept="image/*" disabled={photoBusy} onChange={(e) => pickPhoto(e.target.files?.[0] ?? undefined)} />
+              </label>
+              {lantern.photo_path && (
+                <>
+                  <label className="toggle">
+                    <input type="checkbox" checked={photoPublic} onChange={(e) => onPhotoPublic(e.target.checked).catch(() => setErr("바꾸지 못했어요."))} />
+                    마을 사람들에게도 보여요
+                  </label>
+                  <button className="text-btn" onClick={() => onPhoto(null, false).catch(() => setErr("사진을 지우지 못했어요."))}>지우기</button>
+                </>
+              )}
+            </div>
+          )}
+          {isMine && !lantern.photo_path && <p className="small">처음엔 나만 보여요. 넣은 뒤에 마을 사람들에게 보일지 정할 수 있어요.</p>}
+        </div>
       )}
 
       {lantern.line && (
@@ -201,18 +265,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 
       <p className="small warmth-line">{warmth ? `이 등불에 온기가 ${warmth}번 닿았어요.` : "아직 닿은 온기가 없어요."}</p>
       <div className="err" role="alert">{err}</div>
-      <div className="row">
-        {isMine ? (
-          <button className="ghost" onClick={onEdit}>등불 고치기</button>
-        ) : (
-          <button className="btn" onClick={warm} disabled={busy || sent}>
-            {sent ? "오늘 온기를 보냈어요" : "온기 보내기"}
-          </button>
-        )}
-        {canShare && <button className="ghost" onClick={share}>{isMine ? "내 등불 보내기" : "공유하기"}</button>}
-        <button className="ghost" onClick={onClose}>닫기</button>
-      </div>
-      {shared && <p className="small shared" role="status">{shared}</p>}
+
       {miss && (
         <p className="small help-line">
           마음이 너무 무거운 날엔 혼자 견디지 않아도 돼요. 자살예방 상담전화 109 (24시간), 정신건강 상담전화 1577-0199.

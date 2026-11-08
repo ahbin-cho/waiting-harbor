@@ -5,14 +5,16 @@ import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
 import { Story } from "./components/Story";
+import { Feedback } from "./components/Feedback";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
-import { THEME_LABEL, THEME_ORDER, applyUiTheme, resolveTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
+import { THEME_LABEL, THEME_ORDER, applyUiTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
 import { MAX_LANTERNS, demo, useHarbor } from "./hooks/useHarbor";
 import { badgeText, titleOf } from "./lib/waiting";
+import { canRecord } from "./lib/clip";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" };
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -32,19 +34,11 @@ export default function App() {
   });
   const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink || preset ? null : 0));
   const [shot, setShot] = useState<{ name: Shot; n: number } | null>(null);
-  // 테마: 밤 / 새벽 / 시간 따라. 시간 따라는 10분마다 다시 확인해요.
-  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(() => savedTheme());
-  const [clock, setClock] = useState(() => new Date().getHours());
-  const theme = resolveTheme(themeChoice, clock);
+  // 테마: 밤 / 노을
+  const [theme, setTheme] = useState<ThemeChoice>(() => savedTheme());
   useEffect(() => applyUiTheme(theme), [theme]);
-  useEffect(() => {
-    if (themeChoice !== "auto") return;
-    const t = setInterval(() => setClock(new Date().getHours()), 600_000);
-    return () => clearInterval(t);
-  }, [themeChoice]);
-  const nextTheme = () => {
-    const c = THEME_ORDER[(THEME_ORDER.indexOf(themeChoice) + 1) % THEME_ORDER.length];
-    setThemeChoice(c);
+  const chooseTheme = (c: ThemeChoice) => {
+    setTheme(c);
     saveTheme(c);
   };
   useEffect(() => {
@@ -85,6 +79,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, h.status]);
   const picked = view.type === "detail" ? h.lanterns.find((l) => l.id === view.id) : undefined;
+
+  // 10초 영상: 찍는 동안엔 화면의 글자와 시트를 숨기고, 다 찍으면 미리보기를 띄워요
+  const [record, setRecord] = useState<{ id: string; n: number; text: { title: string; sub: string; line: string } } | null>(null);
+  const [clip, setClip] = useState<{ url: string; file: File } | { error: string } | null>(null);
+  const startRecord = (id: string) => {
+    const l = h.lanterns.find((x) => x.id === id);
+    if (!l) return;
+    if (clip && "url" in clip) URL.revokeObjectURL(clip.url);
+    setClip(null);
+    const where = l.place === "무지개" ? "무지개마을" : l.mode === "miss" ? "하늘" : l.place;
+    setRecord({ id, n: Date.now(), text: { title: titleOf(l), sub: `${badgeText(l)} · ${where}`, line: l.line } });
+    setView({ type: "clip", id });
+  };
+  const recording = record != null && clip == null;
   const editing = view.type === "form" && view.id ? h.lanterns.find((l) => l.id === view.id) : undefined;
   const close = useCallback(() => setView({ type: "none" }), []);
   const endStory = useCallback((then: "write" | "look") => {
@@ -101,15 +109,29 @@ export default function App() {
     : "아직 걸린 등불이 없어요. 첫 등불을 걸어 주세요.";
 
   return (
-    <div className={`scene${view.type === "detail" || story != null ? " focusing" : ""}`}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} onPick={(id) => setView({ type: "detail", id })} theme={theme} />
+    <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme}
+        record={record}
+        onClip={(r) => {
+          if ("blob" in r) {
+            const l = h.lanterns.find((x) => x.id === record?.id);
+            const name = `기다림항구-${l?.who ?? "등불"}.${r.ext}`;
+            setClip({ url: URL.createObjectURL(r.blob), file: new File([r.blob], name, { type: r.blob.type }) });
+          } else setClip(r);
+        }} />
+      {recording && <p className="rec-note" role="status">영상을 만들고 있어요. 10초만 기다려 주세요.</p>}
 
       <header>
         <div className="title-row">
           <h1>기다림 항구</h1>
           <div className="title-tools">
-            <button className="text-btn" onClick={nextTheme} aria-label={`테마 바꾸기. 지금은 ${THEME_LABEL[themeChoice]}`}>{THEME_LABEL[themeChoice]}</button>
+            <span className="theme-switch" role="group" aria-label="테마">
+              {THEME_ORDER.map((c) => (
+                <button key={c} className="text-btn" aria-pressed={theme === c} onClick={() => chooseTheme(c)}>{THEME_LABEL[c]}</button>
+              ))}
+            </span>
             <button className="text-btn" onClick={() => setStory(0)}>이야기</button>
+            <button className="text-btn" onClick={() => setView({ type: "feedback" })}>의견</button>
           </div>
         </div>
         <p className="stats">등불 {h.lanterns.length}개, 지금 {h.hereCount}명이 깨어 있어요.</p>
@@ -136,7 +158,7 @@ export default function App() {
         </button>
       </div>
 
-      <Sheet open={view.type !== "none"} onClose={close} labelledBy="sheet-title">
+      <Sheet open={view.type !== "none" && !recording} onClose={close} labelledBy="sheet-title">
         {view.type === "form" && (
           <LanternForm
             key={view.id ?? "new"}
@@ -184,9 +206,52 @@ export default function App() {
             }}
             onEdit={() => setView({ type: "form", id: picked.id })}
             canShare={!demo}
+            onRecord={canRecord() ? () => startRecord(picked.id) : undefined}
+            photoUrl={h.photoUrls[picked.id]}
+            onLoadPhoto={() => h.loadPhoto(picked)}
+            onPhoto={(blob, open) => h.setPhoto(picked, blob, open)}
+            onPhotoPublic={(open) => h.setPhotoPublic(picked, open)}
             onClose={close}
           />
         )}
+        {view.type === "clip" && clip && (
+          <>
+            <h2 id="sheet-title" className="ask">10초 영상이 만들어졌어요</h2>
+            {"error" in clip ? (
+              <p className="err">{clip.error}</p>
+            ) : (
+              <>
+                <video className="clip" src={clip.url} autoPlay loop muted playsInline controls />
+                <p className="small">인스타 스토리나 릴스에 올리기 좋은 세로 영상이에요.</p>
+                <div className="row">
+                  <button
+                    className="btn"
+                    onClick={async () => {
+                      const files = [clip.file];
+                      if (navigator.canShare?.({ files })) {
+                        try {
+                          await navigator.share({ files, title: "기다림 항구" });
+                          return;
+                        } catch (e) {
+                          if ((e as Error).name === "AbortError") return;
+                        }
+                      }
+                      const a = document.createElement("a");
+                      a.href = clip.url;
+                      a.download = clip.file.name;
+                      a.click();
+                    }}
+                  >
+                    저장하거나 보내기
+                  </button>
+                  <button className="ghost" onClick={() => startRecord(view.id)}>다시 찍기</button>
+                  <button className="ghost" onClick={() => setView({ type: "detail", id: view.id })}>돌아가기</button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+        {view.type === "feedback" && <Feedback onSend={h.sendFeedback} onClose={close} demo={demo} />}
         {view.type === "mine" && (
           <>
             <h2 id="sheet-title">내 등불</h2>

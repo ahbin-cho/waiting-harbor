@@ -194,5 +194,71 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     [me, warmth, lanterns],
   );
 
-  return { me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
+  /** 의견 남기기: 서버(/api/feedback)가 저장하고 운영자에게 메일로 보내요 */
+  const sendFeedback = useCallback(async (body: string, contact: string, website: string) => {
+    if (demo) throw new Error("demo");
+    const { data } = await supabase.auth.getSession();
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ body, contact, website, page: location.pathname }),
+    });
+    if (!res.ok) throw new Error(res.status === 429 ? "limit" : "failed");
+  }, []);
+
+  // ---------- 등불 사진 ----------
+  /** 볼 수 있는 사진 주소 (Storage 의 임시 주소, 한 시간짜리) */
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+
+  const loadPhoto = useCallback(async (l: Lantern) => {
+    if (demo || !l.photo_path) return;
+    // 볼 권한이 없으면(나만 보기 사진) 주소를 못 받아요. 그 경우 사진 칸을 비워 둬요.
+    const { data } = await supabase.storage.from("photos").createSignedUrl(l.photo_path, 3600);
+    if (data?.signedUrl) setPhotoUrls((m) => ({ ...m, [l.id]: data.signedUrl }));
+  }, []);
+
+  /** 사진 넣기·바꾸기(blob), 지우기(null) */
+  const setPhoto = useCallback(
+    async (l: Lantern, blob: Blob | null, isPublic: boolean) => {
+      if (!me) throw new Error("no-user");
+      const patch = (p: Partial<Lantern>) => setLanterns((all) => all.map((x) => (x.id === l.id ? { ...x, ...p } : x)));
+      if (demo) {
+        setPhotoUrls((m) => {
+          const n = { ...m };
+          if (blob) n[l.id] = URL.createObjectURL(blob);
+          else delete n[l.id];
+          return n;
+        });
+        patch({ photo_path: blob ? `demo/${l.id}.jpg` : null, photo_public: isPublic });
+        return;
+      }
+      const path = `${me}/${l.id}.jpg`;
+      if (blob) {
+        const up = await supabase.storage.from("photos").upload(path, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "60" });
+        if (up.error) throw up.error;
+      } else if (l.photo_path) {
+        await supabase.storage.from("photos").remove([l.photo_path]);
+      }
+      const { error } = await supabase.from("lanterns").update({ photo_path: blob ? path : null, photo_public: isPublic }).eq("id", l.id);
+      if (error) throw error;
+      patch({ photo_path: blob ? path : null, photo_public: isPublic });
+      setPhotoUrls((m) => {
+        const n = { ...m };
+        if (blob) n[l.id] = URL.createObjectURL(blob);
+        else delete n[l.id];
+        return n;
+      });
+    },
+    [me],
+  );
+
+  const setPhotoPublic = useCallback(async (l: Lantern, isPublic: boolean) => {
+    if (!demo) {
+      const { error } = await supabase.from("lanterns").update({ photo_public: isPublic }).eq("id", l.id);
+      if (error) throw error;
+    }
+    setLanterns((all) => all.map((x) => (x.id === l.id ? { ...x, photo_public: isPublic } : x)));
+  }, []);
+
+  return { photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
 }

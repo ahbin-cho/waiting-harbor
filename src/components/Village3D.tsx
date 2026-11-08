@@ -4,11 +4,12 @@ import type { Place } from "../lib/places";
 import { Village } from "../three/Village";
 import type { Shot } from "../lib/story";
 import type { ThemeName } from "../lib/theme";
+import { startClip, type ClipText } from "../lib/clip";
 
 export type Focus = { place: Place | "all"; n: number };
 
 /** three.js 로 그린 3D 밤 마을. 이름표는 HTML 로 그 위에 얹어요. */
-export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, onPick, theme }: {
+export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, onPick, theme, record, onClip }: {
   lanterns: Lantern[];
   me: string | null;
   online: Set<string>;
@@ -18,6 +19,9 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   selectedId: string | null;
   onPick: (id: string) => void;
   theme: ThemeName;
+  /** 10초 영상 찍기 요청 */
+  record: { id: string; n: number; text: ClipText } | null;
+  onClip: (r: { blob: Blob; ext: string } | { error: string }) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const tags = useRef<HTMLDivElement>(null);
@@ -36,6 +40,22 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
 
   useEffect(() => v.current?.setData(lanterns, me, online), [lanterns, me, online]);
   useEffect(() => v.current?.setTheme(theme), [theme]);
+  const clipDone = useRef(onClip);
+  clipDone.current = onClip;
+  useEffect(() => {
+    if (!record || !v.current) return;
+    const village = v.current;
+    (async () => {
+      try {
+        const clip = await startClip(record.text);
+        await village.recordOrbit(record.id, 10, (c, k) => clip.draw(c, k));
+        const blob = await clip.stop();
+        clipDone.current({ blob, ext: clip.ext });
+      } catch {
+        clipDone.current({ error: "영상을 만들지 못했어요. 다른 브라우저에서 다시 해 주세요." });
+      }
+    })();
+  }, [record]);
   useEffect(() => v.current?.setSelected(selectedId), [selectedId]);
   useEffect(() => {
     if (pulseId) v.current?.pulse(pulseId);
