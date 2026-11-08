@@ -4,7 +4,6 @@ import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parse
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
 import { shrinkPhoto } from "../lib/photo";
-import { track } from "../lib/track";
 
 const md = (s: string) => {
   const d = parseDate(s);
@@ -20,7 +19,7 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, canShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
+export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   isMine: boolean;
   isHere: boolean;
@@ -33,7 +32,8 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   onWarm: () => Promise<void>;
   onEdit: () => void;
   onClose: () => void;
-  canShare: boolean;
+  /** 보내기 화면 열기 */
+  onShare: () => void;
   /** 10초 영상 만들기 (지원하지 않는 브라우저면 없음) */
   onRecord?: () => void;
   /** 사진: 볼 수 있는 주소(없으면 없거나 나만 보기), 불러오기, 넣기·지우기, 공개 여부 */
@@ -44,7 +44,6 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [shared, setShared] = useState("");
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(true);
   const [askShift, setAskShift] = useState(0);
@@ -106,27 +105,6 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
     }
   }
 
-  // 카톡, 인스타 등으로 보내요. 폰에선 공유 창이 뜨고, 안 되면 링크를 복사해요.
-  async function share() {
-    track("share_click", { mine: isMine, mode: lantern.mode });
-    const url = `${location.origin}/l/${lantern.id}`;
-    const text = `${titleOf(lantern)} · ${ddayText(n)}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "기다림 항구", text, url });
-        return;
-      }
-    } catch (e) {
-      if ((e as Error).name === "AbortError") return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setShared("링크를 복사했어요. 카톡이나 인스타에 붙여 넣으면 등불 카드가 보여요.");
-    } catch {
-      setShared(url);
-    }
-  }
-
   const story = miss
     ? ann.days === 0
       ? `오늘은 ${who}의 ${ann.label}이에요.`
@@ -141,11 +119,10 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
       {/* 오른쪽 위: 고치기, 보내기, 영상, 닫기 */}
       <div className="sheet-tools">
         {isMine && <button className="text-btn" onClick={onEdit}>고치기</button>}
-        {canShare && <button className="text-btn" onClick={share}>보내기</button>}
+        <button className="text-btn" onClick={onShare}>보내기</button>
         {onRecord && <button className="text-btn" onClick={onRecord}>10초 영상</button>}
         <button className="text-btn" onClick={onClose} aria-label="닫기">닫기</button>
       </div>
-      {shared && <p className="small shared" role="status">{shared}</p>}
       <p className="where">
         {lantern.place === "무지개" ? `무지개마을에서 지내요 · ${lantern.species ?? "반려동물"}` : miss ? `하늘에 띄운 풍등 · ${lantern.kind}` : `${placeOf(lantern.place)}에 걸린 등불 · ${lantern.kind}`}
       </p>

@@ -289,3 +289,8 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 
 /* 등불을 보고 있을 땐 시트를 화면 2/3까지만: 위쪽에 그 등불이 보이게. 나머지는 시트 안에서 스크롤 */
 .scene.focusing .sheet{max-height:64%}
+
+/* 등불 보내기 */
+img.share-card{display:block;width:min(100%,240px);aspect-ratio:9/16;margin:14px auto 6px;border-radius:12px;background:var(--field);object-fit:cover}
+.share-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn.kakao{background:#FEE500;color:#191600}

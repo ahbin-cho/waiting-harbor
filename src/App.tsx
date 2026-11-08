@@ -8,6 +8,7 @@ import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
 import { Story } from "./components/Story";
 import { Feedback } from "./components/Feedback";
+import { ShareSheet } from "./components/ShareSheet";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
 import { THEME_LABEL, THEME_ORDER, applyUiTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
@@ -17,7 +18,7 @@ import { canRecord } from "./lib/clip";
 import { track } from "./lib/track";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string };
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -27,7 +28,10 @@ export default function App() {
     demo ? "체험 모드라 걸어 둔 등불은 새로고침하면 사라져요." : "불빛을 누르면 그 사람의 기다림이 보여요.",
   );
   // 공유 링크(/l/아이디)로 들어오면 ?l=아이디 로 열려요. 이야기는 건너뛰고 그 등불로 바로 가요.
-  const [deepLink, setDeepLink] = useState(() => new URLSearchParams(location.search).get("l"));
+  // /?l=아이디 또는 /l/아이디 (서버 함수를 거치지 않고 앱이 바로 열린 경우) 둘 다 알아봐요
+  const [deepLink, setDeepLink] = useState(
+    () => new URLSearchParams(location.search).get("l") ?? location.pathname.match(/^\/l\/([0-9a-f-]{36})\/?$/i)?.[1] ?? null,
+  );
   // 전역일 계산기에서 "이 날을 기다리는 등불 걸기"로 오면 날짜가 채워진 채로 등불 걸기가 열려요
   const [preset, setPreset] = useState(() => {
     const q = new URLSearchParams(location.search);
@@ -68,11 +72,21 @@ export default function App() {
 
   useEffect(() => {
     if (!deepLink || h.status !== "ready") return;
-    const found = h.lanterns.some((l) => l.id === deepLink);
-    if (found) setView({ type: "detail", id: deepLink });
-    else setHint("그 등불은 이미 내려졌어요.");
-    history.replaceState(null, "", location.pathname);
-    setDeepLink(null);
+    const go = (id: string) => {
+      setView({ type: "detail", id });
+      history.replaceState(null, "", "/");
+      setDeepLink(null);
+    };
+    if (h.lanterns.some((l) => l.id === deepLink)) return go(deepLink);
+    // 목록에 아직 없으면 그 등불 하나만 따로 불러와요
+    h.fetchLantern(deepLink).then((l) => {
+      if (l) go(l.id);
+      else {
+        setHint("그 등불은 이미 내려졌어요.");
+        history.replaceState(null, "", "/");
+        setDeepLink(null);
+      }
+    });
   }, [deepLink, h.status, h.lanterns]);
 
   useEffect(() => {
@@ -220,7 +234,7 @@ export default function App() {
               pulse(picked.id);
             }}
             onEdit={() => setView({ type: "form", id: picked.id })}
-            canShare={!demo}
+            onShare={() => setView({ type: "share", id: picked.id })}
             onRecord={canRecord() ? () => startRecord(picked.id) : undefined}
             photoUrl={h.photoUrls[picked.id]}
             onLoadPhoto={() => h.loadPhoto(picked)}
@@ -266,6 +280,10 @@ export default function App() {
             )}
           </>
         )}
+        {view.type === "share" && (() => {
+          const l = h.lanterns.find((x) => x.id === view.id);
+          return l ? <ShareSheet lantern={l} demo={demo} onBack={() => setView({ type: "detail", id: l.id })} /> : null;
+        })()}
         {view.type === "feedback" && <Feedback onSend={h.sendFeedback} onClose={close} demo={demo} />}
         {view.type === "mine" && (
           <>

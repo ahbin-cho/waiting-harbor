@@ -6,9 +6,11 @@ export const config = { runtime: "edge" };
 export default async function handler(req: Request) {
   const u = new URL(req.url);
   const id = u.searchParams.get("id");
-  const l = await getLantern(id);
+  const l = await getLantern(id).catch(() => null);
   const home = `${u.origin}/`;
-  if (!l) return Response.redirect(home, 302);
+  // 서버에서 등불을 못 찾아도(설정·일시 오류) 아이디를 들고 마을로 보내요. 앱이 직접 찾아요.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!l) return Response.redirect(id && UUID.test(id) ? `${home}?l=${id}` : home, 302);
 
   const app = `${u.origin}/?l=${l.id}`;
   const title = `${titleOf(l)} · ${facts(l).dday} | 기다림 항구`;
