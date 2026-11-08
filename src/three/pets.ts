@@ -3,16 +3,22 @@ import { RAINBOW, groundAt, jitter } from "../lib/places";
 import type { Species } from "../lib/pets";
 
 /**
- * 무지개마을의 아이들. 종류마다 작은 모형과 자기다운 움직임이 있어요.
+ * 무지개마을의 아이들. 빛으로 남은 모습이에요: 가장자리만 은은하게 빛나는 반투명 실루엣.
+ * 종류마다 자기다운 움직임이 있고, 움직이면 지나간 자리에 작은 빛 알갱이가 남아요.
  * root 는 월드 좌표에서 움직이고, head 는 이름표와 카메라가 바라보는 높이예요.
  */
 export type PetRig = {
   root: THREE.Group;
   body: THREE.Mesh;
-  mat: THREE.MeshStandardMaterial;
   headY: number;
+  /** 월드에 따로 놓는 것들 (지나간 자리의 빛 알갱이) */
+  extras: THREE.Object3D[];
   update(t: number, calm: boolean): void;
+  /** glow: 기일이 다가올수록 1에 가까워요, near: 카메라가 가까울수록 1, dim: 다른 등불을 보고 있으면 작아져요 */
+  setLook(glow: number, near: number, dim: number): void;
 };
+
+type Base = { root: THREE.Group; body: THREE.Mesh; headY: number; update(t: number, calm: boolean): void };
 
 const SPHERE = new THREE.SphereGeometry(1, 14, 10);
 const CONE = new THREE.ConeGeometry(1, 1, 8);
@@ -27,11 +33,12 @@ function part(geo: THREE.BufferGeometry, mat: THREE.Material, sx: number, sy: nu
 
 const ground = (x: number, z: number) => Math.max(0.1, groundAt(x, z));
 
-/** 아이 하나 만들기. i 는 같은 종류 안에서 몇 번째인지 (자리를 나누는 데 써요) */
-export function makePet(species: Species, color: THREE.Color, i: number, phase: number): PetRig {
-  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.3, roughness: 0.75 });
-  const dark = new THREE.MeshStandardMaterial({ color: color.clone().multiplyScalar(0.45), roughness: 0.9 });
-  const eye = new THREE.MeshBasicMaterial({ color: 0x1a1414 });
+const HIDDEN = new THREE.MeshBasicMaterial({ visible: false });
+
+/** 모양과 움직임. 모든 부분이 같은 빛 재질을 써요 (눈·코 같은 어두운 부분은 그리지 않아요) */
+function shape(species: Species, mat: THREE.ShaderMaterial, i: number, phase: number): Base {
+  const dark = mat;
+  const eye = HIDDEN;
   const root = new THREE.Group();
   const j = (salt: number) => jitter(i + species.length * 13, salt);
 
@@ -52,7 +59,7 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       const [cx, cz] = RAINBOW.meadow;
       const r = 2.2 + j(1) * 1.2 + (i % 3) * 1.4;
       return {
-        root, body, mat, headY: 1.1,
+        root, body, headY: 1.1,
         update(t, calm) {
           const cyc = ((t * 0.12 + phase) % 1 + 1) % 1;
           const running = cyc < 0.72;
@@ -84,7 +91,7 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       root.position.set(hx + along, y, hz);
       root.rotation.y = j(3) * 0.8;
       return {
-        root, body, mat, headY: 0.7,
+        root, body, headY: 0.7,
         update(t, calm) {
           if (calm) return;
           body.scale.y = 0.2 * (1 + Math.sin(t * 1.4 + phase) * 0.05);
@@ -107,7 +114,7 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       const [tx, tz] = RAINBOW.birdTrees[i % RAINBOW.birdTrees.length];
       const perch = new THREE.Vector3(tx + j(4) * 0.4, ground(tx, tz) + 4.4, tz + j(5) * 0.4);
       return {
-        root, body, mat, headY: 0.45,
+        root, body, headY: 0.45,
         update(t, calm) {
           const cyc = ((t + phase * 20) % 16 + 16) % 16;
           if (!calm && cyc < 3.2) {
@@ -139,7 +146,7 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       const y = ground(px, pz) + 0.02;
       const r = 1 + (i % 3) * 0.5 + j(6) * 0.2;
       return {
-        root, body, mat, headY: 0.5,
+        root, body, headY: 0.5,
         update(t, calm) {
           const a = phase * 6 + (calm ? 0 : t * (0.35 + j(7) * 0.1));
           root.position.set(px + Math.cos(a) * r, y + (calm ? 0 : Math.sin(t * 1.3 + phase) * 0.03), pz + Math.sin(a) * r);
@@ -162,7 +169,7 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
         return [bx + Math.cos(a) * r, bz + Math.sin(a) * r] as const;
       };
       return {
-        root, body, mat, headY: 0.8,
+        root, body, headY: 0.8,
         update(t, calm) {
           const s = calm ? 0 : t * 0.7 + phase * 5;
           const n = Math.floor(s), k = s - n;
@@ -185,7 +192,7 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       const [rx, rz] = RAINBOW.rocks;
       const r = 0.6 + (i % 3) * 0.6;
       return {
-        root, body: shell, mat, headY: 0.6,
+        root, body: shell, headY: 0.6,
         update(t, calm) {
           const a = phase * 6 + (calm ? 0 : t * 0.04);
           const x = rx + Math.cos(a) * r, z = rz + Math.sin(a) * r;
@@ -203,12 +210,12 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       const horn = part(CONE, dark, 0.02, 0.12, 0.02, 0.22, 0.04, 0);
       horn.rotation.z = -1.1;
       root.add(shell, head, horn);
-      mat.emissiveIntensity = 0.6;
+      mat.uniforms.uBoost.value = 1.6; // 곤충은 밤에 더 또렷하게 빛나요
       const [ox, oz] = RAINBOW.oak;
       const a = phase * 6 + i * 1.3;
       const base = ground(ox, oz);
       return {
-        root, body: shell, mat, headY: 0.4,
+        root, body: shell, headY: 0.4,
         update(t, calm) {
           const y = base + 1.2 + (calm ? 0.6 : (Math.sin(t * 0.08 + phase) * 0.5 + 0.5) * 1.6);
           root.position.set(ox + Math.cos(a) * 0.62, y, oz + Math.sin(a) * 0.62);
@@ -222,11 +229,11 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       // 그 밖의 아이: 둥실둥실 떠다니는 작은 빛 덩어리
       const body = part(SPHERE, mat, 0.22, 0.22, 0.22, 0, 0, 0);
       root.add(body, part(SPHERE, eye, 0.03, 0.03, 0.03, 0.17, 0.05, 0.08), part(SPHERE, eye, 0.03, 0.03, 0.03, 0.17, 0.05, -0.08));
-      mat.emissiveIntensity = 0.5;
+      mat.uniforms.uBoost.value = 1.3;
       const [cx, cz] = RAINBOW.oak;
       const r = 3 + (i % 4) * 1.2;
       return {
-        root, body, mat, headY: 0.5,
+        root, body, headY: 0.5,
         update(t, calm) {
           const a = phase * 6 + (calm ? 0 : t * 0.12);
           const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
@@ -236,4 +243,118 @@ export function makePet(species: Species, color: THREE.Color, i: number, phase: 
       };
     }
   }
+}
+
+// ---------- 빛으로 남은 모습 ----------
+
+/** 가장자리(윤곽)만 빛나는 반투명 재질. 가까이 갈수록 윤곽이 또렷해져요. */
+function spiritMaterial(color: THREE.Color) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uColor: { value: color.clone().lerp(new THREE.Color(0xffffff), 0.25) },
+      uGlow: { value: 1 },
+      uNear: { value: 0 },
+      uBoost: { value: 1 },
+    },
+    vertexShader: `
+      varying vec3 vN; varying vec3 vV;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vN = normalize(normalMatrix * normal);
+        vV = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uGlow; uniform float uNear; uniform float uBoost;
+      varying vec3 vN; varying vec3 vV;
+      void main() {
+        float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.4);
+        // 멀리서는 흐릿한 빛, 가까이선 윤곽이 또렷한 실루엣
+        float a = (0.06 + rim * (0.35 + 0.65 * uNear)) * uGlow * uBoost;
+        vec3 c = mix(uColor, vec3(1.0), rim * 0.4);
+        gl_FragColor = vec4(c, clamp(a, 0.0, 1.0));
+      }`,
+  });
+}
+
+/** 지나간 자리에 남는 빛 알갱이: 천천히 떠오르며 사라져요 */
+function makeTrail(color: THREE.Color) {
+  const N = 36, LIFE = 2.6;
+  const pos = new Float32Array(N * 3), age = new Float32Array(N).fill(LIFE);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("age", new THREE.BufferAttribute(age, 1));
+  const mat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uColor: { value: color.clone().lerp(new THREE.Color(0xffffff), 0.4) }, uLife: { value: LIFE }, uGlow: { value: 1 } },
+    vertexShader: `
+      attribute float age; uniform float uLife; varying float vA;
+      void main() {
+        vA = 1.0 - clamp(age / uLife, 0.0, 1.0);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = (0.18 + 0.12 * vA) * 300.0 / -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uGlow; varying float vA;
+      void main() {
+        float d = length(gl_PointCoord - 0.5);
+        float a = smoothstep(0.5, 0.0, d) * vA * 0.8 * uGlow;
+        gl_FragColor = vec4(uColor, a);
+      }`,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  let next = 0, last = new THREE.Vector3(Infinity, 0, 0), prevT = 0;
+  return {
+    points,
+    mat,
+    step(t: number, at: THREE.Vector3, calm: boolean) {
+      const dt = Math.min(0.1, Math.max(0, t - prevT));
+      prevT = t;
+      if (calm) return;
+      for (let k = 0; k < N; k++) {
+        if (age[k] < LIFE) {
+          age[k] += dt;
+          pos[k * 3 + 1] += dt * 0.25;
+        }
+      }
+      // 조금이라도 움직였으면 그 자리에 알갱이 하나
+      if (at.distanceToSquared(last) > 0.09) {
+        pos[next * 3] = at.x + (Math.random() - 0.5) * 0.15;
+        pos[next * 3 + 1] = at.y + 0.08;
+        pos[next * 3 + 2] = at.z + (Math.random() - 0.5) * 0.15;
+        age[next] = 0;
+        next = (next + 1) % N;
+        last.copy(at);
+      }
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.age.needsUpdate = true;
+    },
+  };
+}
+
+/** 아이 하나 만들기. i 는 같은 종류 안에서 몇 번째인지 (자리를 나누는 데 써요) */
+export function makePet(species: Species, color: THREE.Color, i: number, phase: number): PetRig {
+  const mat = spiritMaterial(color);
+  const base = shape(species, mat, i, phase);
+  const trail = makeTrail(color);
+  return {
+    ...base,
+    extras: [trail.points],
+    update(t, calm) {
+      base.update(t, calm);
+      trail.step(t, base.root.position, calm);
+    },
+    setLook(glow, near, dim) {
+      mat.uniforms.uGlow.value = (0.55 + 0.75 * glow) * dim;
+      mat.uniforms.uNear.value = near;
+      trail.mat.uniforms.uGlow.value = (0.5 + 0.5 * glow) * dim;
+    },
+  };
 }
