@@ -52,7 +52,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   useEffect(() => {
     onLoadNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lantern.user_id]);
+  }, [lantern.id]);
 
   async function warm() {
     setBusy(true);
@@ -83,7 +83,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 
   // 카톡, 인스타 등으로 보내요. 폰에선 공유 창이 뜨고, 안 되면 링크를 복사해요.
   async function share() {
-    const url = `${location.origin}/l/${lantern.user_id}`;
+    const url = `${location.origin}/l/${lantern.id}`;
     const text = `${titleOf(lantern)} · ${ddayText(n)}`;
     try {
       if (navigator.share) {

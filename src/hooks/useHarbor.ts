@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { configured, supabase, type Lantern, type Note, type Warmth } from "../lib/supabase";
 import { today, ymd } from "../lib/waiting";
 import { DEMO_ME, demoLanterns, demoMissing, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
@@ -8,13 +8,20 @@ export const demo = !configured;
 
 export type Status = "loading" | "ready" | "error" | "unconfigured";
 
-export function useHarbor(onWarmed?: () => void) {
+/** 한 사람이 걸 수 있는 등불 수 (DB 정책에서도 같은 수로 막아요) */
+export const MAX_LANTERNS = 5;
+
+type LanternValues = Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode" | "species">;
+
+export function useHarbor(onWarmed?: (lanternId: string) => void) {
   const [me, setMe] = useState<string | null>(demo ? DEMO_ME : null);
   const [lanterns, setLanterns] = useState<Lantern[]>(demo ? () => [...demoLanterns(), ...demoMissing()] : []);
   const [warmth, setWarmth] = useState<Warmth[]>(demo ? demoWarmth : []);
   const [online, setOnline] = useState<Set<string>>(demo ? demoOnline : () => new Set());
   const [hereCount, setHereCount] = useState(demo ? 4 : 1);
   const [status, setStatus] = useState<Status>(demo ? "ready" : "loading");
+  const lanternsRef = useRef(lanterns);
+  lanternsRef.current = lanterns;
 
   // 1. 로그인: 회원가입 없이 익명으로 들어와요
   useEffect(() => {
@@ -48,16 +55,17 @@ export function useHarbor(onWarmed?: () => void) {
       .channel("harbor-db")
       .on("postgres_changes", { event: "*", schema: "public", table: "lanterns" }, (p) => {
         setLanterns((prev) => {
-          if (p.eventType === "DELETE") return prev.filter((x) => x.user_id !== (p.old as Lantern).user_id);
+          if (p.eventType === "DELETE") return prev.filter((x) => x.id !== (p.old as Lantern).id);
           const row = p.new as Lantern;
-          const rest = prev.filter((x) => x.user_id !== row.user_id);
+          const rest = prev.filter((x) => x.id !== row.id);
           return [...rest, row].sort((a, b) => a.created_at.localeCompare(b.created_at));
         });
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "warmth" }, (p) => {
         const row = p.new as Warmth;
         setWarmth((prev) => [...prev, row]);
-        if (row.to_id === me) onWarmed?.();
+        // 내 등불 중 하나에 온기가 닿았어요
+        if (lanternsRef.current.some((l) => l.id === row.to_id && l.user_id === me)) onWarmed?.(row.to_id);
       })
       .subscribe();
 
@@ -113,72 +121,67 @@ export function useHarbor(onWarmed?: () => void) {
   }, []);
 
   const addNote = useCallback(
-    async (body: string, isPublic: boolean) => {
+    async (lanternId: string, body: string, isPublic: boolean) => {
       if (!me) throw new Error("no-user");
-      const row = { lantern_id: me, body, public: isPublic, day: ymd(today()) };
+      const row = { lantern_id: lanternId, body, public: isPublic, day: ymd(today()) };
       if (demo) {
         const n: Note = { ...row, id: Date.now(), created_at: new Date().toISOString() };
-        setNotes((m) => ({ ...m, [me]: [n, ...(m[me] ?? [])] }));
+        setNotes((m) => ({ ...m, [lanternId]: [n, ...(m[lanternId] ?? [])] }));
         return;
       }
       const { data, error } = await supabase.from("notes").insert(row).select().single();
       if (error) throw error;
-      setNotes((m) => ({ ...m, [me]: [data as Note, ...(m[me] ?? [])] }));
+      setNotes((m) => ({ ...m, [lanternId]: [data as Note, ...(m[lanternId] ?? [])] }));
     },
     [me],
   );
 
-  const removeNote = useCallback(
-    async (id: number) => {
-      if (!me) return;
-      if (!demo) {
-        const { error } = await supabase.from("notes").delete().eq("id", id);
-        if (error) throw error;
-      }
-      setNotes((m) => ({ ...m, [me]: (m[me] ?? []).filter((n) => n.id !== id) }));
-    },
-    [me],
-  );
+  const removeNote = useCallback(async (lanternId: string, id: number) => {
+    if (!demo) {
+      const { error } = await supabase.from("notes").delete().eq("id", id);
+      if (error) throw error;
+    }
+    setNotes((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((n) => n.id !== id) }));
+  }, []);
 
   const sentToday = useCallback(
     (to: string) => warmth.some((w) => w.from_id === me && w.to_id === to && w.day === ymd(today())),
     [warmth, me],
   );
 
+  /** 새 등불을 걸거나(id 없음), 내 등불 하나를 고쳐요(id 있음). 저장된 등불을 돌려줘요. */
   const saveLantern = useCallback(
-    async (v: Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode" | "species">) => {
+    async (v: LanternValues, id?: string): Promise<Lantern> => {
       if (!me) throw new Error("no-user");
       if (demo) {
-        const prev = lanterns.find((x) => x.user_id === me);
-        const row: Lantern = { user_id: me, created_at: prev?.created_at ?? new Date().toISOString(), ...v };
-        setLanterns((all) => [...all.filter((x) => x.user_id !== me), row]);
-        return;
+        const prev = id ? lanterns.find((x) => x.id === id) : undefined;
+        const row: Lantern = { id: id ?? `demo-mine-${Date.now()}`, user_id: me, created_at: prev?.created_at ?? new Date().toISOString(), ...v };
+        setLanterns((all) => [...all.filter((x) => x.id !== row.id), row]);
+        return row;
       }
-      const { data, error } = await supabase
-        .from("lanterns")
-        .upsert({ user_id: me, ...v })
-        .select()
-        .single();
+      const q = id
+        ? supabase.from("lanterns").update(v).eq("id", id).select().single()
+        : supabase.from("lanterns").insert({ user_id: me, ...v }).select().single();
+      const { data, error } = await q;
       if (error) throw error;
-      setLanterns((prev) => {
-        const rest = prev.filter((x) => x.user_id !== me);
-        return [...rest, data as Lantern].sort((a, b) => a.created_at.localeCompare(b.created_at));
-      });
+      const row = data as Lantern;
+      setLanterns((prev) => [...prev.filter((x) => x.id !== row.id), row].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+      return row;
     },
     [me, lanterns],
   );
 
-  const removeLantern = useCallback(async () => {
-    if (!me) return;
-    if (demo) return setLanterns((prev) => prev.filter((x) => x.user_id !== me));
-    const { error } = await supabase.from("lanterns").delete().eq("user_id", me);
-    if (error) throw error;
-    setLanterns((prev) => prev.filter((x) => x.user_id !== me));
-  }, [me]);
+  const removeLantern = useCallback(async (id: string) => {
+    if (!demo) {
+      const { error } = await supabase.from("lanterns").delete().eq("id", id);
+      if (error) throw error;
+    }
+    setLanterns((prev) => prev.filter((x) => x.id !== id));
+  }, []);
 
   const sendWarmth = useCallback(
     async (to: string) => {
-      if (!me || to === me) return;
+      if (!me || lanterns.some((l) => l.id === to && l.user_id === me)) return;
       const row = { from_id: me, to_id: to, day: ymd(today()) };
       if (demo) {
         if (!warmth.some((w) => w.from_id === me && w.to_id === to && w.day === row.day)) setWarmth((prev) => [...prev, row]);
@@ -188,7 +191,7 @@ export function useHarbor(onWarmed?: () => void) {
       // 23505 = 오늘 이미 보냄. 실패가 아니라 그냥 무시해요.
       if (error && error.code !== "23505") throw error;
     },
-    [me, warmth],
+    [me, warmth, lanterns],
   );
 
   return { me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };

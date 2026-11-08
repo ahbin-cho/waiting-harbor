@@ -242,3 +242,9 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .title-tools{display:flex;gap:14px;pointer-events:auto}
 
 .help-line{margin-top:18px;font-size:.75rem;color:var(--faint)}
+
+/* 내 등불 목록 */
+.my-list{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-direction:column;gap:8px}
+.my-list .choice{width:100%}
+.bar .bar-ghost{pointer-events:auto;white-space:nowrap}
+.bar-ghost small{color:var(--muted);margin-left:2px}

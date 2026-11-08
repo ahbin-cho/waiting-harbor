@@ -1,6 +1,7 @@
 // 공유 링크용: Supabase 에서 등불 하나를 읽고, 한국 시간 기준으로 D-day 를 계산해요.
 
 export type SharedLantern = {
+  id: string;
   user_id: string;
   who: string;
   kind: string;
@@ -24,7 +25,7 @@ export async function getLantern(id: string | null): Promise<SharedLantern | nul
   const url = process.env.VITE_SUPABASE_URL, key = process.env.VITE_SUPABASE_ANON_KEY;
   if (!id || !UUID.test(id) || !url || !key) return null;
   const res = await fetch(
-    `${url}/rest/v1/lanterns?user_id=eq.${id}&select=user_id,who,kind,place,color,shape,start_date,end_date,line,mode,species&limit=1`,
+    `${url}/rest/v1/lanterns?id=eq.${id}&select=id,user_id,who,kind,place,color,shape,start_date,end_date,line,mode,species&limit=1`,
     { headers: { apikey: key, Accept: "application/json" } },
   );
   if (!res.ok) return null;

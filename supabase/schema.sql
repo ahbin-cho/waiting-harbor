@@ -2,9 +2,10 @@
 -- Supabase 대시보드 > SQL Editor 에 통째로 붙여넣고 실행하세요.
 -- 여러 번 실행해도 안전해요.
 
--- 등불: 한 사람당 하나
+-- 등불: 한 사람이 여러 개(최대 5개) 걸 수 있어요. id 는 등불, user_id 는 등불을 건 사람.
 create table if not exists public.lanterns (
-  user_id    uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
   who        text not null check (char_length(who) between 1 and 10),
   kind       text not null default '그 밖의 기다림',
   start_date date not null default current_date,
@@ -39,14 +40,36 @@ alter table public.lanterns add column if not exists species text;
 alter table public.lanterns drop constraint if exists lanterns_species_check;
 alter table public.lanterns add constraint lanterns_species_check check (species is null or species in ('강아지', '고양이', '새', '물고기', '햄스터·토끼', '거북이·도마뱀', '곤충', '그 밖의 아이'));
 
+-- 예전 구조(한 사람당 등불 하나, 사람 아이디가 곧 등불 아이디)에서 옮겨 와요.
+-- 이미 걸린 등불은 사람 아이디를 그대로 등불 아이디로 이어받아서, 온기·일기·공유 링크가 끊기지 않아요.
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'lanterns' and column_name = 'id') then
+    alter table public.lanterns add column id uuid;
+    update public.lanterns set id = user_id;
+    alter table public.lanterns alter column id set not null;
+    alter table public.lanterns alter column id set default gen_random_uuid();
+    alter table if exists public.warmth drop constraint if exists warmth_to_id_fkey;
+    alter table if exists public.notes  drop constraint if exists notes_lantern_id_fkey;
+    alter table public.lanterns drop constraint lanterns_pkey;
+    alter table public.lanterns add primary key (id);
+    if to_regclass('public.warmth') is not null then
+      alter table public.warmth add constraint warmth_to_id_fkey foreign key (to_id) references public.lanterns(id) on delete cascade;
+    end if;
+    if to_regclass('public.notes') is not null then
+      alter table public.notes add constraint notes_lantern_id_fkey foreign key (lantern_id) references public.lanterns(id) on delete cascade;
+    end if;
+  end if;
+end $$;
+create index if not exists lanterns_user_idx on public.lanterns (user_id);
+
 -- 온기: 한 사람이 한 등불에 하루 한 번
 create table if not exists public.warmth (
   from_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  to_id   uuid not null references public.lanterns(user_id) on delete cascade,
+  to_id   uuid not null references public.lanterns(id) on delete cascade,  -- 받은 등불
   day     date not null default current_date,
   created_at timestamptz not null default now(),
-  primary key (from_id, to_id, day),
-  check (from_id <> to_id)
+  primary key (from_id, to_id, day)
 );
 
 alter table public.lanterns enable row level security;
@@ -55,28 +78,41 @@ alter table public.warmth   enable row level security;
 -- 기다림 일기: 등불 주인이 날마다 남기는 글. '나만 보기'로 쓴 글은 본인만 봐요.
 create table if not exists public.notes (
   id         bigint generated always as identity primary key,
-  lantern_id uuid not null default auth.uid() references public.lanterns(user_id) on delete cascade,
+  lantern_id uuid not null references public.lanterns(id) on delete cascade,
   body       text not null check (char_length(body) between 1 and 300),
   public     boolean not null default true,
   day        date not null default current_date,
   created_at timestamptz not null default now()
 );
 create index if not exists notes_lantern_idx on public.notes (lantern_id, created_at desc);
+
+alter table public.warmth drop constraint if exists warmth_check;           -- 예전 "자기 자신에게 온기 금지" (이제 정책으로 막아요)
+alter table public.notes alter column lantern_id drop default;
 alter table public.notes enable row level security;
 drop policy if exists "notes read" on public.notes;
-create policy "notes read"   on public.notes for select using (public or auth.uid() = lantern_id);
+-- 일기는 그 등불을 건 사람만 쓰고 고치고 지울 수 있어요
+create or replace function public.owns_lantern(lid uuid) returns boolean
+  language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.lanterns where id = lid and user_id = auth.uid())
+$$;
+create policy "notes read"   on public.notes for select using (public or public.owns_lantern(lantern_id));
 drop policy if exists "notes insert" on public.notes;
-create policy "notes insert" on public.notes for insert with check (auth.uid() = lantern_id);
+create policy "notes insert" on public.notes for insert with check (public.owns_lantern(lantern_id));
 drop policy if exists "notes update" on public.notes;
-create policy "notes update" on public.notes for update using (auth.uid() = lantern_id) with check (auth.uid() = lantern_id);
+create policy "notes update" on public.notes for update using (public.owns_lantern(lantern_id)) with check (public.owns_lantern(lantern_id));
 drop policy if exists "notes delete" on public.notes;
-create policy "notes delete" on public.notes for delete using (auth.uid() = lantern_id);
+create policy "notes delete" on public.notes for delete using (public.owns_lantern(lantern_id));
 
 -- 누구나 등불을 볼 수 있고, 자기 등불만 고칠 수 있어요
 drop policy if exists "lanterns read" on public.lanterns;
 create policy "lanterns read"   on public.lanterns for select using (true);
 drop policy if exists "lanterns insert" on public.lanterns;
-create policy "lanterns insert" on public.lanterns for insert with check (auth.uid() = user_id);
+-- 한 사람이 걸 수 있는 등불은 5개까지
+create or replace function public.my_lantern_count() returns bigint
+  language sql stable security definer set search_path = public as $$
+  select count(*) from public.lanterns where user_id = auth.uid()
+$$;
+create policy "lanterns insert" on public.lanterns for insert with check (auth.uid() = user_id and public.my_lantern_count() < 5);
 drop policy if exists "lanterns update" on public.lanterns;
 create policy "lanterns update" on public.lanterns for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "lanterns delete" on public.lanterns;
@@ -86,7 +122,7 @@ create policy "lanterns delete" on public.lanterns for delete using (auth.uid() 
 drop policy if exists "warmth read" on public.warmth;
 create policy "warmth read"   on public.warmth for select using (true);
 drop policy if exists "warmth insert" on public.warmth;
-create policy "warmth insert" on public.warmth for insert with check (auth.uid() = from_id);
+create policy "warmth insert" on public.warmth for insert with check (auth.uid() = from_id and not public.owns_lantern(to_id));
 
 -- updated_at 자동 갱신
 create or replace function public.touch_updated_at() returns trigger language plpgsql as $$
