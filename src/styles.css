@@ -56,6 +56,14 @@
 :root[data-theme="haven"] .btn,:root[data-theme="haven"] .ghost,:root[data-theme="haven"] .chip{border-radius:999px}
 :root[data-theme="haven"] .daily{border-radius:18px}
 *,*::before,*::after{box-sizing:inherit}
+/* 마을 화면은 앱처럼: 페이지 자체가 확대되거나 끌려 내려가지 않게 해요.
+   (마을은 3D 안에서 손가락 두 개로 확대돼요. 글 페이지는 확대할 수 있게 그대로 둬요.) */
+html:not(:has(body.page)),html:not(:has(body.page)) body{overscroll-behavior:none}
+#root{position:fixed;inset:0}
+.scene{touch-action:pan-x pan-y}
+button,a,label{touch-action:manipulation}
+/* 아이폰은 16px 보다 작은 입력칸을 누르면 화면을 확대해요 */
+@media (pointer:coarse){input,select,textarea{font-size:max(16px,1em)}}
 html{height:100%}
 body{
   margin:0;height:100%;overflow:hidden;
