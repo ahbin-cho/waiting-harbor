@@ -54,7 +54,8 @@ export default async function handler(req: Request) {
   const color = COLORS[l.color] ?? COLORS.촛불;
   const title = titleOf(l);
   const line = l.line.length > 26 ? `${l.line.slice(0, 25)}…` : l.line;
-  const meta = f.miss ? `하늘에 띄운 풍등 · 함께한 날 ${f.together.toLocaleString()}일` : `${l.place}에 걸린 등불 · 기다린 지 ${f.since}일째`;
+  const meta = l.place === "무지개" ? `무지개마을에서 지내요 · 함께한 날 ${f.together.toLocaleString()}일`
+    : f.miss ? `하늘에 띄운 풍등 · 함께한 날 ${f.together.toLocaleString()}일` : `${l.place}에 걸린 등불 · 기다린 지 ${f.since}일째`;
   const brand = "기다림 항구";
 
   const [gaegu, pen, plex] = await Promise.all([

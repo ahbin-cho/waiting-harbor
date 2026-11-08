@@ -19,6 +19,8 @@ export type Lantern = {
   place: string;
   /** wait: 돌아올 사람을 기다려요, miss: 떠나보낸 사람을 그리워해요 */
   mode: string;
+  /** 반려동물 그리움 등불: 어떤 아이였는지 (무지개마을에서 지내는 모습이 달라요) */
+  species?: string | null;
   color: string;
   shape: string;
   created_at: string;

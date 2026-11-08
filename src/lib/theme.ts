@@ -13,6 +13,8 @@ export type Palette = {
   pier: number; tower: number; band: number; beacon: number; mist: number; mistOpacity: number;
   hemiSky: number; hemiGround: number; hemi: number; sunColor: number; sun: number;
   exposure: number; stars: number; moon: number; glow: number; lampLight: number; uiColor: string;
+  /** 무지개마을: 밤에도 노을빛이 은은하게 남아 있어요 */
+  rainbowLand: number; rainbowHigh: number; rainbowLight: number; bridgeGlow: number;
 };
 
 export const PALETTES: Record<ThemeName, Palette> = {
@@ -22,6 +24,7 @@ export const PALETTES: Record<ThemeName, Palette> = {
     pier: 0x1c1726, tower: 0x1d2140, band: 0x141833, beacon: 0xf4e6c6, mist: 0x8a85b8, mistOpacity: 1,
     hemiSky: 0x5a60a8, hemiGround: 0x080a18, hemi: 1.3, sunColor: 0xbfc6ff, sun: 0.7,
     exposure: 1.1, stars: 1, moon: 1, glow: 1, lampLight: 1, uiColor: "#05081A",
+    rainbowLand: 0x3a4f47, rainbowHigh: 0x587058, rainbowLight: 26, bridgeGlow: 0.7,
   },
   // 새벽: 해가 막 뜨는 항구. 하늘은 옅은 하늘색에서 복숭아빛으로, 바다는 맑은 청회색.
   dawn: {
@@ -30,6 +33,7 @@ export const PALETTES: Record<ThemeName, Palette> = {
     pier: 0x6e5a49, tower: 0xeeeae2, band: 0xb4554b, beacon: 0xfff4e2, mist: 0xffffff, mistOpacity: 2.2,
     hemiSky: 0xe3ebff, hemiGround: 0x5d5546, hemi: 1.7, sunColor: 0xffdcbc, sun: 1.8,
     exposure: 1.0, stars: 0, moon: 0.35, glow: 0.6, lampLight: 0.5, uiColor: "#8FB0D9",
+    rainbowLand: 0x7fae6e, rainbowHigh: 0xa6cc86, rainbowLight: 2.5, bridgeGlow: 0.25,
   },
 };
 

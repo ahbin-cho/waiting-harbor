@@ -42,12 +42,28 @@ const missing: [string, string, number, number, string, string][] = [
   ["할아버지", "가족", -9000, -400, "할아버지가 깎아 주던 사과 모양을 아직 기억해요.", "달빛"],
   ["콩이", "반려동물", -4200, -88, "산책 시간이 되면 아직도 현관을 봐요.", "노을"],
 ];
-export const demoMissing = (): Lantern[] =>
-  missing.map(([who, kind, start, end, line, color], i) => ({
+/** 무지개마을의 아이들: [이름, 종류, 처음 만난 날, 떠난 날, 한 줄, 색] */
+const pets: [string, string, number, number, string, string][] = [
+  ["나비", "고양이", -5100, -200, "햇볕 드는 창가에 아직 방석이 있어요.", "라벤더"],
+  ["보리", "새", -2600, -45, "아침마다 너 노래로 깼는데.", "하늘"],
+  ["꼬북", "거북이·도마뱀", -7300, -500, "20년 동안 고마웠어.", "새싹"],
+  ["장수", "곤충", -400, -30, "여름 내내 같이 있어 줘서 고마워.", "촛불"],
+  ["금비", "물고기", -900, -12, "어항 물소리가 없으니 방이 조용해.", "노을"],
+  ["뭉치", "햄스터·토끼", -1100, -150, "해바라기씨 볼 때마다 생각나.", "벚꽃"],
+];
+export const demoMissing = (): Lantern[] => [
+  ...missing.map(([who, kind, start, end, line, color], i) => ({
     user_id: `demo-miss-${i}`, who, kind, start_date: shift(start), end_date: shift(end), line,
-    place: "하늘", color, shape: "풍등", mode: "miss",
+    // 콩이(반려동물)는 무지개마을의 강아지, 할아버지는 하늘의 풍등
+    place: kind === "반려동물" ? "무지개" : "하늘", color, shape: "풍등", mode: "miss", species: kind === "반려동물" ? "강아지" : null,
     created_at: new Date(Date.now() - (10 + i) * 60_000).toISOString(),
-  }));
+  })),
+  ...pets.map(([who, species, start, end, line, color], i) => ({
+    user_id: `demo-pet-${i}`, who, kind: "반려동물", start_date: shift(start), end_date: shift(end), line,
+    place: "무지개", color, shape: "둥근", mode: "miss", species,
+    created_at: new Date(Date.now() - (20 + i) * 60_000).toISOString(),
+  })),
+];
 
 export const demoWarmth = (): Warmth[] =>
   ["demo-0", "demo-0", "demo-1", "demo-3", "demo-3", "demo-3"].map((to_id, i) => ({

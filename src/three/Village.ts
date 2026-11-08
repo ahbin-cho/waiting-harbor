@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Lantern } from "../lib/supabase";
 import { COLORS, colorOf, shapeOf, type LampShape } from "../lib/looks";
-import { ISLANDS, PIER, PLACE_INFO, fbm, groundAt, jitter, pierAt, placeOf, skyY, slotOf, type Place } from "../lib/places";
+import { ISLANDS, PIER, PLACE_INFO, RAINBOW, fbm, groundAt, jitter, pierAt, placeOf, skyY, slotOf, type Place } from "../lib/places";
+import { speciesOf } from "../lib/pets";
+import { makePet, type PetRig } from "./pets";
 import { badgeText, daysLeft, glowOf, isMiss } from "../lib/waiting";
 import type { Shot } from "../lib/story";
 import { PALETTES, type Palette, type ThemeName } from "../lib/theme";
@@ -12,6 +14,7 @@ const LIGHT_POOL = 6;   // 진짜 빛을 내는 등불 수 (가까운 순)
 const LABEL_NEAR = 38;  // 이 거리 안에서 이름이 또렷해요
 const LABEL_FAR = 52;   // 이 거리 밖에서는 이름이 사라져요
 const LAMP_SCALE = 1.7; // 마을 크기에 맞춘 등불 크기
+const PET_SCALE = 1.6;  // 무지개마을 아이들 크기
 const OPEN_NEAR = 46;   // 이보다 멀리서 누르면 먼저 그 장소로 다가가요
 
 type Item = {
@@ -32,6 +35,7 @@ type Item = {
   baseY: number;         // 기둥 위 등 높이
   lift: number;          // 돌아온 사람의 등불이 하늘로 올라간 높이
   look: string;          // 색+모양, 바뀌면 다시 만들어요
+  pet?: PetRig;          // 무지개마을의 아이 (등불 대신 작은 모형)
 };
 
 type Tween = { from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t0: number; dur: number };
@@ -150,6 +154,7 @@ export class Village {
     this.scene.add(this.env);
     this.buildSky();
     this.buildLand();
+    this.buildRainbow();
 
     for (let i = 0; i < LIGHT_POOL; i++) {
       const l = new THREE.PointLight(0xffb867, 0, 11, 1.8);
@@ -393,6 +398,120 @@ export class Village {
     }
   }
 
+  /** 무지개마을: 바다 건너 풀밭 섬, 작은 집, 연못, 나무, 바위, 그리고 등대에서 이어지는 무지개다리 */
+  private buildRainbow() {
+    const isl = ISLANDS.무지개;
+    const p = this.p;
+
+    // 섬 땅: 부드러운 풀빛, 높은 곳은 조금 더 밝게
+    const geo = new THREE.PlaneGeometry(64, 64, 110, 110).rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    const colors: number[] = [];
+    const low = new THREE.Color(p.rainbowLand), high = new THREE.Color(p.rainbowHigh), sand = new THREE.Color(p.shore), tmp = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i) + isl.x, z = pos.getZ(i) + isl.z, y = groundAt(x, z);
+      pos.setXYZ(i, x, Math.max(y, -3), z);
+      tmp.copy(low).lerp(high, THREE.MathUtils.clamp(y / 2.5, 0, 1) * 0.7 + (fbm(x * 0.3, z * 0.3) - 0.5) * 0.3);
+      if (y < 0.4) tmp.lerp(sand, THREE.MathUtils.clamp(1 - (y + 0.3) / 0.7, 0, 1) * 0.7);
+      colors.push(tmp.r, tmp.g, tmp.b);
+    }
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    this.env.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })));
+
+    // 섬 위의 따뜻한 빛 (밤에도 노을빛이 남아 있어요)
+    const warm = new THREE.PointLight(0xffd2a8, p.rainbowLight, 60, 1.2);
+    warm.position.set(isl.x - 2, 14, isl.z + 4);
+    this.env.add(warm);
+
+    const g = (x: number, z: number) => Math.max(0.1, groundAt(x, z));
+    const rand = rng(41);
+
+    // 작은 집: 고양이들이 지붕에서 졸아요
+    const wall = new THREE.MeshStandardMaterial({ color: 0xefe3d3, roughness: 0.9 });
+    const roofs = [0xc77b68, 0x7e9fc9, 0xd2ae5c];
+    RAINBOW.cottages.forEach(([x, z], k) => {
+      const h = new THREE.Group();
+      h.position.set(x, g(x, z) - 0.1, z);
+      h.rotation.y = rand() * 0.6 - 0.3;
+      h.add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 2).translate(0, 0.8, 0), wall));
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.95, 1.1, 4).rotateY(Math.PI / 4).translate(0, 2.15, 0), new THREE.MeshStandardMaterial({ color: roofs[k % roofs.length], roughness: 0.85 }));
+      roof.scale.set(1, 1, 0.8);
+      const door = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.8).translate(0, 0.4, 1.01), new THREE.MeshStandardMaterial({ color: 0x7a5a44 }));
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4).translate(0.7, 1, 1.01), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }));
+      h.add(roof, door, win);
+      this.env.add(h);
+    });
+
+    // 연못: 물고기가 헤엄쳐요
+    const [px, pz] = RAINBOW.pond;
+    const pond = new THREE.Mesh(new THREE.CircleGeometry(2.9, 28).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x5f9fc4, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85 }));
+    pond.position.set(px, g(px, pz) + 0.04, pz);
+    pond.scale.set(1, 1, 0.8);
+    this.env.add(pond);
+
+    // 나무들: 새가 꼭대기에 앉아요
+    const leaf = new THREE.MeshStandardMaterial({ color: 0x4f8a5a, roughness: 1 });
+    const bark = new THREE.MeshStandardMaterial({ color: 0x6b4e3a, roughness: 1 });
+    for (const [x, z] of RAINBOW.birdTrees) {
+      const y = g(x, z);
+      this.env.add(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 2.6, 7).translate(x, y + 1.3, z), bark));
+      for (let k = 0; k < 3; k++) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), leaf);
+        m.scale.setScalar(1.3 - k * 0.25);
+        m.position.set(x + (rand() - 0.5) * 0.6, y + 2.6 + k * 0.6, z + (rand() - 0.5) * 0.6);
+        this.env.add(m);
+      }
+    }
+
+    // 큰 참나무: 곤충들이 줄기에 붙어 지내요
+    const [ox, oz] = RAINBOW.oak, oy = g(ox, oz);
+    this.env.add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.75, 4.2, 9).translate(ox, oy + 2.1, oz), bark));
+    for (let k = 0; k < 5; k++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 9), leaf);
+      const a = k * 1.3;
+      m.scale.set(2 + rand(), 1.4 + rand() * 0.6, 2 + rand());
+      m.position.set(ox + Math.cos(a) * 1.5, oy + 4.6 + rand() * 0.8, oz + Math.sin(a) * 1.5);
+      this.env.add(m);
+    }
+
+    // 덤불: 햄스터와 토끼가 오가요
+    const [bx, bz] = RAINBOW.bushes;
+    for (let k = 0; k < 9; k++) {
+      const a = rand() * Math.PI * 2, r = 0.8 + rand() * 3.4;
+      const x = bx + Math.cos(a) * r, z = bz + Math.sin(a) * r;
+      const m = new THREE.Mesh(new THREE.SphereGeometry(1, 9, 7), leaf);
+      m.scale.set(0.6 + rand() * 0.4, 0.45 + rand() * 0.25, 0.6 + rand() * 0.4);
+      m.position.set(x, g(x, z) + 0.15, z);
+      this.env.add(m);
+    }
+
+    // 볕 드는 바위: 거북이와 도마뱀
+    const stone = new THREE.MeshStandardMaterial({ color: 0x9a9488, roughness: 0.95, flatShading: true });
+    const [rx, rz] = RAINBOW.rocks;
+    const big = new THREE.Mesh(new THREE.DodecahedronGeometry(1.8, 0), stone);
+    big.scale.set(1.3, 0.42, 1.1);
+    big.position.set(rx, g(rx, rz) + 0.3, rz);
+    this.env.add(big);
+
+    // 무지개다리: 등대 절벽에서 섬까지 일곱 빛깔 아치
+    const [ax, az] = RAINBOW.bridge.from, [cx, cz] = RAINBOW.bridge.to;
+    const dx = cx - ax, dz = cz - az, len = Math.hypot(dx, dz);
+    const arch = new THREE.Group();
+    arch.position.set((ax + cx) / 2, -0.4, (az + cz) / 2);
+    arch.rotation.y = -Math.atan2(dz, dx);
+    arch.scale.y = 0.55;
+    ["#ff8f8f", "#ffb27e", "#ffe08e", "#a2e2a4", "#8fcaff", "#a9a2ff", "#d8a8ff"].forEach((c, k) => {
+      const col = new THREE.Color(c);
+      const m = new THREE.Mesh(
+        new THREE.TorusGeometry(len / 2 - k * 0.45, 0.24, 8, 80, Math.PI),
+        new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: p.bridgeGlow, roughness: 0.6, transparent: true, opacity: 0.88 }),
+      );
+      arch.add(m);
+    });
+    this.env.add(arch);
+  }
+
   // ---------- 등불 ----------
 
   setData(lanterns: Lantern[], me: string | null, online: Set<string>) {
@@ -402,8 +521,10 @@ export class Village {
     const count = new Map<Place, number>();
     for (const l of [...lanterns].sort((a, b) => a.created_at.localeCompare(b.created_at))) {
       const place = placeOf(l.place);
-      const i = count.get(place) ?? 0;
-      count.set(place, i + 1);
+      // 무지개마을은 같은 종류끼리 자리를 나눠요 (강아지는 풀밭, 고양이는 지붕…)
+      const key = (place === "무지개" ? `무지개/${speciesOf(l.species)}` : place) as Place;
+      const i = count.get(key) ?? 0;
+      count.set(key, i + 1);
       seen.add(l.user_id);
       this.upsert(l, place, i);
     }
@@ -411,14 +532,22 @@ export class Village {
   }
 
   private upsert(l: Lantern, place: Place, i: number) {
-    const look = `${colorOf(l.color)}/${shapeOf(l.shape)}/${place}/${l.mode}`;
+    const look = `${colorOf(l.color)}/${shapeOf(l.shape)}/${place}/${l.mode}/${l.species ?? ""}`;
     let it = this.items.get(l.user_id);
     if (it && it.look !== look) {
       this.remove(it);
       it = undefined;
     }
-    if (!it) it = this.create(l, place, look);
+    if (!it) it = this.create(l, place, look, i);
     it.data = l;
+
+    if (it.pet) {
+      // 무지개마을의 아이는 스스로 움직여요. 밝기와 이름표만 맞춰요.
+      it.idx = i;
+      it.glowLevel = glowOf(l);
+      this.setTag(it, l);
+      return;
+    }
 
     // 자리
     const [x, z] = slotOf(place, i);
@@ -439,7 +568,10 @@ export class Village {
     it.swing.position.y = it.baseY + it.lift;
     it.lamp.set(x, ground + it.swing.position.y * LAMP_SCALE, z);
 
-    // 이름표
+    this.setTag(it, l);
+  }
+
+  private setTag(it: Item, l: Lantern) {
     it.tag.className = `tag${l.user_id === this.me ? " mine" : ""}`;
     it.tag.replaceChildren();
     const b = document.createElement("b");
@@ -449,7 +581,8 @@ export class Village {
     it.tag.append(b, s);
   }
 
-  private create(l: Lantern, place: Place, look: string): Item {
+  private create(l: Lantern, place: Place, look: string, i: number): Item {
+    if (place === "무지개") return this.createPet(l, place, look, i);
     const color = new THREE.Color(COLORS[colorOf(l.color)]);
     const shape = shapeOf(l.shape);
     const hang = PLACE_INFO[place].hang;
@@ -510,6 +643,30 @@ export class Village {
     return it;
   }
 
+  /** 무지개마을의 아이 하나 */
+  private createPet(l: Lantern, place: Place, look: string, i: number): Item {
+    const color = new THREE.Color(COLORS[colorOf(l.color)]);
+    const phase = Math.random() * 10;
+    const pet = makePet(speciesOf(l.species), color, i, phase);
+    const group = new THREE.Group();
+    group.add(pet.root);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.position.y = pet.headY * 0.5;
+    const hit = new THREE.Mesh(HIT, new THREE.MeshBasicMaterial({ visible: false }));
+    hit.userData.id = l.user_id;
+    hit.position.y = pet.headY * 0.5;
+    pet.root.add(glow, hit);
+    this.scene.add(group);
+    const tag = document.createElement("div");
+    this.tags.appendChild(tag);
+    const it: Item = {
+      id: l.user_id, data: l, place, group, swing: pet.root, body: pet.body, mat: pet.mat, glow, hit,
+      lamp: new THREE.Vector3(), tag, glowLevel: 0.5, phase, idx: i, baseY: 0, lift: 0, look, pet,
+    };
+    this.items.set(l.user_id, it);
+    return it;
+  }
+
   private remove(it: Item) {
     this.scene.remove(it.group);
     it.group.traverse((o) => {
@@ -538,6 +695,7 @@ export class Village {
     this.renderer.toneMappingExposure = p.exposure;
     this.buildSky();
     this.buildLand();
+    this.buildRainbow();
     for (const it of this.items.values()) {
       it.group.traverse((o) => {
         if (o.userData.pole) ((o as THREE.Mesh).material as THREE.MeshStandardMaterial).color.set(p.pier);
@@ -589,6 +747,12 @@ export class Village {
       target.divideScalar(here.length).add(new THREE.Vector3(0, -0.6, 0));
     }
     // 숲은 나무에 가리지 않게 조금 더 위에서 내려다봐요
+    if (place === "무지개") {
+      // 무지개마을은 섬 가운데를, 무지개다리가 보이게 조금 비스듬히
+      const c2 = new THREE.Vector3(ISLANDS.무지개.x, Math.max(0, groundAt(ISLANDS.무지개.x, ISLANDS.무지개.z)) + 1.5, ISLANDS.무지개.z);
+      // 등대 쪽에서 바라보면 무지개다리가 앞에 걸쳐 보여요
+      return this.flyTo(c2.clone().add(new THREE.Vector3(-30, 13, 20).multiplyScalar(this.narrow ? 1.25 : 1)), c2);
+    }
     if (place === "하늘") {
       // 하늘 등불은 바다 쪽 낮은 곳에서 올려다봐요
       return this.flyTo(target.clone().add(new THREE.Vector3(4, -9, 30).multiplyScalar(this.narrow ? 1.25 : 1)), target);
@@ -622,6 +786,7 @@ export class Village {
     if (name === "forest") return this.focusPlace("숲");
     if (name === "hill") return this.focusPlace("언덕");
     if (name === "sky") return this.focusPlace("하늘");
+    if (name === "rainbow") return this.focusPlace("무지개");
     if (name === "lighthouse") {
       const top = this.lighthouse.clone().add(new THREE.Vector3(0, 5.5, 0));
       return this.flyTo(top.clone().add(new THREE.Vector3(-12, 1.5, 17).multiplyScalar(this.narrow ? 1.3 : 1)), top, slow);
@@ -688,8 +853,8 @@ export class Village {
     }
     // 마을 밖으로 너무 멀리 가지 않게
     const tg = this.controls.target;
-    tg.x = THREE.MathUtils.clamp(tg.x, -75, 65);
-    tg.z = THREE.MathUtils.clamp(tg.z, -45, 45);
+    tg.x = THREE.MathUtils.clamp(tg.x, -75, 120);
+    tg.z = THREE.MathUtils.clamp(tg.z, -70, 45);
     tg.y = THREE.MathUtils.clamp(tg.y, -2, 14);
     this.controls.update();
 
@@ -709,10 +874,16 @@ export class Village {
 
     const focus = this.selected;
     for (const it of this.items.values()) {
+      if (it.pet) {
+        it.pet.update(t, calm);
+        it.lamp.copy(it.pet.root.position).setY(it.pet.root.position.y + it.pet.headY * 0.6 * PET_SCALE);
+      }
       const here = this.online.has(it.id);
       const home = it.glowLevel >= 1;
       let flick = 1;
-      if (here && !calm) {
+      if (it.pet) {
+        // 아이들은 각자 움직여요
+      } else if (here && !calm) {
         it.swing.rotation.z = Math.sin(t * 1.4 + it.phase) * 0.09;
         it.swing.rotation.x = Math.sin(t * 1.1 + it.phase * 2) * 0.05;
         flick = 1 + 0.12 * Math.sin(t * 7 + it.phase) + 0.06 * Math.sin(t * 13 + it.phase);
@@ -723,14 +894,16 @@ export class Village {
       } else {
         it.swing.rotation.set(0, 0, 0);
       }
-      if (!calm) it.body.rotation.y = t * 0.25 + it.phase;
+      if (!calm && !it.pet) it.body.rotation.y = t * 0.25 + it.phase;
       // 하늘 등불은 바람을 타고 천천히 오르내려요
-      if (it.place === "하늘") it.swing.position.y = calm ? 0 : Math.sin(t * 0.35 + it.phase) * 0.35;
+      if (it.pet) { /* 무지개마을 */ } else if (it.place === "하늘") it.swing.position.y = calm ? 0 : Math.sin(t * 0.35 + it.phase) * 0.35;
       // 하늘로 올라간 등불은 천천히 오르내려요
       else if (it.lift > 0) it.swing.position.y = it.baseY + it.lift + (calm ? 0 : Math.sin(t * 0.6 + it.phase) * 0.25);
 
       const dim = focus && focus !== it.id ? 0.25 : 1;
-      it.mat.emissiveIntensity = (0.35 + 1.5 * it.glowLevel) * flick * dim * (home ? 1.2 : 1);
+      it.mat.emissiveIntensity = it.pet
+        ? (0.15 + 0.45 * it.glowLevel) * dim
+        : (0.35 + 1.5 * it.glowLevel) * flick * dim * (home ? 1.2 : 1);
       const gm = it.glow.material as THREE.SpriteMaterial;
       gm.opacity = (0.2 + 0.4 * it.glowLevel) * dim * this.p.glow;
       let s = 0.9 + 1.5 * it.glowLevel;
@@ -746,8 +919,9 @@ export class Village {
           s *= 1 + bump;
         }
       }
-      it.body.scale.setScalar(scale);
-      it.glow.scale.setScalar(s);
+      if (it.pet) it.pet.root.scale.setScalar(scale * PET_SCALE);
+      else it.body.scale.setScalar(scale);
+      it.glow.scale.setScalar(it.pet ? s * 0.8 : s);
     }
 
     // 가까운 등불 몇 개에만 진짜 빛을 줘요

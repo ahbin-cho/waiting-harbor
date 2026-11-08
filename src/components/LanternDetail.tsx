@@ -112,7 +112,9 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 
   return (
     <>
-      <p className="where">{miss ? "하늘에 띄운 풍등" : `${placeOf(lantern.place)}에 걸린 등불`} · {lantern.kind}</p>
+      <p className="where">
+        {lantern.place === "무지개" ? `무지개마을에서 지내요 · ${lantern.species ?? "반려동물"}` : miss ? `하늘에 띄운 풍등 · ${lantern.kind}` : `${placeOf(lantern.place)}에 걸린 등불 · ${lantern.kind}`}
+      </p>
       <h2 id="sheet-title">{titleOf(lantern)}</h2>
       {isMine && <p className="here-now">당신의 등불이에요.</p>}
       {isHere && !isMine && <p className="here-now">이 사람도 지금 항구에 와 있어요.</p>}
