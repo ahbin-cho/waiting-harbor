@@ -176,6 +176,34 @@ create or replace function public.offering_counts() returns table (lantern_id uu
 $$;
 grant execute on function public.offering_counts() to anon, authenticated;
 
+-- 이야기하기: 그리움 등불의 주인이 떠나보낸 사람(아이)에게 말을 걸고, 그 마음을 빌린 짧은 답장을 받아요.
+-- 등불 주인만 읽고 쓰고 지울 수 있어요. role: me(내가 한 말) / them(답장). 하루에 내가 보내는 말은 30개까지.
+create table if not exists public.talks (
+  id         bigint generated always as identity primary key,
+  lantern_id uuid not null references public.lanterns(id) on delete cascade,
+  role       text not null check (role in ('me', 'them')),
+  body       text not null check (char_length(btrim(body)) between 1 and 600),
+  created_at timestamptz not null default now()
+);
+create index if not exists talks_lantern_idx on public.talks (lantern_id, created_at desc);
+alter table public.talks enable row level security;
+create or replace function public.my_talks_today(lid uuid) returns bigint
+  language sql stable security definer set search_path = public as $$
+  select count(*) from public.talks t
+  where t.lantern_id = lid and t.role = 'me' and t.created_at > now() - interval '1 day'
+    and exists (select 1 from public.lanterns l where l.id = lid and l.user_id = auth.uid())
+$$;
+drop policy if exists "talks read" on public.talks;
+create policy "talks read"   on public.talks for select using (public.owns_lantern(lantern_id));
+drop policy if exists "talks insert" on public.talks;
+create policy "talks insert" on public.talks for insert with check (
+  public.owns_lantern(lantern_id)
+  and exists (select 1 from public.lanterns l where l.id = lantern_id and l.mode = 'miss')
+  and (role = 'them' or public.my_talks_today(lantern_id) < 30)
+);
+drop policy if exists "talks delete" on public.talks;
+create policy "talks delete" on public.talks for delete using (public.owns_lantern(lantern_id));
+
 -- 등불 사진: 등불마다 한 장. 다른 사람에게 보일지는 등불 주인이 정해요 (photo_public).
 -- 파일은 Storage 'photos' 버킷의 {user_id}/{등불 id}.jpg 에 있어요.
 alter table public.lanterns add column if not exists photo_path text;
@@ -229,7 +257,7 @@ create table if not exists public.events (
   user_id    uuid default auth.uid() references auth.users(id) on delete set null,
   name       text not null check (name in (
     'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
-    'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left'
+    'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left', 'talk_sent'
   )),
   props      jsonb not null default '{}' check (octet_length(props::text) <= 400),
   via        text not null default '' check (char_length(via) <= 60),   -- 어디서 왔는지 (share, rainbow, discharge, 검색 사이트 이름, utm_source)
@@ -240,7 +268,7 @@ create index if not exists events_name_time_idx on public.events (name, created_
 alter table public.events drop constraint if exists events_name_check;
 alter table public.events add constraint events_name_check check (name in (
   'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
-  'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left'
+  'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left', 'talk_sent'
 ));
 create index if not exists events_user_idx on public.events (user_id, created_at);
 alter table public.events enable row level security;
