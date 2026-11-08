@@ -44,6 +44,16 @@ Vite + React + TypeScript, three.js (3D 마을), Supabase (DB, 익명 로그인,
 
 검색으로 들어오는 글 페이지: `/rainbow/`(무지개마을, 반려동물 추모), `/discharge/`(전역일 계산기).
 
+## 숫자 보기
+방문, 등불 걸기, 일기, 온기, 공유 같은 행동이 Supabase `events` 테이블에 쌓여요 (이름·일기·사진 같은 내용은 담지 않아요).
+Supabase SQL Editor 에서 아래처럼 봐요.
+```sql
+select * from analytics.daily;        -- 날짜별: 방문, 새로 온/다시 온 사람, 등불 걸기 연 사람, 건 등불, 공유, 등불 건 비율(%)
+select * from analytics.funnel_7d;    -- 주별: 처음 온 사람이 7일 안에 등불 걸기 열기 → 걸기 → 다시 오기 → 공유까지 간 수
+select * from analytics.sources_30d;  -- 최근 30일 어디서 들어왔는지 (share, rainbow, naver.com, utm_source …)
+```
+광고나 게시물 링크에는 `?utm_source=insta` 처럼 붙이면 어디서 왔는지 따로 세져요.
+
 ## 무료 요금제로 운영하기
 - Supabase 무료 프로젝트는 1주일 동안 활동이 없으면 멈춰요. `vercel.json` 의 Cron 이 하루 한 번 `/api/ping` 을 불러 깨워 둬요.
 - 사진은 긴 쪽 1024px, 한 장 약 150KB 이하로 줄여 올리고, 등불을 내리거나 사진을 바꾸면 예전 파일을 지워요.

@@ -22,6 +22,7 @@
 - `api/feedback.ts`, `src/components/Feedback.tsx`: 의견 남기기 (Supabase `feedback` 저장 + Resend 메일, 받는 주소는 환경 변수 `FEEDBACK_TO`에만)
 - `rainbow/`, `src/rainbow/`: 무지개마을 소개 글 페이지 (반려동물 추모 검색 유입, `/?for=pet` 으로 등불 걸기 연결)
 - `api/ping.ts`: Vercel Cron 이 하루 한 번 불러 Supabase 무료 프로젝트가 멈추지 않게 해요
+- `src/lib/track.ts`: 숫자 세기. 행동 이름과 유입 경로만 `events` 에 남기고, 요약은 `analytics` 스키마(공개 API 밖)에서 본다. 이름·일기·사진 같은 내용은 절대 넣지 않는다.
 - `src/lib/waiting.ts`: 날짜 계산, 조사(을/를) 처리
 - `supabase/schema.sql`: 테이블, RLS 정책, Realtime 설정
 

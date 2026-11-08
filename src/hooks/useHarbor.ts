@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { configured, supabase, type Lantern, type Note, type Warmth } from "../lib/supabase";
 import { today, ymd } from "../lib/waiting";
+import { track, trackReady } from "../lib/track";
 import { DEMO_ME, demoLanterns, demoMissing, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
 
 /** Supabase 설정이 없으면 체험 모드로 열려요. 아무것도 저장되지 않아요. */
@@ -28,10 +29,14 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     if (!configured) return;
     (async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) return setMe(data.session.user.id);
+      if (data.session) {
+        setMe(data.session.user.id);
+        return trackReady();
+      }
       const res = await supabase.auth.signInAnonymously();
       if (res.error || !res.data.user) return setStatus("error");
       setMe(res.data.user.id);
+      trackReady();
     })();
   }, []);
 
@@ -110,7 +115,7 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
 
   /** 등불을 열 때 그 등불의 일기를 불러와요 (최근 50개) */
   const loadNotes = useCallback(async (lanternId: string) => {
-    if (demo) return;
+    if (demo) return setNotes((m) => (m[lanternId] ? m : { ...m, [lanternId]: [] }));
     const { data, error } = await supabase
       .from("notes")
       .select("*")
@@ -131,6 +136,7 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
       }
       const { data, error } = await supabase.from("notes").insert(row).select().single();
       if (error) throw error;
+      track("note_written", { public: isPublic });
       setNotes((m) => ({ ...m, [lanternId]: [data as Note, ...(m[lanternId] ?? [])] }));
     },
     [me],
@@ -193,6 +199,7 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
       const { error } = await supabase.from("warmth").insert(row);
       // 23505 = 오늘 이미 보냄. 실패가 아니라 그냥 무시해요.
       if (error && error.code !== "23505") throw error;
+      if (!error) track("warmth_sent");
     },
     [me, warmth, lanterns],
   );
@@ -207,6 +214,7 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
       body: JSON.stringify({ body, contact, website, page: location.pathname }),
     });
     if (!res.ok) throw new Error(res.status === 429 ? "limit" : "failed");
+    track("feedback_sent");
   }, []);
 
   // ---------- 등불 사진 ----------
@@ -261,6 +269,7 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
       if (l.photo_path) await supabase.storage.from("photos").remove([l.photo_path]);
       const { error } = await supabase.from("lanterns").update({ photo_path: blob ? path : null, photo_public: isPublic }).eq("id", l.id);
       if (error) throw error;
+      if (blob) track("photo_added");
       patch({ photo_path: blob ? path : null, photo_public: isPublic });
       setPhotoUrls((m) => {
         const n = { ...m };

@@ -14,6 +14,7 @@ import { THEME_LABEL, THEME_ORDER, applyUiTheme, saveTheme, savedTheme, type The
 import { MAX_LANTERNS, demo, useHarbor } from "./hooks/useHarbor";
 import { badgeText, titleOf } from "./lib/waiting";
 import { canRecord } from "./lib/clip";
+import { track } from "./lib/track";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
 type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string };
@@ -83,6 +84,11 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, h.status]);
   const picked = view.type === "detail" ? h.lanterns.find((l) => l.id === view.id) : undefined;
+  // 새 등불 걸기를 연 순간을 세요 (고치기는 빼고)
+  const formNew = view.type === "form" && !view.id;
+  useEffect(() => {
+    if (formNew) track("form_open");
+  }, [formNew]);
 
   // 10초 영상: 찍는 동안엔 화면의 글자와 시트를 숨기고, 다 찍으면 미리보기를 띄워요
   const [record, setRecord] = useState<{ id: string; n: number; text: { title: string; sub: string; line: string } } | null>(null);
@@ -100,6 +106,7 @@ export default function App() {
   const editing = view.type === "form" && view.id ? h.lanterns.find((l) => l.id === view.id) : undefined;
   const close = useCallback(() => setView({ type: "none" }), []);
   const endStory = useCallback((then: "write" | "look") => {
+    track("story_end", { then });
     markStorySeen();
     setStory(null);
     setFocus({ place: "all", n: Date.now() });
@@ -119,6 +126,7 @@ export default function App() {
         record={record}
         onClip={(r) => {
           if ("blob" in r) {
+            track("clip_made", { ext: r.ext });
             const l = h.lanterns.find((x) => x.id === record?.id);
             const name = `기다림항구-${l?.who ?? "등불"}.${r.ext}`;
             setClip({ url: URL.createObjectURL(r.blob), file: new File([r.blob], name, { type: r.blob.type }) });
@@ -173,6 +181,7 @@ export default function App() {
             onSave={async (v) => {
               const saved = await h.saveLantern(v, editing?.id);
               if (!editing) {
+                track("lantern_created", { mode: v.mode, place: v.place, ...(v.species ? { species: v.species } : {}), count: mine.length + 1 });
                 // 새 등불이 켜지면 그 앞으로 날아가요
                 setHint(
                   v.place === "무지개" ? `${pick(v.who, "이", "가")} 무지개마을에 도착했어요.`
