@@ -280,3 +280,9 @@ img.photo{display:block;width:100%;max-height:360px;object-fit:cover;border-radi
 .photo-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:10px}
 .file-btn{position:relative;cursor:pointer}
 .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+
+/* iOS 사파리·인앱 브라우저: 날짜 칸이 자기 최소 너비를 고집해서 옆 칸과 겹치지 않게 */
+input[type="date"]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:46px;text-align:left}
+input[type="date"]::-webkit-date-and-time-value{text-align:left}
+/* 폰 너비에서는 두 날짜 칸을 위아래로 쌓아요 */
+@media (max-width:520px){.two{grid-template-columns:minmax(0,1fr);gap:0}}

@@ -9,13 +9,17 @@ import react from "@vitejs/plugin-react";
  */
 function seo(): Plugin {
   const env = process.env;
+  const today = new Date().toISOString().slice(0, 10);
   const site = (
     env.SITE_URL ||
     (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:5173")
   ).replace(/\/$/, "");
+  // 검색 등록 인증 코드는 원래 페이지에 공개로 들어가는 값이라 기본값을 코드에 둬요. 환경 변수가 있으면 그걸 써요.
+  // "google-site-verification=…" 처럼 앞부분까지 붙여 넣어도 값만 떼어 써요.
+  const clean = (v?: string) => v?.trim().replace(/^[a-z-]+-site-verification=/i, "");
   const verify = [
-    ["google-site-verification", env.GOOGLE_SITE_VERIFICATION],
-    ["naver-site-verification", env.NAVER_SITE_VERIFICATION],
+    ["google-site-verification", clean(env.GOOGLE_SITE_VERIFICATION) || "u2fXDDS4E4pddcAmYCj8OwICB7p-PJFFZu92zQatiS0"],
+    ["naver-site-verification", clean(env.NAVER_SITE_VERIFICATION)],
   ]
     .filter(([, v]) => v)
     .map(([n, v]) => `<meta name="${n}" content="${v}" />`)
@@ -37,7 +41,7 @@ function seo(): Plugin {
       this.emitFile({
         type: "asset",
         fileName: "sitemap.xml",
-        source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${site}/discharge/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>\n</urlset>\n`,
+        source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${site}/discharge/</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>\n  <url><loc>${site}/rainbow/</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>\n</urlset>\n`,
       });
     },
   };
@@ -48,7 +52,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       // 3D 마을(index.html)과 글로 된 페이지들을 따로 만들어요
-      input: { main: "index.html", discharge: "discharge/index.html" },
+      input: { main: "index.html", discharge: "discharge/index.html", rainbow: "rainbow/index.html" },
     },
   },
 });
