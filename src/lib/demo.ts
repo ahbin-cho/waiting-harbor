@@ -1,5 +1,5 @@
 // Supabase 설정이 없을 때 보여주는 체험용 등불. 저장되지 않아요.
-import type { Lantern, Note, Warmth } from "./supabase";
+import type { Lantern, Message, Note, Warmth } from "./supabase";
 import { today, ymd } from "./waiting";
 
 export const DEMO_ME = "demo-me";
@@ -11,15 +11,15 @@ const shift = (days: number) => {
 };
 
 const sample: [string, string, number, number, string, string, string, string][] = [
-  ["지수", "군대", -400, 145, "오늘도 편지 한 장 썼어요.", "언덕", "촛불", "둥근"],
+  ["지수", "군대", -400, 145, "오늘도 편지 한 장 썼어요.", "언덕", "유채", "초롱"],
   ["민호", "장거리 연애", -60, 9, "공항 가는 길을 벌써 외웠어요.", "항구", "벚꽃", "별"],
-  ["엄마", "해외에 있는 가족", -200, 30, "김치 담가 놓을게요.", "등대", "노을", "네모"],
+  ["엄마", "해외에 있는 가족", -200, 30, "김치 담가 놓을게요.", "등대", "노을", "집"],
   ["하준", "군대", -500, 1, "내일이에요. 잠이 안 와요.", "항구", "달빛", "둥근"],
-  ["서연", "장거리 연애", -30, 80, "같은 달을 보고 있대요.", "숲", "라벤더", "둥근"],
+  ["서연", "장거리 연애", -30, 80, "같은 달을 보고 있대요.", "숲", "라벤더", "달"],
   ["아빠", "해외에 있는 가족", -300, -2, "드디어 다시 만났어요.", "등대", "촛불", "네모"],
   ["유나", "장거리 연애", -90, 40, "전화 끊고 한참 서 있었어요.", "숲", "하늘", "별"],
-  ["태윤", "군대", -320, 220, "휴가 날짜만 세고 있어요.", "언덕", "새싹", "둥근"],
-  ["할머니", "해외에 있는 가족", -150, 60, "", "항구", "노을", "둥근"],
+  ["태윤", "군대", -320, 220, "휴가 날짜만 세고 있어요.", "언덕", "새싹", "연꽃"],
+  ["할머니", "해외에 있는 가족", -150, 60, "", "항구", "바다", "초롱"],
 ];
 
 export const demoLanterns = (): Lantern[] =>
@@ -90,4 +90,18 @@ export const demoNotes = (): Note[] => {
     ["demo-miss-0", -5, "할아버지 기일이 다가와요. 올해는 제가 사과를 깎아 갈게요."],
   ];
   return rows.map(([lantern_id, d, body], i) => ({ id: -(i + 1), lantern_id, body, public: true, day: shift(d), created_at: new Date(Date.now() + d * 86_400_000).toISOString() }));
+};
+
+/** 체험용 남긴 마음 */
+export const demoMessages = (): Message[] => {
+  const rows: [string, number, string][] = [
+    ["demo-3", -1, "저도 내일 공항 가요. 같은 날이라 괜히 반가워요."],
+    ["demo-3", -2, "하루만 더요. 첫차 놓치지 마세요."],
+    ["demo-1", -4, "저희도 시차 7시간이에요. 아침 인사가 잘 자라는 말인 거 알아요."],
+    ["demo-0", -6, "편지 글씨 엉망인 거, 저희 집도 똑같았어요."],
+    ["demo-miss-1", -2, "저도 작년에 보냈어요. 그릇은 저도 한참 못 치웠어요."],
+    ["demo-miss-1", -9, "무지개마을에서 신나게 뛰어놀고 있을 거예요."],
+    ["demo-miss-0", -3, "할아버지께 사과 꼭 깎아 드리세요."],
+  ];
+  return rows.map(([lantern_id, d, body], i) => ({ id: -(i + 1), lantern_id, from_id: `demo-v${i}`, body, created_at: new Date(Date.now() + d * 86_400_000).toISOString() }));
 };

@@ -8,11 +8,13 @@ export const COLORS = {
   라벤더: "#BFA8FF",
   하늘: "#8FCBFF",
   새싹: "#B4E58A",
+  바다: "#7FDCCB",
+  유채: "#FFE27A",
 } as const;
 export type LampColor = keyof typeof COLORS;
 export const COLOR_NAMES = Object.keys(COLORS) as LampColor[];
 
-export const SHAPES = ["둥근", "네모", "별"] as const;
+export const SHAPES = ["둥근", "네모", "초롱", "별", "달", "연꽃", "집"] as const;
 /** 풍등은 그리움 등불(하늘)에만 써요 */
 export type LampShape = (typeof SHAPES)[number] | "풍등";
 

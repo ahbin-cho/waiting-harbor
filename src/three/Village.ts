@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { Lantern } from "../lib/supabase";
 import { COLORS, colorOf, shapeOf, type LampShape } from "../lib/looks";
-import { ISLANDS, PIER, PLACE_INFO, RAINBOW, fbm, groundAt, jitter, pierAt, placeOf, skyY, slotOf, type Place } from "../lib/places";
+import { ISLANDS, PIER, PLACE_INFO, RAINBOW, fbm, groundAt, harborSlot, jitter, pierAt, placeOf, skyY, slotOf, type Place } from "../lib/places";
 import { speciesOf } from "../lib/pets";
 import { makePet, type PetRig } from "./pets";
 import { badgeText, daysLeft, glowOf, isMiss } from "../lib/waiting";
@@ -36,6 +37,7 @@ type Item = {
   lift: number;          // 돌아온 사람의 등불이 하늘로 올라간 높이
   look: string;          // 색+모양, 바뀌면 다시 만들어요
   pet?: PetRig;          // 무지개마을의 아이 (등불 대신 작은 모형)
+  refl?: THREE.Mesh;     // 항구 등불: 물 위에 비친 불빛
 };
 
 type Tween = { from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t0: number; dur: number };
@@ -94,10 +96,49 @@ function starGeometry() {
   return g;
 }
 
+/** 초승달: 큰 원에서 비켜 놓인 작은 원을 덜어낸 모양 */
+function moonGeometry() {
+  const R = 0.36, c = new THREE.Vector2(0.17, 0.08), r = 0.31, th = Math.atan2(c.y, c.x);
+  const pts: THREE.Vector2[] = [];
+  for (let i = 1; i < 96; i++) {
+    const a = th + (i / 96) * Math.PI * 2;
+    const p = new THREE.Vector2(Math.cos(a) * R, Math.sin(a) * R);
+    if (p.distanceTo(c) > r) pts.push(p);
+  }
+  for (let i = 96; i > 0; i--) {
+    const a = th + (i / 96) * Math.PI * 2;
+    const p = new THREE.Vector2(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r);
+    if (p.length() < R) pts.push(p);
+  }
+  const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: 0.14, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2 });
+  g.center();
+  return g.rotateZ(0.35);
+}
+
+/** 연꽃 등: 바깥 꽃잎 여덟 장, 안쪽 다섯 장이 조금씩 다르게 벌어져요 */
+function lotusGeometry() {
+  const parts: THREE.BufferGeometry[] = [new THREE.SphereGeometry(0.3, 12, 6).scale(1, 0.32, 1).translate(0, -0.12, 0)];
+  for (let k = 0; k < 8; k++) parts.push(new THREE.SphereGeometry(0.15, 8, 6).scale(0.75, 1.55, 0.42).translate(0, 0.2, 0).rotateX(0.62 + (k % 3) * 0.06).rotateY((k / 8) * Math.PI * 2 + 0.2).translate(0, -0.12, 0));
+  for (let k = 0; k < 5; k++) parts.push(new THREE.SphereGeometry(0.12, 8, 6).scale(0.75, 1.6, 0.45).translate(0, 0.18, 0).rotateX(0.28).rotateY((k / 5) * Math.PI * 2 + 0.6).translate(0, -0.08, 0));
+  return mergeGeometries(parts)!;
+}
+
+/** 작은 집 모양 등: 돌아올 집 */
+function houseGeometry() {
+  return mergeGeometries([
+    new THREE.BoxGeometry(0.46, 0.38, 0.4).translate(0, -0.08, 0),
+    new THREE.ConeGeometry(0.41, 0.3, 4).rotateY(Math.PI / 4).scale(1.05, 1, 0.92).translate(0, 0.26, 0),
+  ])!;
+}
+
 const GEO: Record<LampShape, THREE.BufferGeometry> = {
   둥근: new THREE.SphereGeometry(0.32, 14, 10).scale(1, 1.25, 1),
   네모: new THREE.CylinderGeometry(0.3, 0.3, 0.62, 4, 1).rotateY(Math.PI / 4),
+  초롱: new THREE.CylinderGeometry(0.25, 0.25, 0.7, 10),
   별: starGeometry(),
+  달: moonGeometry(),
+  연꽃: lotusGeometry(),
+  집: houseGeometry(),
   // 풍등: 위는 좁고 아래가 트인 종이 등. 안쪽 불빛이 비쳐 보여요.
   풍등: new THREE.CylinderGeometry(0.27, 0.36, 0.78, 16, 1, true),
 };
@@ -105,6 +146,8 @@ const CAP = new THREE.CylinderGeometry(0.14, 0.18, 0.08, 10);
 const POLE = new THREE.CylinderGeometry(0.035, 0.045, 1, 6).translate(0, 0.5, 0);
 const CORD = new THREE.CylinderGeometry(0.008, 0.008, 1, 4).translate(0, 0.5, 0);
 const HIT = new THREE.SphereGeometry(0.9, 8, 6);
+// 물에 비친 불빛: 바닥에 눕힌 판. 앞(+z)으로 길게 늘여 보는 사람 쪽으로 돌려요
+const REFL = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.45);
 
 export class Village {
   private renderer: THREE.WebGLRenderer;
@@ -125,6 +168,10 @@ export class Village {
   private stars!: THREE.Points;
   private beam!: THREE.Object3D;
   private boat!: THREE.Object3D;
+  /** 배가 들어오는 길: 먼 바다 → 부두 끝 → 다시 먼 바다 */
+  private ferry!: { arrive: THREE.QuadraticBezierCurve3; leave: THREE.QuadraticBezierCurve3; dock: THREE.Vector3; heading: number };
+  /** 물 위에서 흔들리는 것들 (매어 둔 배, 부표) */
+  private bobs: { o: THREE.Object3D; y: number; ph: number; roll: number }[] = [];
   private down: { x: number; y: number; t: number } | null = null;
   private ro: ResizeObserver;
   private paused = false;
@@ -352,17 +399,7 @@ export class Village {
     }
     this.env.add(planks, posts);
 
-    // 작은 배
-    const boat = new THREE.Group();
-    const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).scale(0.8, 0.5, 2), landMat);
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3, 5).translate(0, 1.5, 0), landMat);
-    mast.rotation.z = 0.06;
-    boat.add(hull, mast);
-    const end = pierAt(0.85);
-    boat.position.set(end.x + 4.2, 0.1, end.z);
-    boat.rotation.y = 0.4;
-    this.boat = boat;
-    this.env.add(boat);
+    this.buildHarbor(landMat);
 
     // 등대: 섬에서 가장 높은 곳에, 아주 조금 기울어서
     let best: { x: number; z: number; y: number } = { x: ISLANDS.등대.x, z: ISLANDS.등대.z, y: -9 };
@@ -403,6 +440,212 @@ export class Village {
   }
 
   /** 무지개마을: 바다 건너 풀밭 섬, 작은 집, 연못, 나무, 바위, 그리고 등대에서 이어지는 무지개다리 */
+  /** 항구: 부두 끝 쉼터와 의자, 대합실, 매어 둔 작은 배, 부표, 난간 밧줄, 드나드는 배 */
+  private buildHarbor(landMat: THREE.MeshStandardMaterial) {
+    this.bobs = [];
+    const r = rng(17);
+    const pierMat = new THREE.MeshStandardMaterial({ color: this.p.pier, roughness: 1 });
+    const ropeMat = new THREE.LineBasicMaterial({ color: this.p.shore, transparent: true, opacity: 0.7 });
+    const right = (yaw: number) => new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const fwd = (yaw: number) => new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+    const onPier = (u: number, side: number, up = 0) => {
+      const a = pierAt(u);
+      return new THREE.Vector3(a.x, a.deck + up, a.z).addScaledVector(right(a.yaw), side);
+    };
+    const rope = (pts: THREE.Vector3[]) => this.env.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), ropeMat));
+
+    // 난간 밧줄: 기둥 사이로 조금씩 처져요
+    const postN = Math.round(PIER.len / 3);
+    for (const sd of [-1, 1]) {
+      const pts: THREE.Vector3[] = [];
+      for (let k = 0; k < postN; k++) {
+        const u0 = k / postN + 0.02, u1 = Math.min(0.97, (k + 1) / postN + 0.02);
+        if (u0 >= u1) break;
+        for (let j = 0; j <= 6; j++) {
+          const w = j / 6;
+          pts.push(onPier(u0 + (u1 - u0) * w, sd * (PIER.w / 2 - 0.05), 0.36 - Math.sin(Math.PI * w) * (0.13 + r() * 0.05)));
+        }
+      }
+      rope(pts);
+    }
+
+    // 부두 끝: 조금 넓은 쉼터와, 바다 쪽을 보는 긴 의자 하나
+    const end = pierAt(0.985);
+    const head = new THREE.Group();
+    head.position.set(end.x, end.deck, end.z);
+    head.rotation.set(0.01, end.yaw + 0.04, -0.015);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(PIER.w + 3.4, 0.12, 2.8), pierMat);
+    deck.position.set(0.4, -0.06, 0.2);
+    head.add(deck);
+    const bench = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 0.46), pierMat);
+    seat.position.y = 0.46;
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.42, 0.06), pierMat);
+    back.position.set(0, 0.76, -0.22);
+    back.rotation.x = -0.12;
+    bench.add(seat, back);
+    for (const lx of [-0.8, 0.8]) for (const lz of [-0.17, 0.17]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.46, 0.07), pierMat);
+      leg.position.set(lx, 0.23, lz);
+      bench.add(leg);
+    }
+    bench.position.set(0.9, 0, 0.5);
+    bench.rotation.y = -0.07;
+    head.add(bench);
+    // 배를 매는 말뚝
+    for (const [bx, bz] of [[-2.3, 1.2], [2.9, 1.0], [2.6, -0.9]]) {
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.19, 0.42, 8), pierMat);
+      b.position.set(bx, 0.21, bz);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.07, 8), pierMat);
+      cap.position.set(bx, 0.44, bz);
+      head.add(b, cap);
+    }
+    this.env.add(head);
+
+    // 부두 들머리: 상자와 통 몇 개
+    for (let i = 0; i < 5; i++) {
+      const sd = (i < 3 ? -1 : 1) * (PIER.w / 2 - 0.5 - r() * 0.3);
+      const at = onPier(0.015 + r() * 0.04, sd);
+      const m = i % 2
+        ? new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.25, 0.7, 10).translate(0, 0.35, 0), landMat)
+        : new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.55, 0.62).translate(0, 0.275, 0), pierMat);
+      m.position.copy(at);
+      m.rotation.y = r() * 3;
+      if (i === 2) m.position.y += 0.55; // 하나는 위에 얹어요
+      this.env.add(m);
+    }
+
+    // 대합실: 부두가 시작되는 언덕 자락의 작은 집. 창에는 불이 없어요 (빛은 등불만)
+    const root = pierAt(0);
+    let spot = { x: root.x - 5, z: root.z - 4, y: groundAt(root.x - 5, root.z - 4), d: 1e9 };
+    for (let dx = -10; dx <= 2; dx += 0.5) for (let dz = -10; dz <= 1; dz += 0.5) {
+      const x = root.x + dx, z = root.z + dz, y = groundAt(x, z);
+      const flat = Math.abs(groundAt(x + 1.5, z) - y) + Math.abs(groundAt(x, z + 1.5) - y);
+      const d = Math.hypot(dx + 5, dz + 3) + flat * 4;
+      if (y > 0.6 && y < 3 && d < spot.d) spot = { x, z, y, d };
+    }
+    const hut = new THREE.Group();
+    hut.position.set(spot.x, spot.y - 0.15, spot.z);
+    hut.rotation.set(0.015, root.yaw + 0.5, -0.02);
+    const wallMat = new THREE.MeshStandardMaterial({ color: this.p.tower, roughness: 0.9 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: this.p.band, roughness: 0.9 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: this.p.tree, roughness: 1 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.9, 2.2).translate(0, 0.95, 0), wallMat);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.35, 1.15, 4).rotateY(Math.PI / 4).scale(1.05, 1, 0.82).translate(0, 2.45, 0), roofMat);
+    roof.rotation.z = 0.03;
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.62, 1.15, 0.05).translate(0, 0.58, 1.12), darkMat);
+    door.position.x = -0.6;
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.48, 0.05).translate(0.65, 1.15, 1.12), darkMat);
+    const bench2 = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.36).translate(0.6, 0.42, 1.4), pierMat);
+    hut.add(body, roof, door, win, bench2);
+    this.env.add(hut);
+
+    // 매어 둔 작은 배 두 척과 부표
+    const hullGeo = (w: number, h: number, l: number) => new THREE.SphereGeometry(1, 14, 7, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).scale(w, h, l);
+    for (const [u, sd, turn] of [[0.48, -1, 0.12], [0.66, 1, -0.2]] as const) {
+      const a = pierAt(u);
+      const boat = new THREE.Group();
+      const hull = new THREE.Mesh(hullGeo(0.55, 0.32, 1.35), pierMat);
+      hull.rotation.x = Math.PI; // 속이 빈 쪽이 위로
+      hull.position.y = 0.32;
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.05, 0.22), landMat);
+      plank.position.y = 0.26;
+      boat.add(hull, plank);
+      const pos = onPier(u, sd * (PIER.w / 2 + 1.25));
+      boat.position.set(pos.x, 0.05, pos.z);
+      boat.rotation.y = a.yaw + turn;
+      this.env.add(boat);
+      this.bobs.push({ o: boat, y: 0.05, ph: u * 9, roll: 0.06 });
+      // 뱃머리에서 가까운 기둥으로 밧줄
+      const bow = boat.position.clone().addScaledVector(fwd(a.yaw + turn), 1.1).setY(0.4);
+      const post = onPier(u + 0.03, sd * (PIER.w / 2 - 0.05), 0.35);
+      const mid = bow.clone().lerp(post, 0.5).setY(Math.min(bow.y, post.y) - 0.2);
+      rope([bow, mid, post]);
+    }
+    const buoyMat = new THREE.MeshStandardMaterial({ color: this.p.band, roughness: 0.8 });
+    for (const [u, sd] of [[0.78, -1], [1.05, 1], [1.12, -1]] as const) {
+      const pos = onPier(Math.min(u, 1), sd * (PIER.w / 2 + 4 + r() * 2)).addScaledVector(fwd(pierAt(1).yaw), (u - 1) * 30 * (u > 1 ? 1 : 0));
+      const buoy = new THREE.Group();
+      buoy.add(
+        new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8).scale(1, 0.8, 1), buoyMat),
+        new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.6, 6).translate(0, 0.45, 0), buoyMat),
+      );
+      buoy.position.set(pos.x, 0.12, pos.z);
+      this.env.add(buoy);
+      this.bobs.push({ o: buoy, y: 0.12, ph: u * 17, roll: 0.12 });
+    }
+
+    // 드나드는 배: 먼 바다에서 들어와 부두 끝에 잠시 머물다 다시 나가요
+    const ferry = new THREE.Group();
+    const fh = new THREE.Mesh(hullGeo(1.25, 0.62, 3.4), pierMat);
+    fh.rotation.x = Math.PI;
+    fh.position.y = 0.5;
+    const deckTop = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 5.2), landMat);
+    deckTop.position.y = 0.48;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.05, 1.7).translate(0, 1.0, -0.9), wallMat);
+    const cabinRoof = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.1, 1.95).translate(0, 1.58, -0.9), roofMat);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 3.2, 5).translate(0, 1.6, 0.9), landMat);
+    mast.rotation.z = 0.05;
+    ferry.add(fh, deckTop, cabin, cabinRoof, mast);
+    const dockU = pierAt(0.95);
+    const dock = onPier(0.95, PIER.w / 2 + 1.75).setY(0);
+    const f = fwd(dockU.yaw), rt = right(dockU.yaw);
+    const arrive = new THREE.QuadraticBezierCurve3(
+      dock.clone().addScaledVector(f, 210).addScaledVector(rt, 95),
+      dock.clone().addScaledVector(f, 16).addScaledVector(rt, 1.5),
+      dock.clone(),
+    );
+    const leave = new THREE.QuadraticBezierCurve3(
+      dock.clone(),
+      dock.clone().addScaledVector(rt, 10).addScaledVector(f, 6),
+      dock.clone().addScaledVector(f, 200).addScaledVector(rt, -45),
+    );
+    const tan = arrive.getTangent(1);
+    const heading = Math.atan2(tan.x, tan.z);
+    ferry.position.copy(dock);
+    ferry.rotation.y = heading;
+    this.ferry = { arrive, leave, dock, heading };
+    this.boat = ferry;
+    this.env.add(ferry);
+  }
+
+  /** 드나드는 배 움직이기. t 가 없으면(움직임 줄이기) 부두에 매어 둔 채로 */
+  private sailFerry(t: number | null) {
+    const f = this.ferry, b = this.boat;
+    if (!f) return;
+    if (t == null) {
+      b.visible = true;
+      b.position.set(f.dock.x, 0.12, f.dock.z);
+      b.rotation.set(0, f.heading, 0);
+      return;
+    }
+    const CYCLE = 150, k = (t % CYCLE) / CYCLE;
+    const pos = new THREE.Vector3(), tan = new THREE.Vector3();
+    if (k < 0.35) {
+      const s = 1 - Math.pow(1 - k / 0.35, 3); // 들어올 땐 천천히 멈추듯
+      f.arrive.getPoint(s, pos);
+      f.arrive.getTangent(s, tan);
+    } else if (k < 0.6) {
+      pos.copy(f.dock);
+      tan.set(Math.sin(f.heading), 0, Math.cos(f.heading));
+    } else if (k < 0.95) {
+      const s = Math.pow((k - 0.6) / 0.35, 2); // 나갈 땐 천천히 출발해서
+      f.leave.getPoint(s, pos);
+      f.leave.getTangent(s, tan);
+    } else {
+      b.visible = false;
+      return;
+    }
+    const want = Math.atan2(tan.x, tan.z);
+    if (!b.visible) b.rotation.y = want;
+    b.visible = true;
+    let d = want - b.rotation.y;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    b.rotation.y += d * 0.025;
+    b.position.set(pos.x, 0.12 + Math.sin(t * 1.1) * 0.06, pos.z);
+    b.rotation.z = Math.sin(t * 0.9) * 0.03;
+  }
+
   private buildRainbow() {
     const isl = ISLANDS.무지개;
     const p = this.p;
@@ -556,8 +799,7 @@ export class Village {
     // 자리
     const [x, z] = slotOf(place, i);
     const info = PLACE_INFO[place];
-    const pierU = (0.1 + i * 0.05);
-    const ground = place === "항구" ? pierAt(pierU).deck : place === "하늘" ? skyY(i) : Math.max(0.2, groundAt(x, z));
+    const ground = place === "항구" ? harborSlot(i).deck : place === "하늘" ? skyY(i) : Math.max(0.2, groundAt(x, z));
     it.idx = i;
     it.group.position.set(x, ground, z);
     // 기둥은 조금씩 기울고, 높이도 조금씩 달라요
@@ -571,6 +813,12 @@ export class Village {
     it.lift = !isMiss(l) && left < 0 ? Math.min(6, 1.5 + -left * 0.8) : 0;
     it.swing.position.y = it.baseY + it.lift;
     it.lamp.set(x, ground + it.swing.position.y * LAMP_SCALE, z);
+    if (it.refl) {
+      // 부두 바깥 물 위로 조금 비켜서
+      const h = harborSlot(i);
+      const out = Math.sign(h.side) * (PIER.w / 2 - Math.abs(h.side) + 1.2);
+      it.refl.position.set(x + Math.cos(h.yaw) * out, 0.36, z - Math.sin(h.yaw) * out);
+    }
 
     this.setTag(it, l);
   }
@@ -619,13 +867,18 @@ export class Village {
       const flame = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff1d0 }));
       flame.position.y = -0.3;
       swing.add(flame);
-    } else if (shape !== "별") {
+    } else if (shape === "둥근" || shape === "네모" || shape === "초롱") {
       const capMat = new THREE.MeshStandardMaterial({ color: 0x241712, roughness: 1 });
       const top = new THREE.Mesh(CAP, capMat);
       top.position.y = 0.38;
       const bottom = new THREE.Mesh(CAP, capMat);
       bottom.position.y = -0.38;
       swing.add(top, bottom);
+      if (shape === "초롱") {
+        // 초롱 아래로 늘어진 술
+        const tassel = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.26, 6).translate(0, -0.55, 0), capMat);
+        swing.add(tassel);
+      }
     }
 
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -639,8 +892,15 @@ export class Village {
     const tag = document.createElement("div");
     this.tags.appendChild(tag);
 
+    let refl: THREE.Mesh | undefined;
+    if (place === "항구") {
+      refl = new THREE.Mesh(REFL, new THREE.MeshBasicMaterial({ map: this.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+      refl.renderOrder = 1;
+      this.scene.add(refl);
+    }
+
     const it: Item = {
-      id: l.id, data: l, place, group, swing, body, mat, glow, hit,
+      id: l.id, data: l, place, group, swing, body, mat, glow, hit, refl,
       lamp: new THREE.Vector3(), tag, glowLevel: 0.5, phase: Math.random() * 10, idx: 0, baseY: 1.45, lift: 0, look,
     };
     this.items.set(l.id, it);
@@ -675,6 +935,10 @@ export class Village {
 
   private remove(it: Item) {
     this.scene.remove(it.group);
+    if (it.refl) {
+      this.scene.remove(it.refl);
+      (it.refl.material as THREE.Material).dispose();
+    }
     it.group.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | undefined;
       m?.dispose();
@@ -763,7 +1027,15 @@ export class Village {
       // 하늘 등불은 바다 쪽 낮은 곳에서 올려다봐요
       return this.flyTo(target.clone().add(new THREE.Vector3(4, -9, 30).multiplyScalar(this.narrow ? 1.25 : 1)), target);
     }
-    const off = (place === "숲" ? new THREE.Vector3(3, 15, 17) : place === "항구" ? new THREE.Vector3(12, 8, 18) : new THREE.Vector3(5, 8, 22)).multiplyScalar(this.narrow ? 1.3 : 1);
+    if (place === "항구") {
+      // 항구는 바다 쪽, 부두 끝 너머에서 마을을 돌아봐요: 앞에는 의자와 드나드는 배, 그 너머로 걸린 등불들
+      const at = here.length ? target.clone() : (() => { const q = pierAt(0.3); return new THREE.Vector3(q.x, q.deck + 2, q.z); })();
+      const end = pierAt(1), k = this.narrow ? 1.2 : 1;
+      const look = at.clone().lerp(new THREE.Vector3(end.x, end.deck, end.z), 0.3);
+      const eye = new THREE.Vector3(end.x + 8 * k, end.deck + 9.5 * k, end.z + 16 * k);
+      return this.flyTo(eye, look);
+    }
+    const off = (place === "숲" ? new THREE.Vector3(3, 15, 17) : new THREE.Vector3(5, 8, 22)).multiplyScalar(this.narrow ? 1.3 : 1);
     this.flyTo(target.clone().add(off), target);
   }
 
@@ -916,9 +1188,12 @@ export class Village {
       }
       (this.stars.material as THREE.PointsMaterial).opacity = (0.75 + 0.15 * Math.sin(t * 0.7)) * this.p.stars;
       (this.beam.children[0] as THREE.Sprite).material.opacity = 0.45 + 0.2 * Math.sin(t * 0.8);
-      this.boat.position.y = 0.15 + Math.sin(t * 1.1) * 0.06;
-      this.boat.rotation.z = Math.sin(t * 0.9) * 0.04;
+      for (const b of this.bobs) {
+        b.o.position.y = b.y + Math.sin(t * 1.1 + b.ph) * 0.07;
+        b.o.rotation.z = Math.sin(t * 0.9 + b.ph) * b.roll;
+      }
     }
+    this.sailFerry(calm ? null : t);
 
     const focus = this.selected;
     for (const it of this.items.values()) {
@@ -971,6 +1246,15 @@ export class Village {
       if (it.pet) it.pet.root.scale.setScalar(scale * PET_SCALE);
       else it.body.scale.setScalar(scale);
       it.glow.scale.setScalar(it.pet ? s * 0.6 : s);
+
+      if (it.refl) {
+        // 물에 비친 불빛은 늘 보는 사람 쪽으로 길게 늘어져요
+        const rp = it.refl.position, cp = this.camera.position;
+        it.refl.rotation.y = Math.atan2(cp.x - rp.x, cp.z - rp.z);
+        const shimmer = calm ? 1 : 0.8 + 0.2 * Math.sin(t * 2.3 + it.phase) * Math.sin(t * 1.7 + it.phase * 3);
+        it.refl.scale.set((0.8 + 0.7 * it.glowLevel) * (calm ? 1 : 0.9 + 0.1 * Math.sin(t * 3.1 + it.phase)), 1, 2.6 + 3.4 * it.glowLevel);
+        (it.refl.material as THREE.MeshBasicMaterial).opacity = (0.14 + 0.4 * it.glowLevel) * shimmer * dim * this.p.glow * (it.lift > 0 ? 0.35 : 1);
+      }
     }
 
     // 가까운 등불 몇 개에만 진짜 빛을 줘요

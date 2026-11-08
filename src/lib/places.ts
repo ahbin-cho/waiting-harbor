@@ -76,6 +76,20 @@ export function pierAt(u: number) {
   return { x, z, yaw, deck };
 }
 
+/**
+ * 부두 위 i번째 등불 자리. 양쪽 난간을 엇갈려 걸고, 한 줄이 다 차면 조금 안쪽에 한 줄 더.
+ * 부두 끝(의자가 있는 곳)은 비워둬요.
+ */
+export function harborSlot(i: number) {
+  const PER = 38;
+  const row = Math.floor(i / PER), k = i % PER;
+  const u = 0.08 + Math.floor(k / 2) * 0.046 + (k % 2) * 0.023 + (row % 2) * 0.011 + jitter(i, 10) * 0.005;
+  const p = pierAt(Math.min(u, 0.93));
+  const inset = Math.min(row, 1) * 0.9 + Math.max(0, row - 1) * 0.25;
+  const side = (k % 2 ? 1 : -1) * Math.max(0.3, PIER.w / 2 - 0.35 - inset + jitter(i, 1) * 0.15);
+  return { x: p.x + Math.cos(p.yaw) * side, z: p.z - Math.sin(p.yaw) * side, deck: p.deck, side, yaw: p.yaw };
+}
+
 // ---------- 장소 ----------
 
 export const PLACE_INFO: Record<Place, { x: number; z: number; blurb: string; hang: boolean }> = {
@@ -105,10 +119,8 @@ export function slotOf(place: Place, i: number): [number, number] {
     return [PLACE_INFO.하늘.x + r * Math.cos(a) * 1.6, PLACE_INFO.하늘.z + r * Math.sin(a) * 0.8];
   }
   if (place === "항구") {
-    const u = 0.1 + i * 0.05;
-    const p = pierAt(u);
-    const side = (i % 2 ? 1 : -1) * (PIER.w / 2 - 0.35 + jitter(i, 1) * 0.15);
-    return [p.x + Math.cos(p.yaw) * side, p.z - Math.sin(p.yaw) * side];
+    const h = harborSlot(i);
+    return [h.x, h.z];
   }
   const c = PLACE_INFO[place];
   const k = place === "등대" ? i + 4 : i; // 등대 꼭대기는 비워둬요

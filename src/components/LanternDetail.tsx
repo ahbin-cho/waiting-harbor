@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { Lantern, Note } from "../lib/supabase";
+import { useEffect, useRef, useState } from "react";
+import type { Lantern, Message, Note } from "../lib/supabase";
 import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
@@ -19,8 +19,10 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
+export function LanternDetail({ lantern, me, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
+  /** 지금 보는 사람 (자기가 남긴 말을 지울 수 있게) */
+  me: string | null;
   isMine: boolean;
   isHere: boolean;
   warmth: number;
@@ -29,6 +31,11 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   onLoadNotes: () => void;
   onAddNote: (body: string, isPublic: boolean) => Promise<void>;
   onRemoveNote: (id: number) => Promise<void>;
+  /** 남긴 마음: 다른 사람들이 등불 앞에 남긴 응원과 추모의 말 */
+  messages: Message[] | undefined;
+  onLoadMessages: () => void;
+  onAddMessage: (body: string) => Promise<void>;
+  onRemoveMessage: (id: number) => Promise<void>;
   onWarm: () => Promise<void>;
   onEdit: () => void;
   onClose: () => void;
@@ -48,6 +55,10 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   const [open, setOpen] = useState(true);
   const [askShift, setAskShift] = useState(0);
   const [writing, setWriting] = useState(false);
+  const [say, setSay] = useState("");
+  const [saying, setSaying] = useState(false);
+  const sayRef = useRef<HTMLTextAreaElement>(null);
+  const said = messages ?? [];
   const n = daysLeft(lantern);
   const since = daysSince(lantern);
   const pct = Math.round(progressOf(lantern) * 100);
@@ -75,6 +86,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   useEffect(() => {
     onLoadPhoto();
     onLoadNotes();
+    onLoadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lantern.id]);
 
@@ -84,9 +96,24 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
     try {
       await onWarm();
     } catch {
-      setErr("온기를 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.");
+      setErr(miss ? "추모를 전하지 못했어요. 잠시 뒤 다시 눌러 주세요." : "온기를 보내지 못했어요. 잠시 뒤 다시 눌러 주세요.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function leave() {
+    const body = say.trim();
+    if (!body) return setErr("한 글자라도 적어 주세요.");
+    setSaying(true);
+    setErr("");
+    try {
+      await onAddMessage(body);
+      setSay("");
+    } catch {
+      setErr("오늘은 이 등불에 세 번까지 남길 수 있어요. 내일 다시 남겨 주세요.");
+    } finally {
+      setSaying(false);
     }
   }
 
@@ -130,15 +157,53 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
       {isMine && <p className="here-now">당신의 등불이에요.</p>}
       {isHere && !isMine && <p className="here-now">이 사람도 지금 항구에 와 있어요.</p>}
 
+      {(photoUrl || isMine) && (
+        <div className={`photo-box${photoUrl ? "" : " none"}`}>
+          {photoUrl ? (
+            <img className="photo" src={photoUrl} alt={`${who} 사진`} />
+          ) : isMine && lantern.photo_path ? (
+            <div className="photo photo-empty">사진을 불러오는 중이에요.</div>
+          ) : null}
+          {isMine && (
+            <div className="photo-tools">
+              <label className="text-btn file-btn">
+                {photoBusy ? "올리는 중" : lantern.photo_path ? "사진 바꾸기" : "사진 한 장 넣기"}
+                <input type="file" accept="image/*" disabled={photoBusy} onChange={(e) => pickPhoto(e.target.files?.[0] ?? undefined)} />
+              </label>
+              {lantern.photo_path && (
+                <>
+                  <small className="photo-who">{photoPublic ? "마을 사람들도 봐요" : "나만 봐요"}</small>
+                  <label className="toggle">
+                    <input type="checkbox" checked={photoPublic} onChange={(e) => onPhotoPublic(e.target.checked).catch(() => setErr("바꾸지 못했어요."))} />
+                    마을 사람들에게도 보여요
+                  </label>
+                  <button className="text-btn" onClick={() => onPhoto(null, false).catch(() => setErr("사진을 지우지 못했어요."))}>지우기</button>
+                </>
+              )}
+            </div>
+          )}
+          {isMine && !lantern.photo_path && <p className="small">{who} 사진을 한 장 넣어 두세요. 처음엔 나만 보여요. 넣은 뒤에 마을 사람들에게 보일지 정할 수 있어요.</p>}
+        </div>
+      )}
+
+
       <div className="big">{miss ? `떠난 지 ${gone}일` : ddayText(n)}</div>
       <p className="small">{story}</p>
       {!isMine && (
         <div className="row warm-row">
           <button className="btn" onClick={warm} disabled={busy || sent}>
-            {sent ? "오늘 온기를 보냈어요" : "온기 보내기"}
+            {miss ? (sent ? "오늘 추모했어요" : "추모하기") : sent ? "오늘 온기를 보냈어요" : "온기 보내기"}
+          </button>
+          <button className="ghost" onClick={() => sayRef.current?.focus()}>
+            {miss ? "추모의 말 남기기" : "응원의 말 남기기"}
           </button>
         </div>
       )}
+      <p className="small warmth-line">
+        {miss
+          ? warmth ? `이 등불 앞에서 ${warmth}번 추모했어요.` : "아직 추모한 사람이 없어요."
+          : warmth ? `이 등불에 온기가 ${warmth}번 닿았어요.` : "아직 닿은 온기가 없어요."}
+      </p>
 
       {/* 기다림의 길: 시작한 날 → 오늘 → 돌아오는 날 (그리움은 함께한 시간) */}
       {miss ? (
@@ -162,36 +227,50 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
       </div>
       )}
 
-      {(photoUrl || isMine) && (
-        <div className="photo-box">
-          <p className="section">사진{isMine && lantern.photo_path && <small>{photoPublic ? "마을 사람들도 봐요" : "나만 봐요"}</small>}</p>
-          {photoUrl && <img className="photo" src={photoUrl} alt={`${who} 사진`} />}
-          {isMine && (
-            <div className="photo-tools">
-              <label className="text-btn file-btn">
-                {photoBusy ? "올리는 중" : lantern.photo_path ? "사진 바꾸기" : "사진 한 장 넣기"}
-                <input type="file" accept="image/*" disabled={photoBusy} onChange={(e) => pickPhoto(e.target.files?.[0] ?? undefined)} />
-              </label>
-              {lantern.photo_path && (
-                <>
-                  <label className="toggle">
-                    <input type="checkbox" checked={photoPublic} onChange={(e) => onPhotoPublic(e.target.checked).catch(() => setErr("바꾸지 못했어요."))} />
-                    마을 사람들에게도 보여요
-                  </label>
-                  <button className="text-btn" onClick={() => onPhoto(null, false).catch(() => setErr("사진을 지우지 못했어요."))}>지우기</button>
-                </>
-              )}
-            </div>
-          )}
-          {isMine && !lantern.photo_path && <p className="small">처음엔 나만 보여요. 넣은 뒤에 마을 사람들에게 보일지 정할 수 있어요.</p>}
-        </div>
-      )}
-
       {lantern.line && (
         <>
           <p className="section">등불에 적힌 한 줄</p>
           <p className="note-line">{lantern.line}</p>
         </>
+      )}
+
+      <p className="section">{miss ? "추모의 말" : "응원의 말"} {said.length > 0 && <small>{said.length}</small>}</p>
+      {!isMine && (
+        <div className="compose say">
+          <textarea
+            ref={sayRef}
+            maxLength={200}
+            value={say}
+            onChange={(e) => setSay(e.target.value)}
+            placeholder={miss ? `${who}에게, 또는 ${who}를 그리워하는 사람에게 한마디 남겨요.` : `${who}를 기다리는 사람에게 한마디 남겨요.`}
+            aria-label={miss ? "추모의 말" : "응원의 말"}
+          />
+          <div className="compose-foot">
+            <span className="small">마을 사람 누구나 읽을 수 있어요.</span>
+            <span className="count">{say.length}/200</span>
+          </div>
+          <button className="btn" onClick={leave} disabled={saying}>남기기</button>
+        </div>
+      )}
+      {messages === undefined ? (
+        <p className="small">남겨진 말을 불러오는 중이에요.</p>
+      ) : said.length === 0 ? (
+        <p className="small">{isMine ? "아직 남겨진 말이 없어요." : miss ? "첫 추모의 말을 남겨 주세요." : "첫 응원의 말을 남겨 주세요."}</p>
+      ) : (
+        <ol className="diary said">
+          {said.map((m) => (
+            <li key={m.id}>
+              <span className="diary-day">
+                {md(m.created_at.slice(0, 10))}
+                {m.from_id === me && <em>내가 남긴 말</em>}
+              </span>
+              <p className="diary-body">{m.body}</p>
+              {(isMine || m.from_id === me) && (
+                <button className="text-btn" onClick={() => onRemoveMessage(m.id).catch(() => setErr("지우지 못했어요."))}>지우기</button>
+              )}
+            </li>
+          ))}
+        </ol>
       )}
 
       {isMine && (
@@ -242,7 +321,6 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
         </ol>
       )}
 
-      <p className="small warmth-line">{warmth ? `이 등불에 온기가 ${warmth}번 닿았어요.` : "아직 닿은 온기가 없어요."}</p>
       <div className="err" role="alert">{err}</div>
 
       {miss && (

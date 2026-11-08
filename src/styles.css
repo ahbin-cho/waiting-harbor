@@ -164,6 +164,10 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .preview.shape-둥근{border-radius:50% / 46%}
 .preview.shape-네모{border-radius:4px;width:48px}
 .preview.shape-풍등{border-radius:40% 40% 10% 10% / 30% 30% 8% 8%;width:46px;height:60px;clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)}
+.preview.shape-초롱{border-radius:8px;width:42px;height:70px;border-block:7px solid color-mix(in srgb,var(--c) 30%,#000)}
+.preview.shape-달{background:none;border-radius:50%;width:60px;height:60px;box-shadow:inset -17px 8px 0 0 var(--c),14px 0 30px -6px color-mix(in srgb,var(--c) 40%,transparent)}
+.preview.shape-연꽃{clip-path:polygon(50% 0,62% 38%,86% 16%,80% 54%,100% 52%,84% 86%,50% 100%,16% 86%,0 52%,20% 54%,14% 16%,38% 38%);box-shadow:none;width:68px;height:58px}
+.preview.shape-집{clip-path:polygon(50% 0,100% 40%,92% 40%,92% 100%,8% 100%,8% 40%,0 40%);box-shadow:none;width:60px}
 .preview.shape-별{clip-path:polygon(50% 2%,61% 36%,98% 36%,68% 58%,79% 94%,50% 72%,21% 94%,32% 58%,2% 36%,39% 36%);box-shadow:none;width:66px}
 
 /* 작은 글자 버튼 */
@@ -275,8 +279,16 @@ video.clip{display:block;width:min(100%,280px);aspect-ratio:9/16;margin:16px aut
 .theme-switch .text-btn[aria-pressed="true"]{color:var(--ink);text-decoration-color:var(--ink)}
 
 /* 등불 사진 */
-.photo-box .section small{margin-left:8px;color:var(--faint)}
-img.photo{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:12px;background:var(--field)}
+/* 사진이 있으면 상세 맨 위에 크게: 이 사람이 누구인지 가장 먼저 보여요 */
+.photo-box{margin:12px 0 4px}
+.photo-box.none{border:1px dashed var(--line);border-radius:12px;padding:12px 14px}
+.photo-box.none .photo-tools{margin-top:0}
+img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;border-radius:12px;background:var(--field)}
+.photo-empty{height:180px;display:grid;place-items:center;border-radius:12px;background:var(--field);color:var(--muted);font-size:.85rem}
+.photo-who{color:var(--faint);font-size:.8rem}
+/* 남긴 마음 */
+.say{margin-bottom:14px}
+.say textarea{min-height:72px}
 .photo-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:10px}
 .file-btn{position:relative;cursor:pointer}
 .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
