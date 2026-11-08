@@ -238,7 +238,7 @@ export default function App() {
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} onPick={(id) => !recording && setView({ type: "detail", id })} theme={sceneTheme} world={story != null ? "all" : world}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} cover={view.type === "detail" && !recording ? 0.52 : 0} onPick={(id) => !recording && setView({ type: "detail", id })} theme={sceneTheme} world={story != null ? "all" : world}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {
