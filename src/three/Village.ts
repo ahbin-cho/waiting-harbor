@@ -3,7 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { Lantern } from "../lib/supabase";
 import { COLORS, colorOf, shapeOf, type LampShape } from "../lib/looks";
-import { ISLANDS, PIER, PLACE_INFO, RAINBOW, fbm, groundAt, harborSlot, jitter, pierAt, placeOf, skyY, slotOf, type Place } from "../lib/places";
+import { ISLANDS, PIER, PLACE_INFO, RAINBOW, fbm, groundAt, harborSlot, jitter, pierAt, placeOf, skyY, slotOf, worldOf, type Place, type World } from "../lib/places";
 import { speciesOf } from "../lib/pets";
 import { makePet, type PetRig } from "./pets";
 import { Shrine, type ShrineInfo } from "./shrine";
@@ -173,6 +173,8 @@ export class Village {
   private ferry!: { arrive: THREE.QuadraticBezierCurve3; leave: THREE.QuadraticBezierCurve3; dock: THREE.Vector3; heading: number };
   /** 물 위에서 흔들리는 것들 (매어 둔 배, 부표) */
   private bobs: { o: THREE.Object3D; y: number; ph: number; roll: number }[] = [];
+  /** 지금 보고 있는 곳: 기다림 항구, 추모관, 또는 이야기처럼 모두 */
+  private world: World | "all" = "wait";
   /** 열린 등불 곁의 작은 자리 */
   private shrine: Shrine | null = null;
   private shrineInfo: ShrineInfo | null = null;
@@ -216,6 +218,7 @@ export class Village {
     this.buildSky();
     this.buildLand();
     this.buildRainbow();
+    this.buildMemorial();
 
     for (let i = 0; i < LIGHT_POOL; i++) {
       const l = new THREE.PointLight(0xffb867, 0, 11, 1.8);
@@ -659,6 +662,86 @@ export class Village {
     b.rotation.z = Math.sin(t * 0.9) * 0.03;
   }
 
+  /** 추모관 섬: 무지개마을 곁의 조용한 섬. 가운데 작은 정자, 가늘고 흰 나무들, 디딤돌. 불은 켜지 않아요. */
+  private buildMemorial() {
+    const isl = ISLANDS.추모;
+    const p = this.p;
+    const geo = new THREE.PlaneGeometry(50, 50, 90, 90).rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    const colors: number[] = [];
+    const low = new THREE.Color(p.memLand), high = new THREE.Color(p.memHigh), sand = new THREE.Color(p.shore), tmp = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i) + isl.x, z = pos.getZ(i) + isl.z, y = groundAt(x, z);
+      pos.setXYZ(i, x, Math.max(y, -3), z);
+      tmp.copy(low).lerp(high, THREE.MathUtils.clamp(y / 4, 0, 1) * 0.7 + (fbm(x * 0.3, z * 0.3) - 0.5) * 0.25);
+      if (y < 0.4) tmp.lerp(sand, THREE.MathUtils.clamp(1 - (y + 0.3) / 0.7, 0, 1) * 0.6);
+      colors.push(tmp.r, tmp.g, tmp.b);
+    }
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    this.env.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })));
+
+    const rand = rng(53);
+    const g = (x: number, z: number) => Math.max(0.1, groundAt(x, z));
+    // 가장 높은 곳 근처에 작은 정자
+    let top: { x: number; z: number; y: number } = { x: isl.x, z: isl.z, y: -9 };
+    for (let dx = -5; dx <= 5; dx++) for (let dz = -5; dz <= 5; dz++) {
+      const y = groundAt(isl.x + dx, isl.z + dz);
+      if (y > top.y) top = { x: isl.x + dx, z: isl.z + dz, y };
+    }
+    const wood = new THREE.MeshStandardMaterial({ color: p.pier, roughness: 1 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: p.band, roughness: 0.9 });
+    const pav = new THREE.Group();
+    pav.position.set(top.x, top.y - 0.1, top.z);
+    pav.rotation.set(0.01, 0.4, -0.015);
+    pav.add(new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.5, 0.3, 6).translate(0, 0.15, 0), wood));
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.3, 6).translate(0, 1.45, 0), wood);
+      post.position.set(Math.cos(a) * 1.95, 0, Math.sin(a) * 1.95);
+      pav.add(post);
+    }
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.9, 1.2, 6).translate(0, 3.15, 0), roofMat);
+    roof.rotation.z = 0.02;
+    pav.add(roof);
+    this.env.add(pav);
+
+    // 디딤돌: 바닷가에서 정자까지 구불구불
+    const stone = new THREE.MeshStandardMaterial({ color: p.landHigh, roughness: 1 });
+    const from = new THREE.Vector2(isl.x + 4, isl.z + 15), to = new THREE.Vector2(top.x + 0.5, top.z + 2.6);
+    for (let k = 0; k < 11; k++) {
+      const w = k / 10;
+      const x = THREE.MathUtils.lerp(from.x, to.x, w) + Math.sin(w * 5) * 1.6, z = THREE.MathUtils.lerp(from.y, to.y, w);
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.12, 7), stone);
+      m.position.set(x, g(x, z) + 0.02, z);
+      m.rotation.y = rand() * 3;
+      m.scale.set(1 + rand() * 0.3, 1, 0.8 + rand() * 0.3);
+      this.env.add(m);
+    }
+
+    // 가늘고 흰 나무들: 듬성듬성, 조금씩 기울어서
+    const bark = new THREE.MeshStandardMaterial({ color: p.tower, roughness: 1 });
+    const leaf = new THREE.MeshStandardMaterial({ color: p.tree2, roughness: 1 });
+    for (let n = 0, made = 0; made < 12 && n < 200; n++) {
+      const a = rand() * Math.PI * 2, r = 5 + rand() * isl.r * 0.6;
+      const x = isl.x + Math.cos(a) * r, z = isl.z + Math.sin(a) * r, y = groundAt(x, z);
+      if (y < 0.4 || Math.hypot(x - top.x, z - top.z) < 4.5) continue;
+      const h = 3.2 + rand() * 2.2;
+      const t = new THREE.Group();
+      t.position.set(x, y - 0.1, z);
+      t.rotation.set((rand() - 0.5) * 0.12, rand() * 3, (rand() - 0.5) * 0.12);
+      t.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.12, h, 6).translate(0, h / 2, 0), bark));
+      for (let k = 0; k < 3; k++) {
+        const c = new THREE.Mesh(new THREE.SphereGeometry(0.8 - k * 0.15, 8, 6), leaf);
+        c.position.set((rand() - 0.5) * 0.7, h - 0.2 + k * 0.5, (rand() - 0.5) * 0.7);
+        c.scale.y = 0.75;
+        t.add(c);
+      }
+      this.env.add(t);
+      made++;
+    }
+  }
+
   private buildRainbow() {
     const isl = ISLANDS.무지개;
     const p = this.p;
@@ -984,6 +1067,7 @@ export class Village {
     this.buildSky();
     this.buildLand();
     this.buildRainbow();
+    this.buildMemorial();
     for (const it of this.items.values()) {
       it.group.traverse((o) => {
         if (o.userData.pole) ((o as THREE.Mesh).material as THREE.MeshStandardMaterial).color.set(p.pier);
@@ -1108,8 +1192,29 @@ export class Village {
     this.applyTreeClear();
   }
 
+  /** 기다림 항구와 추모관 사이를 오가요. 그곳의 등불만 보여요. */
+  setWorld(w: World | "all") {
+    this.world = w;
+  }
+
+  private shown(it: Item) {
+    return this.world === "all" || worldOf(it.data) === this.world;
+  }
+
   overview(instant = false) {
     this.releaseTrees();
+    if (this.world === "miss") {
+      // 추모관: 마을 쪽에서 바다 건너 추모관 섬과 무지개마을을 함께 바라봐요
+      // 세로 화면에선 무지개마을 뒤쪽에서 바라봐서 두 섬이 위아래로 겹쳐 보이게
+      const t = this.narrow ? new THREE.Vector3(76, 2, -58) : new THREE.Vector3(74, 3, -62);
+      const dir = this.narrow ? new THREE.Vector3(0.62, 0.62, 0.48) : new THREE.Vector3(-0.42, 0.5, 0.76);
+      const p = t.clone().addScaledVector(dir.normalize(), this.narrow ? 120 : 88);
+      if (instant) {
+        this.camera.position.copy(p);
+        this.controls.target.copy(t);
+      } else this.flyTo(p, t, 1600);
+      return;
+    }
     const target = new THREE.Vector3(-2, 0, -10);
     const dir = new THREE.Vector3(0.22, 0.52, 0.83).normalize();
     const pos = target.clone().addScaledVector(dir, this.narrow ? 185 : 100);
@@ -1232,7 +1337,7 @@ export class Village {
     const r = this.renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
-    const hits = this.raycaster.intersectObjects([...this.items.values()].map((i) => i.hit), false);
+    const hits = this.raycaster.intersectObjects([...this.items.values()].filter((i) => this.shown(i)).map((i) => i.hit), false);
     const id = hits[0]?.object.userData.id as string | undefined;
     if (!id) return;
     const it = this.items.get(id)!;
@@ -1301,7 +1406,7 @@ export class Village {
     // 마을 밖으로 너무 멀리 가지 않게
     const tg = this.controls.target;
     tg.x = THREE.MathUtils.clamp(tg.x, -75, 120);
-    tg.z = THREE.MathUtils.clamp(tg.z, -70, 45);
+    tg.z = THREE.MathUtils.clamp(tg.z, -95, 45);
     tg.y = THREE.MathUtils.clamp(tg.y, -2, 14);
     if (!this.cine) this.controls.update();
     else this.camera.lookAt(this.controls.target);
@@ -1334,6 +1439,11 @@ export class Village {
 
     const focus = this.selected;
     for (const it of this.items.values()) {
+      // 다른 곳(기다림/추모관)의 등불은 숨겨요
+      const vis = this.shown(it);
+      it.group.visible = vis;
+      if (it.refl) it.refl.visible = vis;
+      if (!vis) continue;
       if (it.pet) {
         it.pet.update(t, calm);
         it.lamp.copy(it.pet.root.position).setY(it.pet.root.position.y + it.pet.headY * 0.6 * PET_SCALE);
@@ -1397,6 +1507,7 @@ export class Village {
     // 가까운 등불 몇 개에만 진짜 빛을 줘요
     if (this.frame++ % 8 === 0) {
       const near = [...this.items.values()]
+        .filter((it) => this.shown(it))
         .map((it) => ({ it, d: it.lamp.distanceToSquared(this.controls.target) }))
         .sort((a, b) => a.d - b.d)
         .slice(0, LIGHT_POOL);
@@ -1431,6 +1542,10 @@ export class Village {
   private placeTags() {
     const w = this.host.clientWidth, h = this.host.clientHeight;
     for (const it of this.items.values()) {
+      if (!this.shown(it)) {
+        it.tag.style.opacity = "0";
+        continue;
+      }
       const d = this.camera.position.distanceTo(it.lamp);
       let o = d < LABEL_NEAR ? 1 : d > LABEL_FAR ? 0 : 1 - (d - LABEL_NEAR) / (LABEL_FAR - LABEL_NEAR);
       if (this.selected && this.selected !== it.id) o *= 0.3;

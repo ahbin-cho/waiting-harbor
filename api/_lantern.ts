@@ -66,7 +66,7 @@ export const titleOf = (l: SharedLantern) => `${pick(l.who.trim() || "누군가"
 export function summary(l: SharedLantern) {
   const f = facts(l);
   if (f.miss && l.place === "무지개") return `함께한 날 ${f.together.toLocaleString()}일. 무지개다리 건너 무지개마을에서 지내요.`;
-  if (f.miss) return `함께한 날 ${f.together.toLocaleString()}일. 하늘에 띄운 풍등이에요.`;
+  if (f.miss) return `함께한 날 ${f.together.toLocaleString()}일. 추모관 하늘에 띄운 풍등이에요.`;
   if (f.left > 0) return `기다린 지 ${f.since}일째, ${f.left}일 남았어요. ${l.place}에 걸린 등불이에요.`;
   if (f.left === 0) return `오늘 ${pick(l.who, "이", "가")} 돌아와요. ${l.place}에 걸린 등불이에요.`;
   return `${f.since}일을 기다려 다시 만났어요. 등불은 하늘로 올라갔어요.`;

@@ -141,7 +141,7 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
   }
 
   const ask: Record<string, [string, string]> = {
-    mode: ["어떤 등불을 걸까요?", "돌아올 사람을 위한 등불은 마을에 걸고, 떠나보낸 사람을 위한 등불은 하늘에 띄워요."],
+    mode: ["어떤 등불을 걸까요?", "돌아올 사람을 위한 등불은 기다림 항구에 걸고, 떠나보낸 사람을 위한 등불은 추모관에 띄워요."],
     who: miss
       ? ["누구를 그리워하고 있어요?", "등불에 이 이름이 적혀요. 여기선 당신을 이 이름으로 불러요."]
       : ["누구를 기다리고 있어요?", "등불에 이 이름이 적혀요. 여기선 당신을 이 이름으로 불러요."],
@@ -180,11 +180,11 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
           <div className="choices">
             <button type="button" className="choice" aria-pressed={!miss} onClick={() => chooseMode("wait")}>
               <b>돌아올 사람을 기다려요</b>
-              <span>군대, 먼 곳의 연인, 다른 나라에 있는 가족. 돌아오는 날까지 마을에 걸어 둬요.</span>
+              <span>군대, 먼 곳의 연인, 다른 나라에 있는 가족. 돌아오는 날까지 기다림 항구에 걸어 둬요.</span>
             </button>
             <button type="button" className="choice" aria-pressed={miss} onClick={() => chooseMode("miss")}>
               <b>떠나보낸 사람을 그리워해요</b>
-              <span>세상을 떠난 가족, 친구, 함께 살던 반려동물. 마을 위 하늘에 풍등으로 띄워요.</span>
+              <span>세상을 떠난 가족, 친구, 함께 살던 반려동물. 바다 건너 추모관에 풍등으로 띄워요.</span>
             </button>
           </div>
         )}

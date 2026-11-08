@@ -2,7 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import type { Focus } from "./components/Village3D";
 // 3D 마을(three.js)은 무거워서 화면이 먼저 뜬 뒤에 따로 불러와요. 첫 화면이 빨라지고 검색 점수(속도)에도 좋아요.
 const Village3D = lazy(() => import("./components/Village3D").then((m) => ({ default: m.Village3D })));
-import { PLACES, neighbors, placeOf } from "./lib/places";
+import { PLACE_LABEL, WORLD_NAME, WORLD_PLACES, neighbors, placeOf, worldOf, type World } from "./lib/places";
 import { COLORS, colorOf } from "./lib/looks";
 import type { ShrineInfo } from "./three/shrine";
 import { LanternDetail } from "./components/LanternDetail";
@@ -44,6 +44,23 @@ export default function App() {
     return end_date ? { start_date, end_date, kind: (KINDS as readonly string[]).includes(q.get("kind") ?? "") ? q.get("kind")! : undefined } : null;
   });
   const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink || preset ? null : 0));
+  // 기다림 항구 / 추모관: 마지막에 있던 곳을 기억해요. 반려동물 소개 글에서 오면 추모관으로.
+  const [world, setWorldState] = useState<World>(() => {
+    if (preset && "mode" in preset && preset.mode === "miss") return "miss";
+    try {
+      return localStorage.getItem("harbor.world") === "miss" ? "miss" : "wait";
+    } catch {
+      return "wait";
+    }
+  });
+  const setWorld = useCallback((w: World) => {
+    setWorldState(w);
+    try {
+      localStorage.setItem("harbor.world", w);
+    } catch {
+      /* 저장 못 해도 괜찮아요 */
+    }
+  }, []);
   const [shot, setShot] = useState<{ name: Shot; n: number } | null>(null);
   // 테마: 밤 / 노을
   const [theme, setTheme] = useState<ThemeChoice>(() => savedTheme());
@@ -100,6 +117,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, h.status]);
   const picked = view.type === "detail" ? h.lanterns.find((l) => l.id === view.id) : undefined;
+  // 등불을 열면 그 등불이 있는 곳으로 (공유 링크로 들어온 그리움 등불이면 추모관)
+  const pickedWorld = picked ? worldOf(picked) : null;
+  useEffect(() => {
+    if (pickedWorld && pickedWorld !== world) setWorld(pickedWorld);
+  }, [pickedWorld, world, setWorld]);
+  const here = h.lanterns.filter((l) => worldOf(l) === world);
   // 열린 등불의 자리 번호와 앞뒤 등불, 곁에 놓일 작은 자리
   const nav = picked ? neighbors(h.lanterns, picked.id) : null;
   const shrine: ShrineInfo | null = picked
@@ -146,12 +169,14 @@ export default function App() {
     h.status === "unconfigured" ? "Supabase 설정이 아직 없어요. README의 1~3단계를 따라 .env 파일을 만들어주세요."
     : h.status === "error" ? "항구에 연결하지 못했어요. 인터넷 연결을 확인하고 새로고침해주세요."
     : h.status === "loading" ? "등불을 불러오는 중이에요."
-    : "아직 걸린 등불이 없어요. 첫 등불을 걸어 주세요.";
+    : world === "miss"
+      ? "아직 띄운 등불이 없어요. 떠나보낸 사람이나 아이를 위해 첫 등불을 띄워 주세요."
+      : "아직 걸린 등불이 없어요. 첫 등불을 걸어 주세요.";
 
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} shrine={shrine} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} shrine={shrine} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme} world={story != null ? "all" : world}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {
@@ -177,17 +202,37 @@ export default function App() {
             <button className="text-btn" onClick={() => setView({ type: "feedback" })}>의견</button>
           </div>
         </div>
-        <p className="stats">등불 {h.lanterns.length}개, 지금 {h.hereCount}명이 깨어 있어요.</p>
+        <div className="worlds" role="group" aria-label="기다림 항구와 추모관">
+          {(["wait", "miss"] as const).map((w) => (
+            <button
+              key={w}
+              aria-pressed={world === w}
+              onClick={() => {
+                if (w === world) return;
+                setWorld(w);
+                if (view.type === "detail") close();
+                setFocus({ place: "all", n: Date.now() });
+              }}
+            >
+              {WORLD_NAME[w]}
+            </button>
+          ))}
+        </div>
+        <p className="stats">
+          {world === "wait"
+            ? `기다림 등불 ${here.length}개, 지금 ${h.hereCount}명이 깨어 있어요.`
+            : `풍등 ${here.filter((l) => placeOf(l.place) !== "무지개").length}개, 무지개마을 아이 ${here.filter((l) => placeOf(l.place) === "무지개").length}명. 지금 ${h.hereCount}명이 함께 있어요.`}
+        </p>
         <nav className="places" aria-label="장소로 이동">
           <button className="place" onClick={() => setFocus({ place: "all", n: Date.now() })}>전체</button>
-          {PLACES.map((p) => (
+          {WORLD_PLACES[world].map((p) => (
             <button key={p} className="place" onClick={() => setFocus({ place: p, n: Date.now() })}>
-              {p} <small>{h.lanterns.filter((l) => placeOf(l.place) === p).length}</small>
+              {PLACE_LABEL[p]} <small>{h.lanterns.filter((l) => placeOf(l.place) === p).length}</small>
             </button>
           ))}
         </nav>
       </header>
-      {h.status !== "ready" || !h.lanterns.length ? <p className="empty">{empty}</p> : null}
+      {h.status !== "ready" || !here.length ? <p className="empty">{empty}</p> : null}
 
       <div className="bar">
         <span className="hint">{hint}</span>
@@ -206,7 +251,7 @@ export default function App() {
           <LanternForm
             key={view.id ?? "new"}
             initial={editing}
-            preset={preset ?? undefined}
+            preset={preset ?? (world === "miss" && !editing ? { mode: "miss", kind: "가족" } : undefined)}
             onSave={async (v) => {
               const saved = await h.saveLantern(v, editing?.id);
               if (!editing) {
@@ -214,7 +259,7 @@ export default function App() {
                 // 새 등불이 켜지면 그 앞으로 날아가요
                 setHint(
                   v.place === "무지개" ? `${pick(v.who, "이", "가")} 무지개마을에 도착했어요.`
-                  : v.mode === "miss" ? `${pick(v.who, "을", "를")} 그리워하는 풍등을 하늘에 띄웠어요.`
+                  : v.mode === "miss" ? `${pick(v.who, "을", "를")} 그리워하는 풍등을 추모관 하늘에 띄웠어요.`
                   : `${pick(v.who, "을", "를")} 기다리는 등불이 켜졌어요.`,
                 );
                 const id = saved.id;
