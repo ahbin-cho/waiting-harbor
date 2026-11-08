@@ -11,7 +11,7 @@ import { makeOffering, spread } from "./offerings";
 import type { OfferingKind } from "../lib/offerings";
 import { badgeText, daysLeft, glowOf, isMiss } from "../lib/waiting";
 import type { Shot } from "../lib/story";
-import { PALETTES, type Palette, type ThemeName } from "../lib/theme";
+import { PALETTES, RAINBOW_BANDS, type Palette, type ThemeName } from "../lib/theme";
 
 
 const LIGHT_POOL = 6;   // 진짜 빛을 내는 등불 수 (가까운 순)
@@ -767,6 +767,40 @@ export class Village {
       this.env.add(t);
       made++;
     }
+    if (p.clouds) this.buildClouds();
+  }
+
+  /** 추모관(낮)의 구름: 두 섬 둘레 바다 위에 몽글몽글, 하늘엔 드문드문. 빛은 내지 않아요. */
+  private buildClouds() {
+    const mat = new THREE.MeshStandardMaterial({ color: this.p.cloud, roughness: 1 });
+    const puff = new THREE.SphereGeometry(1, 14, 10);
+    const rand = rng(71);
+    const clump = (x: number, y: number, z: number, size: number) => {
+      const g = new THREE.Group();
+      const n = 5 + Math.floor(rand() * 4);
+      for (let i = 0; i < n; i++) {
+        const m = new THREE.Mesh(puff, mat);
+        const a = (i / n) * Math.PI * 2 + rand() * 0.6;
+        const r = size * (0.5 + rand() * 0.5);
+        m.position.set(Math.cos(a) * r, rand() * size * 0.35, Math.sin(a) * r * 0.6);
+        m.scale.set(size * (0.7 + rand() * 0.5), size * (0.45 + rand() * 0.25), size * (0.6 + rand() * 0.4));
+        g.add(m);
+      }
+      g.position.set(x, y, z);
+      g.rotation.y = rand() * 3;
+      this.env.add(g);
+    };
+    // 섬 둘레: 해안에 걸쳐 바다 위로
+    for (const isl of [ISLANDS.추모, ISLANDS.무지개]) {
+      const k = isl === ISLANDS.추모 ? 9 : 11;
+      for (let i = 0; i < k; i++) {
+        const a = (i / k) * Math.PI * 2 + rand() * 0.4;
+        const r = isl.r * (0.95 + rand() * 0.35);
+        clump(isl.x + Math.cos(a) * r, -0.2 + rand() * 0.4, isl.z + Math.sin(a) * r, 2.2 + rand() * 2.2);
+      }
+    }
+    // 하늘의 구름
+    for (let i = 0; i < 10; i++) clump(30 + rand() * 110, 26 + rand() * 18, -150 + rand() * 120, 5 + rand() * 5);
   }
 
   private buildRainbow() {
@@ -871,7 +905,7 @@ export class Village {
     arch.position.set((ax + cx) / 2, -0.4, (az + cz) / 2);
     arch.rotation.y = -Math.atan2(dz, dx);
     arch.scale.y = 0.55;
-    ["#ff8f8f", "#ffb27e", "#ffe08e", "#a2e2a4", "#8fcaff", "#a9a2ff", "#d8a8ff"].forEach((c, k) => {
+    RAINBOW_BANDS.forEach((c, k) => {
       const col = new THREE.Color(c);
       const m = new THREE.Mesh(
         new THREE.TorusGeometry(len / 2 - k * 0.45, 0.24, 8, 80, Math.PI),

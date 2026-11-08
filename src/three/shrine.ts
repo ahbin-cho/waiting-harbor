@@ -2,7 +2,7 @@
 // 액자에 든 사진(없으면 이름), 등불에 적힌 한 줄을 적은 쪽지, 번호와 이름이 적힌 이름판,
 // 그리고 추모(온기)가 닿을 때마다 하나씩 놓이는 작은 등. 빛을 내는 건 작은 등뿐이에요.
 import * as THREE from "three";
-import type { Palette } from "../lib/theme";
+import { RAINBOW_BANDS, type Palette } from "../lib/theme";
 import type { OfferingKind } from "../lib/offerings";
 import { makeOffering, spread } from "./offerings";
 
@@ -20,7 +20,29 @@ export type ShrineInfo = {
   color: string;
   /** 놓고 간 것들 (종류별 수) */
   offerings?: Partial<Record<OfferingKind, number>>;
+  /** 무지개마을 아이면 작은 곰인형이 곁에 앉아 있어요 */
+  pet?: boolean;
 };
+
+/** 모서리가 둥근 판: 가로 w, 세로 h 는 둥글게, 두께 d 는 앞뒤로 (액자, 이름판 받침) */
+function roundedPanel(w: number, h: number, d: number, r: number) {
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2 + r, -h / 2);
+  s.lineTo(w / 2 - r, -h / 2);
+  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+  s.lineTo(w / 2, h / 2 - r);
+  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+  s.lineTo(-w / 2 + r, h / 2);
+  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+  s.lineTo(-w / 2, -h / 2 + r);
+  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+  const b = Math.min(r, d) * 0.5;
+  const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(0.001, d - 2 * b), bevelEnabled: true, bevelSize: b, bevelThickness: b, bevelSegments: 3, curveSegments: 8 });
+  g.center();
+  return g;
+}
+/** 모서리가 둥근 받침: 위에서 본 모양이 둥근 직사각형, 높이 h */
+const roundedSlab = (w: number, h: number, d: number, r: number) => roundedPanel(w, d, h, r).rotateX(-Math.PI / 2);
 
 const MAX_LAMPS = 14;
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
@@ -75,27 +97,43 @@ export class Shrine {
   private offerGroup = new THREE.Group();
   private offerKey = "";
   private palette: Palette;
+  private pet: boolean;
 
   constructor(info: ShrineInfo, p: Palette, glowTex: THREE.Texture, floating: boolean) {
     this.floating = floating;
     this.glowTex = glowTex;
     this.palette = p;
+    this.pet = !!info.pet;
     const g = this.group;
     const keep = <T extends { dispose(): void }>(x: T) => (this.trash.push(x), x);
-    const wood = keep(new THREE.MeshStandardMaterial({ color: p.pier, roughness: 1 }));
-    const boardMat = keep(new THREE.MeshStandardMaterial({ color: p.shrine, roughness: 0.95 }));
+    // 말랑한 점토 같은 느낌: 거칠기를 조금 낮추고 모서리는 다 둥글게
+    const wood = keep(new THREE.MeshStandardMaterial({ color: p.pier, roughness: 0.85 }));
+    const boardMat = keep(new THREE.MeshStandardMaterial({ color: p.shrine, roughness: 0.8 }));
     const lift = floating ? 0 : 0.32;
 
-    // 떠 있는 자리엔 작은 선반: 작은 등과 놓고 간 것이 올라가요
+    // 떠 있는 자리(추모관의 하늘과 무지개마을): 구름 위에 무지개 층을 쌓은 받침.
+    // 작은 등과 놓고 간 것이 맨 위 하얀 판에 올라가요.
     if (floating) {
-      const shelf = new THREE.Mesh(keep(new THREE.BoxGeometry(2.7, 0.07, 0.62)), wood);
-      shelf.position.set(0, -0.05, 0.18);
-      shelf.rotation.z = -0.01;
-      g.add(shelf);
+      const cloudMat = keep(new THREE.MeshStandardMaterial({ color: p.cloud, roughness: 0.9 }));
+      const top = new THREE.Mesh(keep(roundedSlab(2.95, 0.1, 0.85, 0.3)), cloudMat);
+      top.position.set(0, -0.05, 0.16);
+      g.add(top);
+      RAINBOW_BANDS.forEach((c, k) => {
+        const band = new THREE.Mesh(keep(roundedSlab(2.9 - k * 0.07, 0.05, 0.82 - k * 0.02, 0.28)), keep(new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 })));
+        band.position.set(0, -0.125 - k * 0.05, 0.16);
+        g.add(band);
+      });
+      const puff = keep(new THREE.SphereGeometry(1, 14, 10));
+      [[-1.55, -0.42, 0.2, 0.42], [-0.95, -0.55, 0.35, 0.5], [-0.25, -0.6, 0.3, 0.55], [0.45, -0.58, 0.32, 0.52], [1.1, -0.5, 0.28, 0.48], [1.62, -0.4, 0.15, 0.38], [0.1, -0.5, -0.1, 0.5], [-0.8, -0.45, -0.05, 0.42], [0.95, -0.45, -0.05, 0.42]].forEach(([x, y, z, r]) => {
+        const m = new THREE.Mesh(puff, cloudMat);
+        m.position.set(x, y, z);
+        m.scale.set(r * 1.25, r * 0.72, r);
+        g.add(m);
+      });
     }
-    // 받침 (하늘과 무지개마을에선 떠 있으니 받침 없이)
+    // 땅에 놓는 자리(기다림 항구): 모서리가 둥근 나무 받침
     if (!floating) {
-      const base = new THREE.Mesh(keep(new THREE.BoxGeometry(3.0, 0.32, 1.15)), wood);
+      const base = new THREE.Mesh(keep(roundedSlab(3.0, 0.32, 1.15, 0.16)), wood);
       base.position.set(0.05, 0.16, 0.18);
       base.rotation.y = 0.012;
       g.add(base);
@@ -108,9 +146,10 @@ export class Shrine {
     s.lineTo(1.25, 1.5);
     s.absarc(0, 1.5, 1.25, 0, Math.PI, false);
     s.lineTo(-1.25, 0);
-    const boardGeo = keep(new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2, curveSegments: 24 }));
+    // 두툼하고 둥근 테두리 (앞면은 z -0.21 에 와요)
+    const boardGeo = keep(new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelSize: 0.07, bevelThickness: 0.07, bevelSegments: 4, curveSegments: 32 }));
     const board = new THREE.Mesh(boardGeo, boardMat);
-    board.position.set(0, lift, -0.3);
+    board.position.set(0, lift, -0.38);
     board.rotation.z = 0.012;
     g.add(board);
 
@@ -118,7 +157,7 @@ export class Shrine {
     const photoX = hasLine ? -0.5 : 0;
 
     // 액자와 사진
-    const frame = new THREE.Mesh(keep(new THREE.BoxGeometry(1.32, 1.62, 0.07)), wood);
+    const frame = new THREE.Mesh(keep(roundedPanel(1.32, 1.62, 0.07, 0.1)), wood);
     frame.position.set(photoX, lift + 1.42, -0.15);
     frame.rotation.z = -0.018;
     g.add(frame);
@@ -207,12 +246,40 @@ export class Shrine {
     // 작은 등 자리: 받침 앞쪽에 한 줄, 넘치면 뒤에 한 줄 (조금씩 흐트러지게)
     for (let i = 0; i < MAX_LAMPS; i++) {
       const row = i < 8 ? 0 : 1, k = row ? i - 8 : i, n = row ? 6 : 8;
-      const x = -1.25 + (k + 0.5) * (2.5 / n) + Math.sin(i * 12.9) * 0.05;
+      // 곰인형이 앉은 왼쪽 끝은 비워요
+      const x0 = info.pet ? -0.8 : -1.25, w = info.pet ? 2.05 : 2.5;
+      const x = x0 + (k + 0.5) * (w / n) + Math.sin(i * 12.9) * 0.05;
       const z = floating ? (row ? 0.0 : 0.38) : row ? 0.12 : 0.5;
       const y = floating ? 0.07 : lift + 0.07;
       this.lampSpots.push(new THREE.Vector3(x, y, z));
     }
     this.lampMat = keep(new THREE.MeshStandardMaterial({ color: info.color, emissive: info.color, emissiveIntensity: 1.6, roughness: 0.6 }));
+    // 무지개마을 아이 곁엔 작은 곰인형이 앉아 있어요
+    if (info.pet) {
+      const fur = keep(new THREE.MeshStandardMaterial({ color: new THREE.Color(p.shrine).multiplyScalar(0.82), roughness: 0.95 }));
+      const snout = keep(new THREE.MeshStandardMaterial({ color: p.beacon, roughness: 0.95 }));
+      const ball = keep(new THREE.SphereGeometry(1, 12, 10));
+      const bear = new THREE.Group();
+      const part = (m: THREE.Material, x: number, y: number, z: number, sx: number, sy = sx, sz = sx) => {
+        const o = new THREE.Mesh(ball, m);
+        o.position.set(x, y, z);
+        o.scale.set(sx, sy, sz);
+        bear.add(o);
+      };
+      part(fur, 0, 0.16, 0, 0.17, 0.19, 0.15); // 몸
+      part(fur, 0, 0.42, 0.01, 0.14); // 머리
+      part(fur, -0.1, 0.53, 0, 0.05); // 귀
+      part(fur, 0.1, 0.53, 0, 0.05);
+      part(snout, 0, 0.39, 0.12, 0.055, 0.045, 0.04); // 주둥이
+      part(fur, -0.16, 0.2, 0.06, 0.06, 0.08, 0.06); // 팔
+      part(fur, 0.16, 0.2, 0.06, 0.06, 0.08, 0.06);
+      part(fur, -0.09, 0.03, 0.12, 0.07, 0.05, 0.08); // 다리
+      part(fur, 0.09, 0.03, 0.12, 0.07, 0.05, 0.08);
+      bear.position.set(-1.12, floating ? 0 : lift, 0.3);
+      bear.rotation.y = 0.35;
+      bear.scale.setScalar(1.25);
+      g.add(bear);
+    }
     g.add(this.lamps, this.offerGroup);
     this.setCount(info.count);
     this.setOfferings(info.offerings);
@@ -251,9 +318,10 @@ export class Shrine {
     const top = this.floating ? -0.015 : 0.32;
     list.forEach((k, i) => {
       const o = makeOffering(k, this.palette, i + 1);
-      const x = -1.2 + ((i + 0.5) / Math.max(list.length, 6)) * 2.4 + Math.sin(i * 4.7) * 0.08;
+      const x0 = this.pet ? -0.75 : -1.2, w = this.pet ? 1.95 : 2.4;
+      const x = x0 + ((i + 0.5) / Math.max(list.length, 6)) * w + Math.sin(i * 4.7) * 0.08;
       o.position.set(x, top, 0.27 + Math.sin(i * 2.3) * 0.05);
-      o.scale.setScalar(1.7);
+      o.scale.setScalar(2.1);
       this.offerGroup.add(o);
     });
   }
