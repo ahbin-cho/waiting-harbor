@@ -8,7 +8,7 @@ import { Story } from "./components/Story";
 import { Feedback } from "./components/Feedback";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
-import { THEME_LABEL, THEME_ORDER, applyUiTheme, resolveTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
+import { THEME_LABEL, THEME_ORDER, applyUiTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
 import { MAX_LANTERNS, demo, useHarbor } from "./hooks/useHarbor";
 import { badgeText, titleOf } from "./lib/waiting";
 import { canRecord } from "./lib/clip";
@@ -34,19 +34,11 @@ export default function App() {
   });
   const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink || preset ? null : 0));
   const [shot, setShot] = useState<{ name: Shot; n: number } | null>(null);
-  // 테마: 밤 / 새벽 / 시간 따라. 시간 따라는 10분마다 다시 확인해요.
-  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(() => savedTheme());
-  const [clock, setClock] = useState(() => new Date().getHours());
-  const theme = resolveTheme(themeChoice, clock);
+  // 테마: 밤 / 노을
+  const [theme, setTheme] = useState<ThemeChoice>(() => savedTheme());
   useEffect(() => applyUiTheme(theme), [theme]);
-  useEffect(() => {
-    if (themeChoice !== "auto") return;
-    const t = setInterval(() => setClock(new Date().getHours()), 600_000);
-    return () => clearInterval(t);
-  }, [themeChoice]);
-  const nextTheme = () => {
-    const c = THEME_ORDER[(THEME_ORDER.indexOf(themeChoice) + 1) % THEME_ORDER.length];
-    setThemeChoice(c);
+  const chooseTheme = (c: ThemeChoice) => {
+    setTheme(c);
     saveTheme(c);
   };
   useEffect(() => {
@@ -133,7 +125,11 @@ export default function App() {
         <div className="title-row">
           <h1>기다림 항구</h1>
           <div className="title-tools">
-            <button className="text-btn" onClick={nextTheme} aria-label={`테마 바꾸기. 지금은 ${THEME_LABEL[themeChoice]}`}>{THEME_LABEL[themeChoice]}</button>
+            <span className="theme-switch" role="group" aria-label="테마">
+              {THEME_ORDER.map((c) => (
+                <button key={c} className="text-btn" aria-pressed={theme === c} onClick={() => chooseTheme(c)}>{THEME_LABEL[c]}</button>
+              ))}
+            </span>
             <button className="text-btn" onClick={() => setStory(0)}>이야기</button>
             <button className="text-btn" onClick={() => setView({ type: "feedback" })}>의견</button>
           </div>

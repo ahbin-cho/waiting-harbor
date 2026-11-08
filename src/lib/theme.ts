@@ -1,10 +1,11 @@
-// 테마: 밤 / 새벽 / 시간 따라. 3D 장면 색과 화면(styles.css 의 [data-theme]) 색이 함께 바뀌어요.
+// 테마: 밤 / 노을. 3D 장면 색과 화면(styles.css 의 [data-theme]) 색이 함께 바뀌어요.
+// (dawn 은 전역일 계산기 같은 밝은 글 페이지에서만 써요)
 
-export type ThemeName = "night" | "dawn";
-export type ThemeChoice = ThemeName | "auto";
+export type ThemeName = "night" | "dusk" | "dawn";
+export type ThemeChoice = "night" | "dusk";
 
-export const THEME_LABEL: Record<ThemeChoice, string> = { night: "밤", dawn: "새벽", auto: "시간 따라" };
-export const THEME_ORDER: ThemeChoice[] = ["night", "dawn", "auto"];
+export const THEME_LABEL: Record<ThemeChoice, string> = { night: "밤", dusk: "노을" };
+export const THEME_ORDER: ThemeChoice[] = ["night", "dusk"];
 
 /** 3D 장면 색과 빛. styles.css 의 같은 테마 토큰과 맞춰요. */
 export type Palette = {
@@ -27,7 +28,16 @@ export const PALETTES: Record<ThemeName, Palette> = {
     exposure: 1.25, stars: 1, moon: 1, glow: 1, lampLight: 1, uiColor: "#0A1028",
     rainbowLand: 0x435a52, rainbowHigh: 0x627b62, rainbowLight: 26, bridgeGlow: 0.7,
   },
-  // 새벽: 해가 막 뜨는 항구. 하늘은 옅은 하늘색에서 복숭아빛으로, 바다는 맑은 청회색.
+  // 노을: 해가 막 진 항구. 수평선은 주황빛, 위는 보랏빛, 바다엔 붉은 기운. 등불도 잘 보여요.
+  dusk: {
+    skyTop: 0x2d3566, skyLow: 0xf09a6e, fog: 0x7d5f7e, fogDensity: 0.0034,
+    sea: 0x2f3f70, land: 0x3b3550, landHigh: 0x56496a, shore: 0x8a6a6a, landFar: 0x6b5577, tree: 0x23253f, tree2: 0x33304f,
+    pier: 0x4a3a3e, tower: 0xd9d0c8, band: 0xa8524a, beacon: 0xfff1d6, mist: 0xffc9a8, mistOpacity: 1.6,
+    hemiSky: 0xffb48a, hemiGround: 0x2a2140, hemi: 1.6, sunColor: 0xff9a5c, sun: 1.6,
+    exposure: 1.15, stars: 0.25, moon: 0.6, glow: 0.9, lampLight: 0.8, uiColor: "#2D3566",
+    rainbowLand: 0x5a6a52, rainbowHigh: 0x7a8a62, rainbowLight: 14, bridgeGlow: 0.5,
+  },
+  // 새벽: 밝은 글 페이지용 하늘은 옅은 하늘색에서 복숭아빛으로, 바다는 맑은 청회색.
   dawn: {
     skyTop: 0x8fb0d9, skyLow: 0xf3d2c4, fog: 0xdcd5e2, fogDensity: 0.0042,
     sea: 0x5f84ad, land: 0x56685c, landHigh: 0x7f8c6b, shore: 0xc2b296, landFar: 0x9aa4c4, tree: 0x2c4a3f, tree2: 0x3f604e,
@@ -38,15 +48,12 @@ export const PALETTES: Record<ThemeName, Palette> = {
   },
 };
 
-/** 시간 따라: 오전 6시부터 오후 6시까지는 새벽, 나머지는 밤 */
-export const resolveTheme = (c: ThemeChoice, hour = new Date().getHours()): ThemeName =>
-  c === "auto" ? (hour >= 6 && hour < 18 ? "dawn" : "night") : c;
 
 const KEY = "harbor-theme";
 export function savedTheme(fallback: ThemeChoice = "night"): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY);
-    return v === "night" || v === "dawn" || v === "auto" ? v : fallback;
+    return v === "night" || v === "dusk" ? v : fallback; // 예전 '새벽', '시간 따라' 는 밤으로
   } catch {
     return fallback;
   }
