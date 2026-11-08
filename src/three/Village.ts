@@ -525,7 +525,7 @@ export class Village {
       const key = (place === "무지개" ? `무지개/${speciesOf(l.species)}` : place) as Place;
       const i = count.get(key) ?? 0;
       count.set(key, i + 1);
-      seen.add(l.user_id);
+      seen.add(l.id);
       this.upsert(l, place, i);
     }
     for (const [id, it] of this.items) if (!seen.has(id)) this.remove(it);
@@ -533,7 +533,7 @@ export class Village {
 
   private upsert(l: Lantern, place: Place, i: number) {
     const look = `${colorOf(l.color)}/${shapeOf(l.shape)}/${place}/${l.mode}/${l.species ?? ""}`;
-    let it = this.items.get(l.user_id);
+    let it = this.items.get(l.id);
     if (it && it.look !== look) {
       this.remove(it);
       it = undefined;
@@ -628,7 +628,7 @@ export class Village {
     swing.add(glow);
 
     const hit = new THREE.Mesh(HIT, new THREE.MeshBasicMaterial({ visible: false }));
-    hit.userData.id = l.user_id;
+    hit.userData.id = l.id;
     swing.add(hit);
 
     this.scene.add(group);
@@ -636,10 +636,10 @@ export class Village {
     this.tags.appendChild(tag);
 
     const it: Item = {
-      id: l.user_id, data: l, place, group, swing, body, mat, glow, hit,
+      id: l.id, data: l, place, group, swing, body, mat, glow, hit,
       lamp: new THREE.Vector3(), tag, glowLevel: 0.5, phase: Math.random() * 10, idx: 0, baseY: 1.45, lift: 0, look,
     };
-    this.items.set(l.user_id, it);
+    this.items.set(l.id, it);
     return it;
   }
 
@@ -653,7 +653,7 @@ export class Village {
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     glow.position.y = pet.headY * 0.5;
     const hit = new THREE.Mesh(HIT, new THREE.MeshBasicMaterial({ visible: false }));
-    hit.userData.id = l.user_id;
+    hit.userData.id = l.id;
     hit.position.y = pet.headY * 0.5;
     pet.root.add(glow, hit);
     this.scene.add(group);
@@ -661,10 +661,10 @@ export class Village {
     this.tags.appendChild(tag);
     const it: Item = {
       // mat 은 근처 빛(PointLight) 색을 정하는 데만 써요. 아이 자체는 빛 재질(pets.ts)로 그려요.
-      id: l.user_id, data: l, place, group, swing: pet.root, body: pet.body, mat: new THREE.MeshStandardMaterial({ color }), glow, hit,
+      id: l.id, data: l, place, group, swing: pet.root, body: pet.body, mat: new THREE.MeshStandardMaterial({ color }), glow, hit,
       lamp: new THREE.Vector3(), tag, glowLevel: 0.5, phase, idx: i, baseY: 0, lift: 0, look, pet,
     };
-    this.items.set(l.user_id, it);
+    this.items.set(l.id, it);
     return it;
   }
 
@@ -879,7 +879,7 @@ export class Village {
         it.pet.update(t, calm);
         it.lamp.copy(it.pet.root.position).setY(it.pet.root.position.y + it.pet.headY * 0.6 * PET_SCALE);
       }
-      const here = this.online.has(it.id);
+      const here = this.online.has(it.data.user_id); // 지금 접속한 사람의 등불
       const home = it.glowLevel >= 1;
       let flick = 1;
       if (it.pet) {

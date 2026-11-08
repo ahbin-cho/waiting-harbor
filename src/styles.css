@@ -2,7 +2,7 @@
    단일 테마(밤)로 고정해요. 시스템 라이트/다크와 상관없이 같은 장면이에요.
    장식은 줄이고, 손글씨와 종이 질감으로 사람 손이 닿은 느낌을 내요. */
 :root{
-  --sky-top:#05081A; --sky-mid:#0E1433; --sky-low:#2B2446; --haze:#5B4A6E;
+  --sky-top:#0A1028; --sky-mid:#151C42; --sky-low:#3A3060; --haze:#5B4A6E;
   --sea:#0A1130; --sea-deep:#03061A;
   --land:#06081A; --land-far:#141632; --tree-back:#0C1028; --pier:#17131F; --pier-top:#211B2A; --tower:#1B1E3A;
   --lamp:#FFB867; --lamp-hot:#FFE3AE; --lamp-deep:#E07A3A;
@@ -10,7 +10,7 @@
   --ink:#EDE5D6; --muted:#9499BA; --faint:#5F6588;
   --paper:#0F1329; --line:rgba(237,229,214,.14); --field:rgba(237,229,214,.04);
   --danger:#FF9C86;
-  --fade-top:5,8,26; --fade-bottom:3,6,26; --veil:rgba(2,4,14,.25); --tag-shadow:rgba(0,0,0,.9); --lamp-ink:#2A170A;
+  --fade-top:10,16,40; --fade-bottom:8,12,32; --veil:rgba(2,4,14,.25); --tag-shadow:rgba(0,0,0,.9); --lamp-ink:#2A170A;
   --display:"Gaegu","Nanum Pen Script","Apple SD Gothic Neo",sans-serif; /* 등대지기의 글씨: 제목, 이야기, 질문 */
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   --hand:"Nanum Pen Script","Gaegu",cursive; /* 사람들이 직접 쓴 한 줄 */
@@ -242,3 +242,9 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .title-tools{display:flex;gap:14px;pointer-events:auto}
 
 .help-line{margin-top:18px;font-size:.75rem;color:var(--faint)}
+
+/* 내 등불 목록 */
+.my-list{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-direction:column;gap:8px}
+.my-list .choice{width:100%}
+.bar .bar-ghost{pointer-events:auto;white-space:nowrap}
+.bar-ghost small{color:var(--muted);margin-left:2px}

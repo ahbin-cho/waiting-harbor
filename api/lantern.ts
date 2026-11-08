@@ -10,10 +10,10 @@ export default async function handler(req: Request) {
   const home = `${u.origin}/`;
   if (!l) return Response.redirect(home, 302);
 
-  const app = `${u.origin}/?l=${l.user_id}`;
+  const app = `${u.origin}/?l=${l.id}`;
   const title = `${titleOf(l)} · ${facts(l).dday} | 기다림 항구`;
   const desc = summary(l);
-  const img = `${u.origin}/api/og?id=${l.user_id}&v=${facts(l).left}`;
+  const img = `${u.origin}/api/og?id=${l.id}&v=${facts(l).left}`;
   const e = escapeHtml;
 
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
@@ -24,7 +24,7 @@ export default async function handler(req: Request) {
 <meta property="og:site_name" content="기다림 항구">
 <meta property="og:title" content="${e(title)}">
 <meta property="og:description" content="${e(desc)}">
-<meta property="og:url" content="${e(`${u.origin}/l/${l.user_id}`)}">
+<meta property="og:url" content="${e(`${u.origin}/l/${l.id}`)}">
 <meta property="og:image" content="${e(img)}">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">

@@ -10,6 +10,9 @@ export const supabase = createClient(url || "http://localhost", key || "missing-
 });
 
 export type Lantern = {
+  /** 등불 하나하나의 아이디. 한 사람이 여러 개를 걸 수 있어요 */
+  id: string;
+  /** 등불을 건 사람 */
   user_id: string;
   who: string;
   kind: string;
@@ -26,6 +29,7 @@ export type Lantern = {
   created_at: string;
 };
 
+/** 온기: from_id 는 보낸 사람, to_id 는 받은 등불 */
 export type Warmth = { from_id: string; to_id: string; day: string };
 
 /** 기다림 일기: 등불 주인이 날마다 남기는 글 */

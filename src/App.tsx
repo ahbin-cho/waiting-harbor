@@ -8,9 +8,11 @@ import { Story } from "./components/Story";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
 import { THEME_LABEL, THEME_ORDER, applyUiTheme, resolveTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
-import { demo, useHarbor } from "./hooks/useHarbor";
+import { MAX_LANTERNS, demo, useHarbor } from "./hooks/useHarbor";
+import { badgeText, titleOf } from "./lib/waiting";
 
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form" };
+// form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -55,16 +57,19 @@ export default function App() {
     setTimeout(() => setPulseId((p) => (p === id ? null : p)), 1300);
   }, []);
 
-  const h = useHarbor(() => {
+  const h = useHarbor((lanternId) => {
     setHint("방금 누군가 당신의 등불에 온기를 보냈어요.");
-    if (h.me) pulse(h.me);
+    pulse(lanternId);
   });
 
-  const mine = h.lanterns.find((l) => l.user_id === h.me);
+  // 한 사람이 등불을 여러 개 걸 수 있어요 (기다리는 사람, 그리워하는 사람, 무지개마을의 아이…)
+  const mine = h.lanterns.filter((l) => l.user_id === h.me);
+  const full = mine.length >= MAX_LANTERNS;
+  const openMine = () => setView(mine.length === 1 ? { type: "detail", id: mine[0].id } : { type: "mine" });
 
   useEffect(() => {
     if (!deepLink || h.status !== "ready") return;
-    const found = h.lanterns.some((l) => l.user_id === deepLink);
+    const found = h.lanterns.some((l) => l.id === deepLink);
     if (found) setView({ type: "detail", id: deepLink });
     else setHint("그 등불은 이미 내려졌어요.");
     history.replaceState(null, "", location.pathname);
@@ -74,12 +79,13 @@ export default function App() {
   useEffect(() => {
     if (!preset || h.status !== "ready") return;
     history.replaceState(null, "", location.pathname);
-    // 이미 등불이 있으면 내 등불을 보여주고, 없으면 등불 걸기를 열어요
-    setView(mine ? { type: "detail", id: mine.user_id } : { type: "form" });
-    if (mine) setPreset(null);
+    // 새 등불 걸기를 날짜가 채워진 채로 열어요 (자리가 꽉 찼으면 내 등불 목록)
+    setView(full ? { type: "mine" } : { type: "form" });
+    if (full) setPreset(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, h.status]);
-  const picked = view.type === "detail" ? h.lanterns.find((l) => l.user_id === view.id) : undefined;
+  const picked = view.type === "detail" ? h.lanterns.find((l) => l.id === view.id) : undefined;
+  const editing = view.type === "form" && view.id ? h.lanterns.find((l) => l.id === view.id) : undefined;
   const close = useCallback(() => setView({ type: "none" }), []);
   const endStory = useCallback((then: "write" | "look") => {
     markStorySeen();
@@ -120,34 +126,41 @@ export default function App() {
 
       <div className="bar">
         <span className="hint">{hint}</span>
-        <button className="btn" disabled={h.status !== "ready"} onClick={() => setView(mine ? { type: "detail", id: mine.user_id } : { type: "form" })}>
-          {mine ? "내 등불" : "등불 걸기"}
+        {mine.length > 0 && (
+          <button className="ghost bar-ghost" disabled={h.status !== "ready"} onClick={openMine}>
+            내 등불 {mine.length > 1 && <small>{mine.length}</small>}
+          </button>
+        )}
+        <button className="btn" disabled={h.status !== "ready"} onClick={() => setView(full ? { type: "mine" } : { type: "form" })}>
+          {mine.length ? "하나 더 걸기" : "등불 걸기"}
         </button>
       </div>
 
       <Sheet open={view.type !== "none"} onClose={close} labelledBy="sheet-title">
         {view.type === "form" && (
           <LanternForm
-            initial={mine}
+            key={view.id ?? "new"}
+            initial={editing}
             preset={preset ?? undefined}
             onSave={async (v) => {
-              const first = !mine;
-              await h.saveLantern(v);
-              if (first && h.me) {
+              const saved = await h.saveLantern(v, editing?.id);
+              if (!editing) {
                 // 새 등불이 켜지면 그 앞으로 날아가요
                 setHint(
                   v.place === "무지개" ? `${pick(v.who, "이", "가")} 무지개마을에 도착했어요.`
                   : v.mode === "miss" ? `${pick(v.who, "을", "를")} 그리워하는 풍등을 하늘에 띄웠어요.`
                   : `${pick(v.who, "을", "를")} 기다리는 등불이 켜졌어요.`,
                 );
-                const id = h.me;
+                const id = saved.id;
                 setTimeout(() => {
                   setView({ type: "detail", id });
                   pulse(id);
                 }, 350);
               }
             }}
-            onRemove={h.removeLantern}
+            onRemove={async () => {
+              if (editing) await h.removeLantern(editing.id);
+            }}
             onClose={() => {
               setPreset(null);
               close();
@@ -159,20 +172,42 @@ export default function App() {
             lantern={picked}
             isMine={picked.user_id === h.me}
             isHere={h.online.has(picked.user_id)}
-            warmth={h.warmthCount.get(picked.user_id) ?? 0}
-            sent={h.sentToday(picked.user_id)}
-            notes={h.notes[picked.user_id]}
-            onLoadNotes={() => h.loadNotes(picked.user_id)}
-            onAddNote={h.addNote}
-            onRemoveNote={h.removeNote}
+            warmth={h.warmthCount.get(picked.id) ?? 0}
+            sent={h.sentToday(picked.id)}
+            notes={h.notes[picked.id]}
+            onLoadNotes={() => h.loadNotes(picked.id)}
+            onAddNote={(body, open) => h.addNote(picked.id, body, open)}
+            onRemoveNote={(id) => h.removeNote(picked.id, id)}
             onWarm={async () => {
-              await h.sendWarmth(picked.user_id);
-              pulse(picked.user_id);
+              await h.sendWarmth(picked.id);
+              pulse(picked.id);
             }}
-            onEdit={() => setView({ type: "form" })}
+            onEdit={() => setView({ type: "form", id: picked.id })}
             canShare={!demo}
             onClose={close}
           />
+        )}
+        {view.type === "mine" && (
+          <>
+            <h2 id="sheet-title">내 등불</h2>
+            <p className="small">
+              {full ? `등불은 한 사람이 ${MAX_LANTERNS}개까지 걸 수 있어요. 새로 걸려면 하나를 내려 주세요.` : `한 사람이 ${MAX_LANTERNS}개까지 걸 수 있어요.`}
+            </p>
+            <ul className="my-list">
+              {mine.map((l) => (
+                <li key={l.id}>
+                  <button className="choice" onClick={() => setView({ type: "detail", id: l.id })}>
+                    <b>{titleOf(l)}</b>
+                    <span>{l.place === "무지개" ? "무지개마을" : l.place} · {badgeText(l)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="row">
+              {!full && <button className="btn" onClick={() => setView({ type: "form" })}>하나 더 걸기</button>}
+              <button className="ghost" onClick={close}>닫기</button>
+            </div>
+          </>
         )}
       </Sheet>
 

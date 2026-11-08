@@ -24,6 +24,7 @@ const sample: [string, string, number, number, string, string, string, string][]
 
 export const demoLanterns = (): Lantern[] =>
   sample.map(([who, kind, start, end, line, place, color, shape], i) => ({
+    id: `demo-${i}`,
     user_id: `demo-${i}`,
     who,
     kind,
@@ -53,13 +54,13 @@ const pets: [string, string, number, number, string, string][] = [
 ];
 export const demoMissing = (): Lantern[] => [
   ...missing.map(([who, kind, start, end, line, color], i) => ({
-    user_id: `demo-miss-${i}`, who, kind, start_date: shift(start), end_date: shift(end), line,
+    id: `demo-miss-${i}`, user_id: `demo-miss-${i}`, who, kind, start_date: shift(start), end_date: shift(end), line,
     // 콩이(반려동물)는 무지개마을의 강아지, 할아버지는 하늘의 풍등
     place: kind === "반려동물" ? "무지개" : "하늘", color, shape: "풍등", mode: "miss", species: kind === "반려동물" ? "강아지" : null,
     created_at: new Date(Date.now() - (10 + i) * 60_000).toISOString(),
   })),
   ...pets.map(([who, species, start, end, line, color], i) => ({
-    user_id: `demo-pet-${i}`, who, kind: "반려동물", start_date: shift(start), end_date: shift(end), line,
+    id: `demo-pet-${i}`, user_id: `demo-pet-${i}`, who, kind: "반려동물", start_date: shift(start), end_date: shift(end), line,
     place: "무지개", color, shape: "둥근", mode: "miss", species,
     created_at: new Date(Date.now() - (20 + i) * 60_000).toISOString(),
   })),
