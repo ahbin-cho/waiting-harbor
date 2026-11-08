@@ -16,7 +16,9 @@ if (!url || !key || url.includes("xxxx") || key === "your-anon-key") {
   fail(".env 에 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY 가 없어요", "README 4단계: cp .env.example .env 후 값을 채워주세요");
 }
 
-const supabase = createClient(url, key, { auth: { persistSession: false } });
+// Node 22 부터는 WebSocket 이 내장돼 있어요. Node 20 이하에서는 ws 패키지로 대신해요.
+const transport = typeof globalThis.WebSocket === "undefined" ? (await import("ws")).default : undefined;
+const supabase = createClient(url, key, { auth: { persistSession: false }, realtime: transport ? { transport } : {} });
 
 const auth = await supabase.auth.signInAnonymously();
 if (auth.error && /fetch failed|network|ENOTFOUND|ECONN/i.test(auth.error.message)) {
