@@ -62,6 +62,9 @@ html:not(:has(body.page)),html:not(:has(body.page)) body{overscroll-behavior:non
 #root{position:fixed;inset:0}
 .scene{touch-action:pan-x pan-y}
 button,a,label{touch-action:manipulation}
+/* 키보드가 열려 있는 동안: 머리글과 바닥 줄은 숨기고, 시트는 키보드 위 남은 화면을 다 써요 */
+html.kb header,html.kb .bar,html.kb .daily,html.kb .tags{display:none}
+html.kb .sheet,html.kb .scene.focusing .sheet{max-height:calc(100% - 6px)}
 /* 아이폰은 16px 보다 작은 입력칸을 누르면 화면을 확대해요 */
 @media (pointer:coarse){input,select,textarea{font-size:max(16px,1em)}}
 html{height:100%}
