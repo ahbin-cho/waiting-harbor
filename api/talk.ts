@@ -3,7 +3,8 @@
 // - 등불 주인만 쓸 수 있어요 (익명 로그인 토큰으로 확인하고, DB 의 RLS 가 한 번 더 막아요).
 // - 하루에 보낼 수 있는 말 수는 DB 정책이 지켜요.
 // - 마음이 위험해 보이는 말엔 AI 를 부르지 않고 등대지기가 직접 상담 전화를 안내해요.
-// - ANTHROPIC_API_KEY 가 없으면 미리 써 둔 짧은 답장 중에서 골라요.
+// - 기본은 무료: 내가 한 말의 주제(보고 싶어, 미안해, 밥, 꿈…)를 알아듣고 미리 써 둔 답장 중에서 골라요.
+//   ANTHROPIC_API_KEY 를 넣으면 (쓴 만큼 요금이 나가는) Claude 가 대신 답장을 써요.
 // 모델은 TALK_MODEL 로 바꿀 수 있어요 (기본 claude-opus-5-5).
 import Anthropic from "@anthropic-ai/sdk";
 import { SAFETY_REPLY, TALK_MAX, isDanger, templateReply } from "../src/lib/talk";
@@ -111,13 +112,12 @@ export default async function handler(req: Request) {
   const safety = isDanger(text);
   let reply: string | null = safety ? SAFETY_REPLY : null;
   let by: "safety" | "ai" | "template" = safety ? "safety" : "template";
+  // 지난 이야기: AI 에겐 맥락으로, 기본 답장엔 같은 말을 되풀이하지 않게
+  const hr = await rest(`talks?lantern_id=eq.${lanternId}&select=role,body&order=created_at.desc&limit=20`);
+  const history = hr.ok ? ((await hr.json()) as { role: string; body: string }[]).reverse() : [];
   if (!reply && process.env.ANTHROPIC_API_KEY) {
     try {
-      const [hr, nr] = await Promise.all([
-        rest(`talks?lantern_id=eq.${lanternId}&select=role,body&order=created_at.desc&limit=20`),
-        rest(`notes?lantern_id=eq.${lanternId}&select=body,day&order=created_at.desc&limit=5`),
-      ]);
-      const history = ((await hr.json()) as { role: string; body: string }[]).reverse();
+      const nr = await rest(`notes?lantern_id=eq.${lanternId}&select=body,day&order=created_at.desc&limit=5`);
       const notes = nr.ok ? ((await nr.json()) as { body: string; day: string }[]) : [];
       reply = await aiReply(lantern, notes, history);
       if (reply) by = "ai";
@@ -128,7 +128,10 @@ export default async function handler(req: Request) {
       else console.warn("talk: failed");
     }
   }
-  if (!reply) reply = templateReply({ who: lantern.who, isPet: lantern.place === "무지개", species: lantern.species }, text, Date.now() >>> 10);
+  if (!reply) {
+    const recent = history.filter((h) => h.role === "them").slice(-4).map((h) => h.body);
+    reply = templateReply({ who: lantern.who, isPet: lantern.place === "무지개", species: lantern.species }, text, Date.now() >>> 10, recent);
+  }
 
   await rest("talks", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ lantern_id: lanternId, role: "them", body: reply }) });
   return json(200, { reply, by });
