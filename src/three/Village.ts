@@ -649,7 +649,7 @@ export class Village {
     const phase = Math.random() * 10;
     const pet = makePet(speciesOf(l.species), color, i, phase);
     const group = new THREE.Group();
-    group.add(pet.root);
+    group.add(pet.root, ...pet.extras);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     glow.position.y = pet.headY * 0.5;
     const hit = new THREE.Mesh(HIT, new THREE.MeshBasicMaterial({ visible: false }));
@@ -660,7 +660,8 @@ export class Village {
     const tag = document.createElement("div");
     this.tags.appendChild(tag);
     const it: Item = {
-      id: l.user_id, data: l, place, group, swing: pet.root, body: pet.body, mat: pet.mat, glow, hit,
+      // mat 은 근처 빛(PointLight) 색을 정하는 데만 써요. 아이 자체는 빛 재질(pets.ts)로 그려요.
+      id: l.user_id, data: l, place, group, swing: pet.root, body: pet.body, mat: new THREE.MeshStandardMaterial({ color }), glow, hit,
       lamp: new THREE.Vector3(), tag, glowLevel: 0.5, phase, idx: i, baseY: 0, lift: 0, look, pet,
     };
     this.items.set(l.user_id, it);
@@ -901,9 +902,10 @@ export class Village {
       else if (it.lift > 0) it.swing.position.y = it.baseY + it.lift + (calm ? 0 : Math.sin(t * 0.6 + it.phase) * 0.25);
 
       const dim = focus && focus !== it.id ? 0.25 : 1;
-      it.mat.emissiveIntensity = it.pet
-        ? (0.15 + 0.45 * it.glowLevel) * dim
-        : (0.35 + 1.5 * it.glowLevel) * flick * dim * (home ? 1.2 : 1);
+      if (it.pet) {
+        const d = this.camera.position.distanceTo(it.lamp);
+        it.pet.setLook(it.glowLevel, THREE.MathUtils.clamp(1 - (d - 10) / 40, 0, 1), dim);
+      } else it.mat.emissiveIntensity = (0.35 + 1.5 * it.glowLevel) * flick * dim * (home ? 1.2 : 1);
       const gm = it.glow.material as THREE.SpriteMaterial;
       gm.opacity = (0.2 + 0.4 * it.glowLevel) * dim * this.p.glow;
       let s = 0.9 + 1.5 * it.glowLevel;
@@ -921,7 +923,7 @@ export class Village {
       }
       if (it.pet) it.pet.root.scale.setScalar(scale * PET_SCALE);
       else it.body.scale.setScalar(scale);
-      it.glow.scale.setScalar(it.pet ? s * 0.8 : s);
+      it.glow.scale.setScalar(it.pet ? s * 0.6 : s);
     }
 
     // 가까운 등불 몇 개에만 진짜 빛을 줘요
