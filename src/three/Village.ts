@@ -1572,7 +1572,8 @@ export class Village {
       if (it.refl) it.refl.visible = vis;
       if (!vis) continue;
       if (it.pet) {
-        it.pet.update(t, calm);
+        // 열어 둔 아이는 그 자리에 멈춰서 기다려요 (사진과 작은 자리를 차분히 볼 수 있게)
+        if (this.selected !== it.id) it.pet.update(t, calm);
         it.lamp.copy(it.pet.root.position).setY(it.pet.root.position.y + it.pet.headY * 0.6 * PET_SCALE);
       }
       const here = this.online.has(it.data.user_id); // 지금 접속한 사람의 등불
