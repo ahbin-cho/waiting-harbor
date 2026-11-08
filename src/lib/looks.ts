@@ -13,9 +13,10 @@ export type LampColor = keyof typeof COLORS;
 export const COLOR_NAMES = Object.keys(COLORS) as LampColor[];
 
 export const SHAPES = ["둥근", "네모", "별"] as const;
-export type LampShape = (typeof SHAPES)[number];
+/** 풍등은 그리움 등불(하늘)에만 써요 */
+export type LampShape = (typeof SHAPES)[number] | "풍등";
 
 export const colorOf = (c: string | null | undefined): LampColor =>
   c && c in COLORS ? (c as LampColor) : "촛불";
 export const shapeOf = (s: string | null | undefined): LampShape =>
-  (SHAPES as readonly string[]).includes(s ?? "") ? (s as LampShape) : "둥근";
+  s === "풍등" || (SHAPES as readonly string[]).includes(s ?? "") ? (s as LampShape) : "둥근";

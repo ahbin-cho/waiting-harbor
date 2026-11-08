@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { configured, supabase, type Lantern, type Note, type Warmth } from "../lib/supabase";
 import { today, ymd } from "../lib/waiting";
-import { DEMO_ME, demoLanterns, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
+import { DEMO_ME, demoLanterns, demoMissing, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
 
 /** Supabase 설정이 없으면 체험 모드로 열려요. 아무것도 저장되지 않아요. */
 export const demo = !configured;
@@ -10,7 +10,7 @@ export type Status = "loading" | "ready" | "error" | "unconfigured";
 
 export function useHarbor(onWarmed?: () => void) {
   const [me, setMe] = useState<string | null>(demo ? DEMO_ME : null);
-  const [lanterns, setLanterns] = useState<Lantern[]>(demo ? demoLanterns : []);
+  const [lanterns, setLanterns] = useState<Lantern[]>(demo ? () => [...demoLanterns(), ...demoMissing()] : []);
   const [warmth, setWarmth] = useState<Warmth[]>(demo ? demoWarmth : []);
   const [online, setOnline] = useState<Set<string>>(demo ? demoOnline : () => new Set());
   const [hereCount, setHereCount] = useState(demo ? 4 : 1);
@@ -146,7 +146,7 @@ export function useHarbor(onWarmed?: () => void) {
   );
 
   const saveLantern = useCallback(
-    async (v: Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape">) => {
+    async (v: Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode">) => {
       if (!me) throw new Error("no-user");
       if (demo) {
         const prev = lanterns.find((x) => x.user_id === me);

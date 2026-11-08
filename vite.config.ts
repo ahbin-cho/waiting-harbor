@@ -37,10 +37,18 @@ function seo(): Plugin {
       this.emitFile({
         type: "asset",
         fileName: "sitemap.xml",
-        source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n</urlset>\n`,
+        source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${site}/discharge/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>\n</urlset>\n`,
       });
     },
   };
 }
 
-export default defineConfig({ plugins: [react(), seo()] });
+export default defineConfig({
+  plugins: [react(), seo()],
+  build: {
+    rollupOptions: {
+      // 3D 마을(index.html)과 글로 된 페이지들을 따로 만들어요
+      input: { main: "index.html", discharge: "discharge/index.html" },
+    },
+  },
+});

@@ -17,6 +17,8 @@ export type Lantern = {
   end_date: string;
   line: string;
   place: string;
+  /** wait: 돌아올 사람을 기다려요, miss: 떠나보낸 사람을 그리워해요 */
+  mode: string;
   color: string;
   shape: string;
   created_at: string;

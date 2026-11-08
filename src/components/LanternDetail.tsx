@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Lantern, Note } from "../lib/supabase";
-import { daysLeft, daysSince, ddayText, parseDate, pick, progressOf, titleOf } from "../lib/waiting";
+import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
 
@@ -10,10 +10,11 @@ const md = (s: string) => {
 };
 
 /** 일기를 쓴 날이 돌아오는 날로부터 며칠 전이었는지 */
-function dayLabel(note: Note, end: string) {
+function dayLabel(note: Note, end: string, miss: boolean) {
   const a = parseDate(note.day), b = parseDate(end);
   if (!a || !b) return md(note.day);
   const n = Math.round((b.getTime() - a.getTime()) / 86_400_000);
+  if (miss) return `떠난 지 ${Math.max(0, -n)}일 · ${md(note.day)}`;
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
@@ -44,6 +45,9 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   const pct = Math.round(progressOf(lantern) * 100);
   const who = lantern.who.trim() || "그 사람";
   const list = notes ?? [];
+  const miss = isMiss(lantern);
+  const gone = daysGone(lantern);
+  const ann = nextAnniversary(lantern);
 
   useEffect(() => {
     onLoadNotes();
@@ -97,23 +101,35 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
     }
   }
 
-  const story =
-    n == null ? ""
+  const story = miss
+    ? ann.days === 0
+      ? `오늘은 ${who}의 ${ann.label}이에요.`
+      : `${pick(who, "과", "와")} 함께한 날은 ${togetherDays(lantern).toLocaleString()}일이에요. ${ann.label}까지 ${ann.days}일 남았어요.`
+    : n == null ? ""
     : n > 0 ? `기다린 지 ${since}일째예요. ${n}일 남았어요.`
     : n === 0 ? `오늘 ${pick(who, "이", "가")} 돌아와요.`
     : "다시 만났어요. 등불은 하늘로 올라가는 중이에요.";
 
   return (
     <>
-      <p className="where">{placeOf(lantern.place)}에 걸린 등불 · {lantern.kind}</p>
+      <p className="where">{miss ? "하늘에 띄운 풍등" : `${placeOf(lantern.place)}에 걸린 등불`} · {lantern.kind}</p>
       <h2 id="sheet-title">{titleOf(lantern)}</h2>
       {isMine && <p className="here-now">당신의 등불이에요.</p>}
       {isHere && !isMine && <p className="here-now">이 사람도 지금 항구에 와 있어요.</p>}
 
-      <div className="big">{ddayText(n)}</div>
+      <div className="big">{miss ? `떠난 지 ${gone}일` : ddayText(n)}</div>
       <p className="small">{story}</p>
 
-      {/* 기다림의 길: 시작한 날 → 오늘 → 돌아오는 날 */}
+      {/* 기다림의 길: 시작한 날 → 오늘 → 돌아오는 날 (그리움은 함께한 시간) */}
+      {miss ? (
+        <div className="journey">
+          <div className="journey-line"><i style={{ width: "100%" }} /></div>
+          <div className="journey-ends">
+            <span>{md(lantern.start_date)} 처음 만난 날</span>
+            <span>{md(lantern.end_date)} 떠난 날</span>
+          </div>
+        </div>
+      ) : (
       <div className="journey" aria-label={`기다림의 ${pct}%를 지나왔어요`}>
         <div className="journey-line">
           <i style={{ width: `${pct}%` }} />
@@ -124,6 +140,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
           <span>{md(lantern.end_date)} 돌아와요</span>
         </div>
       </div>
+      )}
 
       {lantern.line && (
         <>
@@ -134,9 +151,9 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
 
       {isMine && (
         <div className="compose">
-          <p className="section">오늘의 기록 · 기다린 지 {since}일째</p>
+          <p className="section">{miss ? `보내지 못한 편지 · 떠난 지 ${gone}일` : `오늘의 기록 · 기다린 지 ${since}일째`}</p>
           <p className="ask-line">
-            {todaysAsk(who, askShift)}
+            {todaysAsk(who, askShift, miss)}
             <button className="text-btn" onClick={() => setAskShift((s) => s + 1)}>다른 질문</button>
           </p>
           <textarea
@@ -158,7 +175,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
         </div>
       )}
 
-      <p className="section">기다림 일기 {list.length > 0 && <small>{list.length}</small>}</p>
+      <p className="section">{miss ? "그리움 일기" : "기다림 일기"} {list.length > 0 && <small>{list.length}</small>}</p>
       {notes === undefined ? (
         <p className="small">일기를 불러오는 중이에요.</p>
       ) : list.length === 0 ? (
@@ -168,7 +185,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
           {list.map((note) => (
             <li key={note.id}>
               <span className="diary-day">
-                {dayLabel(note, lantern.end_date)}
+                {dayLabel(note, lantern.end_date, miss)}
                 {!note.public && <em>나만 봐요</em>}
               </span>
               <p className="diary-body">{note.body}</p>
@@ -194,6 +211,11 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
         <button className="ghost" onClick={onClose}>닫기</button>
       </div>
       {shared && <p className="small shared" role="status">{shared}</p>}
+      {miss && (
+        <p className="small help-line">
+          마음이 너무 무거운 날엔 혼자 견디지 않아도 돼요. 자살예방 상담전화 109 (24시간), 정신건강 상담전화 1577-0199.
+        </p>
+      )}
     </>
   );
 }

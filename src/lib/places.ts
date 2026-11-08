@@ -1,7 +1,9 @@
 // 등불을 걸 수 있는 장소와 지형. 좌표는 3D 마을 기준 (x: 왼쪽-오른쪽, z: 안쪽-바다쪽, y: 높이).
 // 섬, 부두, 등불 자리 모두 노이즈로 살짝씩 흐트러뜨려서 자로 그은 느낌이 나지 않게 해요.
 
-export const PLACES = ["항구", "숲", "언덕", "등대"] as const;
+export const PLACES = ["항구", "숲", "언덕", "등대", "하늘"] as const;
+/** 땅에 거는 장소 (기다림 등불). 하늘은 그리움 등불만 띄워요. */
+export const GROUND_PLACES = ["항구", "숲", "언덕", "등대"] as const;
 export type Place = (typeof PLACES)[number];
 
 // ---------- 노이즈 ----------
@@ -79,6 +81,7 @@ export const PLACE_INFO: Record<Place, { x: number; z: number; blurb: string; ha
   숲: { x: ISLANDS.숲.x, z: ISLANDS.숲.z, blurb: "나무 사이, 조용한 곳에 매달아요.", hang: true },
   언덕: { x: ISLANDS.언덕.x + 2, z: ISLANDS.언덕.z + 2, blurb: "멀리까지 내다보이는 언덕에 꽂아요.", hang: false },
   등대: { x: ISLANDS.등대.x, z: ISLANDS.등대.z, blurb: "길을 비춰주는 등대 곁에 세워요.", hang: false },
+  하늘: { x: -4, z: -10, blurb: "마을 위 하늘에 띄워요.", hang: false },
 };
 
 export function placeOf(p: string | null | undefined): Place {
@@ -89,7 +92,15 @@ export function placeOf(p: string | null | undefined): Place {
  * 장소 안에서 i번째 등불의 자리 [x, z].
  * 가운데부터 해바라기 씨처럼 퍼지고, 조금씩 흐트러뜨려 줄이 맞지 않게 해요.
  */
+/** 하늘 등불의 높이: 마을 위로 조금씩 다른 높이에 떠 있어요 */
+export const skyY = (i: number) => 19 + jitter(i, 7) * 3 + Math.sqrt(i) * 0.6;
+
 export function slotOf(place: Place, i: number): [number, number] {
+  if (place === "하늘") {
+    const r = 3.4 * Math.sqrt(i + 0.5) + jitter(i, 8) * 1.2;
+    const a = i * 2.39996 + jitter(i, 9) * 0.4;
+    return [PLACE_INFO.하늘.x + r * Math.cos(a) * 1.6, PLACE_INFO.하늘.z + r * Math.sin(a) * 0.8];
+  }
   if (place === "항구") {
     const u = 0.1 + i * 0.05;
     const p = pierAt(u);

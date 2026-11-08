@@ -18,7 +18,7 @@ create table if not exists public.lanterns (
 -- 등불을 걸어둔 장소 (나중에 추가된 칸이라 따로 더해요)
 alter table public.lanterns add column if not exists place text not null default '항구';
 alter table public.lanterns drop constraint if exists lanterns_place_check;
-alter table public.lanterns add constraint lanterns_place_check check (place in ('항구', '숲', '언덕', '등대'));
+alter table public.lanterns add constraint lanterns_place_check check (place in ('항구', '숲', '언덕', '등대', '하늘'));
 
 -- 등불 꾸미기: 불빛 색과 등 모양
 alter table public.lanterns add column if not exists color text not null default '촛불';
@@ -26,7 +26,13 @@ alter table public.lanterns add column if not exists shape text not null default
 alter table public.lanterns drop constraint if exists lanterns_color_check;
 alter table public.lanterns add constraint lanterns_color_check check (color in ('촛불', '노을', '달빛', '벚꽃', '라벤더', '하늘', '새싹'));
 alter table public.lanterns drop constraint if exists lanterns_shape_check;
-alter table public.lanterns add constraint lanterns_shape_check check (shape in ('둥근', '네모', '별'));
+alter table public.lanterns add constraint lanterns_shape_check check (shape in ('둥근', '네모', '별', '풍등'));
+
+-- 등불 종류: wait(돌아올 사람을 기다려요), miss(떠나보낸 사람을 그리워해요, 하늘에 띄우는 풍등)
+-- miss 에서 start_date 는 처음 만난 날, end_date 는 떠난 날이에요.
+alter table public.lanterns add column if not exists mode text not null default 'wait';
+alter table public.lanterns drop constraint if exists lanterns_mode_check;
+alter table public.lanterns add constraint lanterns_mode_check check (mode in ('wait', 'miss'));
 
 -- 온기: 한 사람이 한 등불에 하루 한 번
 create table if not exists public.warmth (

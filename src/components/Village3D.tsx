@@ -3,11 +3,12 @@ import type { Lantern } from "../lib/supabase";
 import type { Place } from "../lib/places";
 import { Village } from "../three/Village";
 import type { Shot } from "../lib/story";
+import type { ThemeName } from "../lib/theme";
 
 export type Focus = { place: Place | "all"; n: number };
 
 /** three.js 로 그린 3D 밤 마을. 이름표는 HTML 로 그 위에 얹어요. */
-export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, onPick }: {
+export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, onPick, theme }: {
   lanterns: Lantern[];
   me: string | null;
   online: Set<string>;
@@ -16,6 +17,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   shot: { name: Shot; n: number } | null;
   selectedId: string | null;
   onPick: (id: string) => void;
+  theme: ThemeName;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const tags = useRef<HTMLDivElement>(null);
@@ -24,7 +26,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   pick.current = onPick;
 
   useEffect(() => {
-    const village = new Village(stage.current!, tags.current!, (id) => pick.current(id));
+    const village = new Village(stage.current!, tags.current!, (id) => pick.current(id), theme);
     v.current = village;
     return () => {
       village.dispose();
@@ -33,6 +35,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   }, []);
 
   useEffect(() => v.current?.setData(lanterns, me, online), [lanterns, me, online]);
+  useEffect(() => v.current?.setTheme(theme), [theme]);
   useEffect(() => v.current?.setSelected(selectedId), [selectedId]);
   useEffect(() => {
     if (pulseId) v.current?.pulse(pulseId);
