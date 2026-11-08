@@ -68,7 +68,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
     })();
   }, [record]);
   useEffect(() => v.current?.setSelected(selectedId), [selectedId]);
-  const shrineKey = shrine ? [shrine.id, shrine.photo, shrine.no, shrine.who, shrine.line, shrine.color, shrine.count, shrine.pet, JSON.stringify(shrine.offerings ?? {})].join("|") : "";
+  const shrineKey = shrine ? [shrine.id, shrine.photo, shrine.no, shrine.who, shrine.line, shrine.color, shrine.count, shrine.pet, JSON.stringify(shrine.offerings ?? {}), JSON.stringify(shrine.wait ?? null)].join("|") : "";
   useEffect(() => v.current?.setShrine(shrine), [shrineKey, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (pulseId) v.current?.pulse(pulseId);

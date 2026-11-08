@@ -22,6 +22,11 @@ export type ShrineInfo = {
   offerings?: Partial<Record<OfferingKind, number>>;
   /** 무지개마을 아이면 작은 곰인형이 곁에 앉아 있어요 */
   pet?: boolean;
+  /**
+   * 기다림 등불이면 추모의 등판 대신 항구 터미널의 "도착 안내판"이 서요.
+   * dday: "D-145" 같은 말, arrive: "4월 2일 도착", pct: 기다린 만큼(0~1, 바다의 작은 배 자리), arrived: 돌아왔는지
+   */
+  wait?: { dday: string; arrive: string; pct: number; arrived: boolean };
 };
 
 /** 모서리가 둥근 판: 가로 w, 세로 h 는 둥글게, 두께 d 는 앞뒤로 (액자, 이름판 받침) */
@@ -98,6 +103,8 @@ export class Shrine {
   private offerKey = "";
   private palette: Palette;
   private pet: boolean;
+  /** 기다림의 도착 안내판인지 (놓고 간 것이 땅에 놓여요) */
+  private arrival = false;
 
   constructor(info: ShrineInfo, p: Palette, glowTex: THREE.Texture, floating: boolean) {
     this.floating = floating;
@@ -106,6 +113,16 @@ export class Shrine {
     this.pet = !!info.pet;
     const g = this.group;
     const keep = <T extends { dispose(): void }>(x: T) => (this.trash.push(x), x);
+    this.lampMat = keep(new THREE.MeshStandardMaterial({ color: info.color, emissive: info.color, emissiveIntensity: 1.6, roughness: 0.6 }));
+    // 기다림: 도착 안내판 (추모처럼 보이지 않게, 설레는 항구 터미널 느낌으로)
+    if (info.wait && !floating) {
+      this.arrival = true;
+      this.buildArrival(info, p, keep);
+      g.add(this.lamps, this.offerGroup);
+      this.setCount(info.count);
+      this.setOfferings(info.offerings);
+      return;
+    }
     // 말랑한 점토 같은 느낌: 거칠기를 조금 낮추고 모서리는 다 둥글게
     const wood = keep(new THREE.MeshStandardMaterial({ color: p.pier, roughness: 0.85 }));
     const boardMat = keep(new THREE.MeshStandardMaterial({ color: p.shrine, roughness: 0.8 }));
@@ -253,7 +270,6 @@ export class Shrine {
       const y = floating ? 0.07 : lift + 0.07;
       this.lampSpots.push(new THREE.Vector3(x, y, z));
     }
-    this.lampMat = keep(new THREE.MeshStandardMaterial({ color: info.color, emissive: info.color, emissiveIntensity: 1.6, roughness: 0.6 }));
     // 무지개마을 아이 곁엔 작은 곰인형이 앉아 있어요
     if (info.pet) {
       const fur = keep(new THREE.MeshStandardMaterial({ color: new THREE.Color(p.shrine).multiplyScalar(0.82), roughness: 0.95 }));
@@ -283,6 +299,158 @@ export class Shrine {
     g.add(this.lamps, this.offerGroup);
     this.setCount(info.count);
     this.setOfferings(info.offerings);
+  }
+
+  /**
+   * 도착 안내판: 두 기둥에 걸린 항구 터미널의 안내판.
+   * 왼쪽엔 테이프로 붙인 폴라로이드 사진, 오른쪽엔 "입항 예정", 이름, D-day, 도착 날짜, 한 줄.
+   * 아래 바다에선 작은 배가 기다린 만큼 항구 쪽으로 와 있어요. 온기는 안내판 위 꼬마전구로 켜져요.
+   */
+  private buildArrival(info: ShrineInfo, p: Palette, keep: <T extends { dispose(): void }>(x: T) => T) {
+    const g = this.group;
+    const w = info.wait!;
+    const wood = keep(new THREE.MeshStandardMaterial({ color: p.pier, roughness: 0.85 }));
+    const BW = 2.9, BH = 1.95, CY = 1.85;
+
+    // 기둥 두 개 (조금씩 기울어요)
+    const postGeo = keep(new THREE.CylinderGeometry(0.06, 0.08, CY + BH / 2 + 0.15, 10).translate(0, (CY + BH / 2 + 0.15) / 2, 0));
+    [[-1.24, 0.012], [1.26, -0.009]].forEach(([x, rz]) => {
+      const m = new THREE.Mesh(postGeo, wood);
+      m.position.set(x, 0, -0.06);
+      m.rotation.z = rz;
+      g.add(m);
+    });
+    // 테두리
+    const frame = new THREE.Mesh(keep(roundedPanel(BW + 0.14, BH + 0.14, 0.1, 0.12)), wood);
+    frame.position.set(0, CY, -0.01);
+    frame.rotation.z = -0.008;
+    g.add(frame);
+
+    // 안내판 글자: 바탕이 밝으면 짙은 글씨, 어두우면 밝은 글씨
+    const bg = new THREE.Color(p.tower);
+    const light = bg.r * 0.299 + bg.g * 0.587 + bg.b * 0.114 > 0.55;
+    const ink = light ? "#24304A" : hex(p.beacon);
+    const soft = light ? "rgba(36,48,74,.62)" : "rgba(255,247,234,.7)";
+    const tex = keep(canvasTex(1024, 688, (c) => {
+      c.fillStyle = hex(p.tower);
+      c.fillRect(0, 0, 1024, 688);
+      // 머리띠: 입항 예정 / 도착했어요
+      c.fillStyle = light ? "rgba(36,48,74,.08)" : "rgba(255,247,234,.08)";
+      c.fillRect(0, 0, 1024, 104);
+      c.fillStyle = ink;
+      c.textBaseline = "middle";
+      c.font = '700 60px "Gaegu", sans-serif';
+      c.fillText(w.arrived ? "도착했어요" : "입항 예정", 40, 56);
+      c.textAlign = "right";
+      c.font = '700 44px "Gaegu", sans-serif';
+      c.fillStyle = soft;
+      c.fillText(info.no, 984, 56);
+      // 오른쪽: 이름, D-day, 도착 날짜, 한 줄
+      c.textAlign = "left";
+      const x0 = 420;
+      c.fillStyle = ink;
+      c.font = '700 88px "Gaegu", sans-serif';
+      c.fillText((info.who || "그 사람").slice(0, 8), x0, 186);
+      c.fillStyle = info.color;
+      c.font = '700 136px "Gaegu", sans-serif';
+      c.fillText(w.dday, x0 - 4, 320);
+      c.fillStyle = soft;
+      c.font = '500 40px "IBM Plex Sans KR", sans-serif';
+      c.fillText(w.arrive, x0, 424);
+      if (info.line.trim()) {
+        c.fillStyle = ink;
+        c.font = '44px "Nanum Pen Script", cursive';
+        const [first] = wrap(c, info.line.trim(), 560, 1);
+        c.fillText(first ?? "", x0, 492);
+      }
+      // 아래 바다: 물결과 오른쪽 항구, 기다린 만큼 다가온 작은 배
+      const seaY = 612;
+      c.strokeStyle = soft;
+      c.lineWidth = 3;
+      for (const dy of [0, 22]) {
+        c.beginPath();
+        for (let x = 30; x <= 900; x += 6) {
+          const y = seaY + dy + Math.sin(x / 28 + dy) * 5;
+          if (x === 30) c.moveTo(x, y);
+          else c.lineTo(x, y);
+        }
+        c.stroke();
+      }
+      // 항구: 부두와 작은 등대
+      c.fillStyle = ink;
+      c.fillRect(912, seaY - 6, 82, 10);
+      c.fillRect(958, seaY - 74, 18, 68);
+      c.beginPath();
+      c.moveTo(952, seaY - 74); c.lineTo(982, seaY - 74); c.lineTo(967, seaY - 96); c.closePath();
+      c.fill();
+      // 작은 배 (도착하면 항구 바로 앞)
+      const bx = 60 + Math.max(0, Math.min(1, w.arrived ? 1 : w.pct)) * 790;
+      c.fillStyle = info.color;
+      c.beginPath();
+      c.moveTo(bx - 46, seaY - 18); c.lineTo(bx + 46, seaY - 18); c.lineTo(bx + 30, seaY + 6); c.lineTo(bx - 30, seaY + 6); c.closePath();
+      c.fill();
+      c.beginPath();
+      c.moveTo(bx - 2, seaY - 22); c.lineTo(bx - 2, seaY - 84); c.lineTo(bx + 36, seaY - 26); c.closePath();
+      c.fill();
+      // 지나온 물살
+      c.fillStyle = soft;
+      for (let k = 1; k <= 4; k++) c.fillRect(bx - 46 - k * 26, seaY - 4 + (k % 2) * 4, 12, 3);
+    }));
+    const face = new THREE.Mesh(keep(new THREE.PlaneGeometry(BW, BH)), keep(new THREE.MeshBasicMaterial({ map: tex, color: 0xe2e2e2 })));
+    face.position.set(0, CY, 0.05);
+    face.rotation.z = -0.008;
+    g.add(face);
+
+    // 폴라로이드: 하얀 테두리 안에 사진(없으면 이름), 위에 테이프 한 조각
+    const pol = new THREE.Group();
+    pol.position.set(-0.86, CY + 0.05, 0.08);
+    pol.rotation.z = 0.06;
+    const paper = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.98, 1.16)), keep(new THREE.MeshBasicMaterial({ color: 0xe8e4dc })));
+    const photoMat = keep(new THREE.MeshBasicMaterial({ color: 0xdedede }));
+    photoMat.map = keep(canvasTex(256, 256, (c) => {
+      c.fillStyle = hex(p.beacon);
+      c.fillRect(0, 0, 256, 256);
+      c.fillStyle = INK;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.font = '700 60px "Gaegu", sans-serif';
+      c.fillText((info.who || "그 사람").slice(0, 4), 128, 128);
+    }));
+    const PW = 0.84, PH = 0.84;
+    const photo = new THREE.Mesh(keep(new THREE.PlaneGeometry(PW, PH)), photoMat);
+    photo.position.set(0, 0.1, 0.004);
+    const tape = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.4, 0.13)), keep(new THREE.MeshBasicMaterial({ color: p.shrine, transparent: true, opacity: 0.8 })));
+    tape.position.set(0.02, 0.58, 0.008);
+    tape.rotation.z = -0.12;
+    pol.add(paper, photo, tape);
+    g.add(pol);
+    if (info.photo) {
+      const loader = new THREE.TextureLoader();
+      loader.setCrossOrigin("anonymous");
+      loader.load(info.photo, (t) => {
+        if (!this.trash.length) return t.dispose();
+        t.colorSpace = THREE.SRGBColorSpace;
+        const img = t.image as { width: number; height: number };
+        const have = img.width / img.height;
+        if (have > 1) {
+          t.repeat.set(1 / have, 1);
+          t.offset.set((1 - 1 / have) / 2, 0);
+        } else {
+          t.repeat.set(1, have);
+          t.offset.set(0, (1 - have) / 2);
+        }
+        photoMat.map?.dispose();
+        photoMat.map = keep(t);
+        photoMat.color.set(0xe6e6e6);
+        photoMat.needsUpdate = true;
+      });
+    }
+
+    // 꼬마전구 자리: 안내판 위 테두리를 따라 (온기가 닿은 만큼 켜져요)
+    for (let i = 0; i < MAX_LAMPS; i++) {
+      const x = -1.32 + (i + 0.5) * (2.64 / MAX_LAMPS) + Math.sin(i * 12.9) * 0.02;
+      this.lampSpots.push(new THREE.Vector3(x, CY + BH / 2 + 0.16 + Math.sin(i * 1.9) * 0.02, 0.04));
+    }
   }
 
   /** 닿은 추모 수만큼 작은 등을 놓아요 (최대 14개) */
@@ -315,12 +483,12 @@ export class Shrine {
     this.offerKey = key;
     this.offerGroup.clear();
     const list = spread(counts ?? {}, 12);
-    const top = this.floating ? -0.015 : 0.32;
+    const top = this.arrival ? 0 : this.floating ? -0.015 : 0.32;
     list.forEach((k, i) => {
       const o = makeOffering(k, this.palette, i + 1);
       const x0 = this.pet ? -0.75 : -1.2, w = this.pet ? 1.95 : 2.4;
       const x = x0 + ((i + 0.5) / Math.max(list.length, 6)) * w + Math.sin(i * 4.7) * 0.08;
-      o.position.set(x, top, 0.27 + Math.sin(i * 2.3) * 0.05);
+      o.position.set(x, top, (this.arrival ? 0.45 : 0.27) + Math.sin(i * 2.3) * 0.05);
       o.scale.setScalar(2.1);
       this.offerGroup.add(o);
     });

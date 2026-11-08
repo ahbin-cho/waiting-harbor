@@ -6,7 +6,7 @@ import { PLACE_LABEL, WORLD_NAME, WORLD_PLACES, neighbors, placeOf, worldOf, typ
 import { COLORS, colorOf } from "./lib/looks";
 import type { ShrineInfo } from "./three/shrine";
 import { dailyWord, type DailyWord } from "./lib/daily";
-import { today as todayDate, ymd as ymdOf } from "./lib/waiting";
+import { daysLeft, isMiss, parseDate, progressOf, today as todayDate, ymd as ymdOf } from "./lib/waiting";
 import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
@@ -179,6 +179,17 @@ export default function App() {
         color: COLORS[colorOf(focused.color)],
         offerings: h.offerings.counts.get(focused.id),
         pet: placeOf(focused.place) === "무지개",
+        wait: isMiss(focused) ? undefined : (() => {
+          const n = daysLeft(focused);
+          const d = parseDate(focused.end_date);
+          const date = d ? `${d.getMonth() + 1}월 ${d.getDate()}일` : "";
+          return {
+            dday: n == null ? "" : n > 0 ? `D-${n}` : n === 0 ? "오늘!" : "만났어요",
+            arrive: n != null && n < 0 ? `${date} 도착 · ${focused.kind}` : `${date} 도착 예정 · ${focused.kind}`,
+            pct: progressOf(focused),
+            arrived: n != null && n <= 0,
+          };
+        })(),
       }
     : null;
   // 새 등불 걸기를 연 순간을 세요 (고치기는 빼고)

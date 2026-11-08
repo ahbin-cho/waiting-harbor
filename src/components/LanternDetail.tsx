@@ -263,7 +263,7 @@ export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, 
       <p className="small warmth-line">
         {miss
           ? warmth ? `이 등불 앞에서 ${warmth}번 추모했어요. 추모할 때마다 곁에 작은 등이 하나씩 놓여요.` : "아직 추모한 사람이 없어요. 추모하면 곁에 작은 등이 하나 놓여요."
-          : warmth ? `이 등불에 온기가 ${warmth}번 닿았어요. 온기마다 곁에 작은 등이 하나씩 놓여요.` : "아직 닿은 온기가 없어요. 온기를 보내면 곁에 작은 등이 하나 놓여요."}
+          : warmth ? `이 등불에 온기가 ${warmth}번 닿았어요. 온기마다 도착 안내판 위에 꼬마전구가 하나씩 켜져요.` : "아직 닿은 온기가 없어요. 온기를 보내면 도착 안내판 위에 꼬마전구가 하나 켜져요."}
       </p>
 
       {/* 기다림의 길: 시작한 날 → 오늘 → 돌아오는 날 (그리움은 함께한 시간) */}
@@ -279,7 +279,10 @@ export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, 
       <div className="journey" aria-label={`기다림의 ${pct}%를 지나왔어요`}>
         <div className="journey-line">
           <i style={{ width: `${pct}%` }} />
-          <b style={{ left: `${pct}%` }} />
+          {/* 돌아오는 배: 기다린 만큼 항구 쪽으로 와 있어요 */}
+          <b className="boat" style={{ left: `${pct}%` }} aria-hidden="true">
+            <svg viewBox="0 0 24 16"><path d="M1 10h22l-4 5H5z" /><path d="M11 1v8h8z" /></svg>
+          </b>
         </div>
         <div className="journey-ends">
           <span>{md(lantern.start_date)} 시작</span>

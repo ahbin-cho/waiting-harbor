@@ -254,6 +254,8 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .journey-line{position:relative;height:2px;background:var(--line);border-radius:1px}
 .journey-line i{position:absolute;left:0;top:0;bottom:0;background:var(--muted);border-radius:1px}
 .journey-line b{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--ink)}
+.journey-line b.boat{width:24px;height:16px;margin:-15px 0 0 -12px;border-radius:0;background:none;color:var(--ink)}
+.journey-line b.boat svg{display:block;width:100%;height:100%;fill:currentColor}
 .journey-ends{display:flex;justify-content:space-between;margin-top:8px;font-size:.75rem;color:var(--faint);font-variant-numeric:tabular-nums}
 .note-line{margin-top:0}
 .compose{margin-top:6px;padding:16px;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;gap:10px}
