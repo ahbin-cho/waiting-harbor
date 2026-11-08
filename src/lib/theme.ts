@@ -19,12 +19,13 @@ export type Palette = {
 
 export const PALETTES: Record<ThemeName, Palette> = {
   night: {
-    skyTop: 0x05081a, skyLow: 0x2b2446, fog: 0x17142e, fogDensity: 0.0038,
-    sea: 0x080f2a, land: 0x141833, landHigh: 0x252848, shore: 0x2a2440, landFar: 0x1c1a42, tree: 0x0b132d, tree2: 0x16203f,
-    pier: 0x1c1726, tower: 0x1d2140, band: 0x141833, beacon: 0xf4e6c6, mist: 0x8a85b8, mistOpacity: 1,
-    hemiSky: 0x5a60a8, hemiGround: 0x080a18, hemi: 1.3, sunColor: 0xbfc6ff, sun: 0.7,
-    exposure: 1.1, stars: 1, moon: 1, glow: 1, lampLight: 1, uiColor: "#05081A",
-    rainbowLand: 0x3a4f47, rainbowHigh: 0x587058, rainbowLight: 26, bridgeGlow: 0.7,
+    // 밤: 어둡지만 섬 윤곽과 나무가 읽히는 정도로 (달빛을 조금 더 밝게)
+    skyTop: 0x0a1028, skyLow: 0x3a3060, fog: 0x1f1b3d, fogDensity: 0.0032,
+    sea: 0x0f1a40, land: 0x1f2648, landHigh: 0x343a66, shore: 0x3a3358, landFar: 0x29275a, tree: 0x13204a, tree2: 0x203060,
+    pier: 0x2c2438, tower: 0x2b3060, band: 0x1f2648, beacon: 0xf4e6c6, mist: 0x8a85b8, mistOpacity: 1,
+    hemiSky: 0x7a82d0, hemiGround: 0x10142c, hemi: 1.8, sunColor: 0xc8d0ff, sun: 1.05,
+    exposure: 1.25, stars: 1, moon: 1, glow: 1, lampLight: 1, uiColor: "#0A1028",
+    rainbowLand: 0x435a52, rainbowHigh: 0x627b62, rainbowLight: 26, bridgeGlow: 0.7,
   },
   // 새벽: 해가 막 뜨는 항구. 하늘은 옅은 하늘색에서 복숭아빛으로, 바다는 맑은 청회색.
   dawn: {
