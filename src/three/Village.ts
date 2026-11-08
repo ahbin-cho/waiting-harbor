@@ -195,6 +195,8 @@ export class Village {
   /** 나무: 등불을 열면 카메라와 등불 사이를 가리는 나무를 잠시 비켜 둬요 */
   private trees: { spots: [number, number, number][]; meshes: THREE.InstancedMesh[]; saved: THREE.Matrix4[][] } | null = null;
   private treeClear: { eye: THREE.Vector3; lamp: THREE.Vector3; spot: THREE.Vector3 } | null = null;
+  /** 기다림 항구 하늘을 천천히 나는 종이비행기들 (추모관에선 안 보여요) */
+  private planes: { o: THREE.Object3D; cx: number; cz: number; rx: number; rz: number; y: number; speed: number; ph: number }[] = [];
   /** 무지개마을·추모관 섬의 작은 것들(집, 덤불, 나무): 열린 아이나 등불을 가리면 잠시 숨겨요 */
   private props: { o: THREE.Object3D; c: THREE.Vector3; r: number }[] = [];
   /** 열린 등불과 작은 자리를 가리는 다른 등불 (열려 있는 동안 숨겨요) */
@@ -238,6 +240,7 @@ export class Village {
     const n0 = this.env.children.length;
     this.buildRainbow();
     this.buildMemorial();
+    this.buildPaperPlanes();
     // 새로 놓인 것들 가운데 작은 것만 (섬 땅처럼 큰 건 빼고)
     const box = new THREE.Box3(), sph = new THREE.Sphere();
     for (const o of this.env.children.slice(n0)) {
@@ -770,6 +773,36 @@ export class Village {
     if (p.clouds) this.buildClouds();
   }
 
+  /** 종이비행기: 접은 종이 모양 (빛은 내지 않아요). 마을 위를 크게 원을 그리며 천천히 날아요. */
+  private buildPaperPlanes() {
+    this.planes = [];
+    const v = new Float32Array([
+      // 왼쪽 날개, 오른쪽 날개, 가운데 접힌 용골 두 면
+      0, 0, 0.9, -0.62, 0.02, -0.5, 0, 0, -0.5,
+      0, 0, 0.9, 0, 0, -0.5, 0.62, 0.02, -0.5,
+      0, 0, 0.9, 0, 0, -0.5, 0, -0.22, -0.42,
+      0, 0, 0.9, 0, -0.22, -0.42, 0, 0, -0.5,
+    ]);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(v, 3));
+    geo.computeVertexNormals();
+    const mat = new THREE.MeshStandardMaterial({ color: this.p.beacon, roughness: 0.9, side: THREE.DoubleSide });
+    const rand = rng(97);
+    for (let i = 0; i < 4; i++) {
+      const o = new THREE.Mesh(geo, mat);
+      o.scale.setScalar(1.5 + rand() * 0.6);
+      this.env.add(o);
+      this.planes.push({
+        o,
+        cx: -6 + rand() * 16, cz: -8 + rand() * 14,
+        rx: 34 + rand() * 18, rz: 20 + rand() * 12,
+        y: 17 + rand() * 9,
+        speed: (0.035 + rand() * 0.025) * (i % 2 ? 1 : -1),
+        ph: rand() * Math.PI * 2,
+      });
+    }
+  }
+
   /** 추모관(낮)의 구름: 두 섬 둘레 바다 위에 몽글몽글, 하늘엔 드문드문. 빛은 내지 않아요. */
   private buildClouds() {
     const mat = new THREE.MeshStandardMaterial({ color: this.p.cloud, roughness: 1 });
@@ -1135,6 +1168,7 @@ export class Village {
     const n0 = this.env.children.length;
     this.buildRainbow();
     this.buildMemorial();
+    this.buildPaperPlanes();
     // 새로 놓인 것들 가운데 작은 것만 (섬 땅처럼 큰 건 빼고)
     const box = new THREE.Box3(), sph = new THREE.Sphere();
     for (const o of this.env.children.slice(n0)) {
@@ -1552,6 +1586,16 @@ export class Village {
       }
     }
     this.sailFerry(calm ? null : t);
+    for (const pl of this.planes) {
+      pl.o.visible = this.world !== "miss";
+      if (!pl.o.visible) continue;
+      // 타원을 따라 날면서 앞을 보고, 살짝 오르내리고, 도는 쪽으로 기울어요
+      const a = pl.ph + (calm ? 0 : t * pl.speed);
+      const x = pl.cx + Math.cos(a) * pl.rx, z = pl.cz + Math.sin(a) * pl.rz;
+      const dx = -Math.sin(a) * pl.rx * Math.sign(pl.speed), dz = Math.cos(a) * pl.rz * Math.sign(pl.speed);
+      pl.o.position.set(x, pl.y + (calm ? 0 : Math.sin(t * 0.7 + pl.ph) * 0.8), z);
+      pl.o.rotation.set(calm ? 0 : Math.sin(t * 0.7 + pl.ph) * 0.12, Math.atan2(dx, dz), -0.35 * Math.sign(pl.speed));
+    }
     if (this.shrine) {
       const sel = this.shrineInfo ? this.items.get(this.shrineInfo.id) : undefined;
       if (this.shrine.floating || sel?.pet) this.placeShrine(); // 하늘 등불과 아이들은 움직이니 따라가요

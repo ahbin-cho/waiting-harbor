@@ -6,7 +6,7 @@ import { PLACE_LABEL, WORLD_NAME, WORLD_PLACES, neighbors, placeOf, worldOf, typ
 import { COLORS, colorOf } from "./lib/looks";
 import type { ShrineInfo } from "./three/shrine";
 import { dailyWord, type DailyWord } from "./lib/daily";
-import { daysLeft, isMiss, parseDate, progressOf, today as todayDate, ymd as ymdOf } from "./lib/waiting";
+import { daysLeft, fliesHome, isMiss, parseDate, progressOf, today as todayDate, ymd as ymdOf } from "./lib/waiting";
 import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
@@ -188,6 +188,7 @@ export default function App() {
             arrive: n != null && n < 0 ? `${date} 도착 · ${focused.kind}` : `${date} 도착 예정 · ${focused.kind}`,
             pct: progressOf(focused),
             arrived: n != null && n <= 0,
+            mode: fliesHome(focused.kind) ? ("plane" as const) : ("ship" as const),
           };
         })(),
       }

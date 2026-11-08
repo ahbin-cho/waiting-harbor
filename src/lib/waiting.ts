@@ -7,6 +7,8 @@ export const KINDS = ["군대", "장거리 연애", "해외에 있는 가족", "
 export const MISS_KINDS = ["가족", "친구", "반려동물", "그 밖의 그리움"] as const;
 
 export const isMiss = (l: { mode?: string | null }) => l.mode === "miss";
+/** 비행기로 돌아오는 기다림인지 (장거리 연애, 해외에 있는 가족). 나머지는 배로 돌아와요. */
+export const fliesHome = (kind: string) => kind === "장거리 연애" || kind === "해외에 있는 가족";
 
 /** 받침이 있으면 '을', 없으면 '를' */
 export function josa(word: string) {
