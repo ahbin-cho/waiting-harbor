@@ -6,6 +6,20 @@ export const PLACES = ["항구", "숲", "언덕", "등대", "하늘", "무지개
 export const GROUND_PLACES = ["항구", "숲", "언덕", "등대"] as const;
 export type Place = (typeof PLACES)[number];
 
+/**
+ * 두 곳: 돌아올 사람을 기다리는 "기다림 항구"와, 떠나보낸 사람과 아이를 기리는 "추모관".
+ * 머리글에서 오가며, 한 곳에 있을 땐 그곳의 등불만 보여요.
+ */
+export type World = "wait" | "miss";
+export const WORLD_NAME: Record<World, string> = { wait: "기다림 항구", miss: "추모관" };
+export const WORLD_PLACES: Record<World, Place[]> = { wait: ["항구", "숲", "언덕", "등대"], miss: ["하늘", "무지개"] };
+export const PLACE_LABEL: Record<Place, string> = { 항구: "항구", 숲: "숲", 언덕: "언덕", 등대: "등대", 하늘: "하늘", 무지개: "무지개마을" };
+/** 등불이 어느 곳에 속하는지: 그리움 등불(하늘의 풍등, 무지개마을의 아이)은 추모관 */
+export const worldOf = (l: { mode?: string | null; place?: string | null }): World => {
+  const p = placeOf(l.place);
+  return l.mode === "miss" || p === "하늘" || p === "무지개" ? "miss" : "wait";
+};
+
 // ---------- 노이즈 ----------
 
 function hash(x: number, y: number) {
@@ -41,6 +55,8 @@ export const ISLANDS = {
   등대: { x: 36, z: -12, r: 17, h: 9, p: 2.2, seed: 17 },
   // 바다 건너 무지개마을: 낮고 완만한 풀밭 섬
   무지개: { x: 96, z: -40, r: 24, h: 3.2, p: 0.7, seed: 29 },
+  // 추모관: 무지개마을 곁, 더 멀리 떨어진 조용한 섬. 떠나보낸 사람의 풍등이 이 섬 위 하늘에 떠요.
+  추모: { x: 58, z: -80, r: 19, h: 4.5, p: 1.0, seed: 37 },
 } as const;
 type Island = (typeof ISLANDS)[keyof typeof ISLANDS];
 
@@ -113,7 +129,7 @@ export const PLACE_INFO: Record<Place, { x: number; z: number; blurb: string; ha
   숲: { x: ISLANDS.숲.x, z: ISLANDS.숲.z, blurb: "나무 사이, 조용한 곳에 매달아요.", hang: true },
   언덕: { x: ISLANDS.언덕.x + 2, z: ISLANDS.언덕.z + 2, blurb: "멀리까지 내다보이는 언덕에 꽂아요.", hang: false },
   등대: { x: ISLANDS.등대.x, z: ISLANDS.등대.z, blurb: "길을 비춰주는 등대 곁에 세워요.", hang: false },
-  하늘: { x: -4, z: -10, blurb: "마을 위 하늘에 띄워요.", hang: false },
+  하늘: { x: 58, z: -80, blurb: "추모관 섬 위 하늘에 띄워요.", hang: false },
   무지개: { x: 96, z: -40, blurb: "무지개다리 건너, 떠난 아이들이 지내는 마을이에요.", hang: false },
 };
 
@@ -126,7 +142,7 @@ export function placeOf(p: string | null | undefined): Place {
  * 가운데부터 해바라기 씨처럼 퍼지고, 조금씩 흐트러뜨려 줄이 맞지 않게 해요.
  */
 /** 하늘 등불의 높이: 마을 위로 조금씩 다른 높이에 떠 있어요 */
-export const skyY = (i: number) => 19 + jitter(i, 7) * 3 + Math.sqrt(i) * 0.6;
+export const skyY = (i: number) => 13 + jitter(i, 7) * 2.5 + Math.sqrt(i) * 0.5;
 
 export function slotOf(place: Place, i: number): [number, number] {
   if (place === "하늘") {

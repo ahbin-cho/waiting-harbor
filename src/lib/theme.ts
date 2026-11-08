@@ -14,6 +14,8 @@ export type Palette = {
   pier: number; tower: number; band: number; beacon: number; mist: number; mistOpacity: number;
   /** 등불 곁 작은 자리의 등판 (사진과 쪽지가 잘 보이게 따뜻하고 밝은 쪽으로) */
   shrine: number;
+  /** 추모관 섬: 낮은 곳과 높은 곳의 땅빛 (차분하게) */
+  memLand: number; memHigh: number;
   hemiSky: number; hemiGround: number; hemi: number; sunColor: number; sun: number;
   exposure: number; stars: number; moon: number; glow: number; lampLight: number; uiColor: string;
   /** 무지개마을: 밤에도 노을빛이 은은하게 남아 있어요 */
@@ -28,7 +30,7 @@ export const PALETTES: Record<ThemeName, Palette> = {
     pier: 0x2c2438, tower: 0x2b3060, band: 0x1f2648, beacon: 0xf4e6c6, mist: 0x8a85b8, mistOpacity: 1,
     hemiSky: 0x7a82d0, hemiGround: 0x10142c, hemi: 1.8, sunColor: 0xc8d0ff, sun: 1.05,
     exposure: 1.25, stars: 1, moon: 1, glow: 1, lampLight: 1, uiColor: "#0A1028",
-    rainbowLand: 0x435a52, rainbowHigh: 0x627b62, rainbowLight: 26, bridgeGlow: 0.7, shrine: 0x8a7468,
+    rainbowLand: 0x435a52, rainbowHigh: 0x627b62, rainbowLight: 26, bridgeGlow: 0.7, shrine: 0x8a7468, memLand: 0x2c3150, memHigh: 0x454a70,
   },
   // 노을: 해가 막 진 항구. 수평선은 주황빛, 위는 보랏빛, 바다엔 붉은 기운. 등불도 잘 보여요.
   dusk: {
@@ -37,7 +39,7 @@ export const PALETTES: Record<ThemeName, Palette> = {
     pier: 0x4a3a3e, tower: 0xd9d0c8, band: 0xa8524a, beacon: 0xfff1d6, mist: 0xffc9a8, mistOpacity: 1.6,
     hemiSky: 0xffb48a, hemiGround: 0x2a2140, hemi: 1.6, sunColor: 0xff9a5c, sun: 1.6,
     exposure: 1.15, stars: 0.25, moon: 0.6, glow: 0.9, lampLight: 0.8, uiColor: "#2D3566",
-    rainbowLand: 0x5a6a52, rainbowHigh: 0x7a8a62, rainbowLight: 14, bridgeGlow: 0.5, shrine: 0xd6b79a,
+    rainbowLand: 0x5a6a52, rainbowHigh: 0x7a8a62, rainbowLight: 14, bridgeGlow: 0.5, shrine: 0xd6b79a, memLand: 0x4b4258, memHigh: 0x6d6078,
   },
   // 새벽: 밝은 글 페이지용 하늘은 옅은 하늘색에서 복숭아빛으로, 바다는 맑은 청회색.
   dawn: {
@@ -46,7 +48,7 @@ export const PALETTES: Record<ThemeName, Palette> = {
     pier: 0x6e5a49, tower: 0xeeeae2, band: 0xb4554b, beacon: 0xfff4e2, mist: 0xffffff, mistOpacity: 2.2,
     hemiSky: 0xe3ebff, hemiGround: 0x5d5546, hemi: 1.7, sunColor: 0xffdcbc, sun: 1.8,
     exposure: 1.0, stars: 0, moon: 0.35, glow: 0.6, lampLight: 0.5, uiColor: "#8FB0D9",
-    rainbowLand: 0x7fae6e, rainbowHigh: 0xa6cc86, rainbowLight: 2.5, bridgeGlow: 0.25, shrine: 0xe8d4bd,
+    rainbowLand: 0x7fae6e, rainbowHigh: 0xa6cc86, rainbowLight: 2.5, bridgeGlow: 0.25, shrine: 0xe8d4bd, memLand: 0x8c9a98, memHigh: 0xb2bfb8,
   },
 };
 

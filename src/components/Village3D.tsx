@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Lantern } from "../lib/supabase";
-import type { Place } from "../lib/places";
+import type { Place, World } from "../lib/places";
 import { Village } from "../three/Village";
 import type { Shot } from "../lib/story";
 import type { ThemeName } from "../lib/theme";
@@ -10,7 +10,7 @@ import type { ShrineInfo } from "../three/shrine";
 export type Focus = { place: Place | "all"; n: number };
 
 /** three.js 로 그린 3D 밤 마을. 이름표는 HTML 로 그 위에 얹어요. */
-export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, onPick, theme, record, onClip }: {
+export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, onPick, theme, world, record, onClip }: {
   lanterns: Lantern[];
   me: string | null;
   online: Set<string>;
@@ -22,6 +22,8 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   shrine: ShrineInfo | null;
   onPick: (id: string) => void;
   theme: ThemeName;
+  /** 기다림 항구 / 추모관 (이야기 중엔 모두) */
+  world: World | "all";
   /** 10초 영상 찍기 요청 */
   record: { id: string; n: number; text: ClipText } | null;
   onClip: (r: { blob: Blob; ext: string } | { error: string }) => void;
@@ -43,6 +45,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
 
   useEffect(() => v.current?.setData(lanterns, me, online), [lanterns, me, online]);
   useEffect(() => v.current?.setTheme(theme), [theme]);
+  useEffect(() => v.current?.setWorld(world), [world]);
   const clipDone = useRef(onClip);
   clipDone.current = onClip;
   useEffect(() => {
