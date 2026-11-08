@@ -124,6 +124,34 @@ create policy "warmth read"   on public.warmth for select using (true);
 drop policy if exists "warmth insert" on public.warmth;
 create policy "warmth insert" on public.warmth for insert with check (auth.uid() = from_id and not public.owns_lantern(to_id));
 
+-- 등불 사진: 등불마다 한 장. 다른 사람에게 보일지는 등불 주인이 정해요 (photo_public).
+-- 파일은 Storage 'photos' 버킷의 {user_id}/{등불 id}.jpg 에 있어요.
+alter table public.lanterns add column if not exists photo_path text;
+alter table public.lanterns add column if not exists photo_public boolean not null default false;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('photos', 'photos', false, 3145728, '{image/jpeg}')
+on conflict (id) do update set public = false, file_size_limit = 3145728, allowed_mime_types = '{image/jpeg}';
+
+-- 자기 폴더({user_id}/)에만 올리고 바꾸고 지울 수 있어요
+drop policy if exists "photos write" on storage.objects;
+create policy "photos write" on storage.objects for insert
+  with check (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "photos update" on storage.objects;
+create policy "photos update" on storage.objects for update
+  using (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "photos delete" on storage.objects;
+create policy "photos delete" on storage.objects for delete
+  using (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text);
+-- 볼 수 있는 사람: 주인, 또는 주인이 '마을 사람들에게도 보여요'로 둔 사진이면 누구나
+drop policy if exists "photos read" on storage.objects;
+create policy "photos read" on storage.objects for select using (
+  bucket_id = 'photos' and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or exists (select 1 from public.lanterns l where l.photo_path = name and l.photo_public)
+  )
+);
+
 -- 의견: 마을 사람들이 등대지기(운영자)에게 남기는 말. 운영자만 대시보드에서 봐요 (읽기 정책 없음).
 create table if not exists public.feedback (
   id         bigint generated always as identity primary key,

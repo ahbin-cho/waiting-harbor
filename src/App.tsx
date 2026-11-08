@@ -207,6 +207,10 @@ export default function App() {
             onEdit={() => setView({ type: "form", id: picked.id })}
             canShare={!demo}
             onRecord={canRecord() ? () => startRecord(picked.id) : undefined}
+            photoUrl={h.photoUrls[picked.id]}
+            onLoadPhoto={() => h.loadPhoto(picked)}
+            onPhoto={(blob, open) => h.setPhoto(picked, blob, open)}
+            onPhotoPublic={(open) => h.setPhotoPublic(picked, open)}
             onClose={close}
           />
         )}

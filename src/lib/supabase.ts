@@ -24,6 +24,9 @@ export type Lantern = {
   mode: string;
   /** 반려동물 그리움 등불: 어떤 아이였는지 (무지개마을에서 지내는 모습이 달라요) */
   species?: string | null;
+  /** 등불 사진 (Storage photos 버킷 경로)과 공개 여부 */
+  photo_path?: string | null;
+  photo_public?: boolean;
   color: string;
   shape: string;
   created_at: string;

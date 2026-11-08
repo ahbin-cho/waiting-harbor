@@ -273,3 +273,10 @@ video.clip{display:block;width:min(100%,280px);aspect-ratio:9/16;margin:16px aut
 .theme-switch{display:inline-flex;gap:10px}
 .theme-switch .text-btn{text-decoration-color:transparent}
 .theme-switch .text-btn[aria-pressed="true"]{color:var(--ink);text-decoration-color:var(--ink)}
+
+/* 등불 사진 */
+.photo-box .section small{margin-left:8px;color:var(--faint)}
+img.photo{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:12px;background:var(--field)}
+.photo-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:10px}
+.file-btn{position:relative;cursor:pointer}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}

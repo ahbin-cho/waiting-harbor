@@ -3,6 +3,7 @@ import type { Lantern, Note } from "../lib/supabase";
 import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
+import { shrinkPhoto } from "../lib/photo";
 
 const md = (s: string) => {
   const d = parseDate(s);
@@ -18,7 +19,7 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, canShare, onRecord }: {
+export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, canShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   isMine: boolean;
   isHere: boolean;
@@ -34,6 +35,11 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   canShare: boolean;
   /** 10초 영상 만들기 (지원하지 않는 브라우저면 없음) */
   onRecord?: () => void;
+  /** 사진: 볼 수 있는 주소(없으면 없거나 나만 보기), 불러오기, 넣기·지우기, 공개 여부 */
+  photoUrl?: string;
+  onLoadPhoto: () => void;
+  onPhoto: (blob: Blob | null, isPublic: boolean) => Promise<void>;
+  onPhotoPublic: (isPublic: boolean) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -51,7 +57,23 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   const gone = daysGone(lantern);
   const ann = nextAnniversary(lantern);
 
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoPublic = !!lantern.photo_public;
+  async function pickPhoto(file?: File) {
+    if (!file) return;
+    setPhotoBusy(true);
+    setErr("");
+    try {
+      await onPhoto(await shrinkPhoto(file), lantern.photo_path ? photoPublic : false);
+    } catch {
+      setErr("사진을 올리지 못했어요. 다른 사진으로 다시 해 주세요.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   useEffect(() => {
+    onLoadPhoto();
     onLoadNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lantern.id]);
@@ -159,6 +181,31 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
           <span>{md(lantern.end_date)} 돌아와요</span>
         </div>
       </div>
+      )}
+
+      {(photoUrl || isMine) && (
+        <div className="photo-box">
+          <p className="section">사진{isMine && lantern.photo_path && <small>{photoPublic ? "마을 사람들도 봐요" : "나만 봐요"}</small>}</p>
+          {photoUrl && <img className="photo" src={photoUrl} alt={`${who} 사진`} />}
+          {isMine && (
+            <div className="photo-tools">
+              <label className="text-btn file-btn">
+                {photoBusy ? "올리는 중" : lantern.photo_path ? "사진 바꾸기" : "사진 한 장 넣기"}
+                <input type="file" accept="image/*" disabled={photoBusy} onChange={(e) => pickPhoto(e.target.files?.[0] ?? undefined)} />
+              </label>
+              {lantern.photo_path && (
+                <>
+                  <label className="toggle">
+                    <input type="checkbox" checked={photoPublic} onChange={(e) => onPhotoPublic(e.target.checked).catch(() => setErr("바꾸지 못했어요."))} />
+                    마을 사람들에게도 보여요
+                  </label>
+                  <button className="text-btn" onClick={() => onPhoto(null, false).catch(() => setErr("사진을 지우지 못했어요."))}>지우기</button>
+                </>
+              )}
+            </div>
+          )}
+          {isMine && !lantern.photo_path && <p className="small">처음엔 나만 보여요. 넣은 뒤에 마을 사람들에게 보일지 정할 수 있어요.</p>}
+        </div>
       )}
 
       {lantern.line && (
