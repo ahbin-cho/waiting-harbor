@@ -6,6 +6,7 @@ import { COLORS, colorOf, shapeOf, type LampShape } from "../lib/looks";
 import { ISLANDS, PIER, PLACE_INFO, RAINBOW, fbm, groundAt, harborSlot, jitter, pierAt, placeOf, skyY, slotOf, type Place } from "../lib/places";
 import { speciesOf } from "../lib/pets";
 import { makePet, type PetRig } from "./pets";
+import { Shrine, type ShrineInfo } from "./shrine";
 import { badgeText, daysLeft, glowOf, isMiss } from "../lib/waiting";
 import type { Shot } from "../lib/story";
 import { PALETTES, type Palette, type ThemeName } from "../lib/theme";
@@ -172,6 +173,12 @@ export class Village {
   private ferry!: { arrive: THREE.QuadraticBezierCurve3; leave: THREE.QuadraticBezierCurve3; dock: THREE.Vector3; heading: number };
   /** 물 위에서 흔들리는 것들 (매어 둔 배, 부표) */
   private bobs: { o: THREE.Object3D; y: number; ph: number; roll: number }[] = [];
+  /** 열린 등불 곁의 작은 자리 */
+  private shrine: Shrine | null = null;
+  private shrineInfo: ShrineInfo | null = null;
+  private shrineKey = "";
+  /** 열린 등불에서 카메라 쪽 (바닥 방향) */
+  private selFlat = new THREE.Vector3(0, 0, 1);
   private down: { x: number; y: number; t: number } | null = null;
   private ro: ResizeObserver;
   private paused = false;
@@ -952,6 +959,11 @@ export class Village {
     const p = PALETTES[name];
     if (p === this.p) return;
     this.p = p;
+    // 작은 자리도 새 색으로 다시
+    this.shrine?.dispose();
+    this.shrine = null;
+    this.shrineKey = "";
+    queueMicrotask(() => this.setShrine(this.shrineInfo));
     this.env.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();
@@ -975,6 +987,63 @@ export class Village {
 
   pulse(id: string) {
     this.pulses.set(id, performance.now());
+    if (this.shrineInfo?.id === id) this.shrine?.burst();
+  }
+
+  // ---------- 등불 곁의 작은 자리 ----------
+
+  /** 카메라에서 볼 때 화면 오른쪽 (바닥 방향) */
+  private rightOf(flat: THREE.Vector3) {
+    return new THREE.Vector3().crossVectors(flat.clone().negate(), new THREE.Vector3(0, 1, 0)).normalize();
+  }
+
+  /** 열린 등불 곁에 작은 자리를 놓아요. 사진·번호·한 줄이 바뀌면 다시 만들어요. */
+  setShrine(info: ShrineInfo | null) {
+    this.shrineInfo = info;
+    const it = info ? this.items.get(info.id) : undefined;
+    if (!info || !it || this.selected !== info.id) {
+      this.shrine?.dispose();
+      this.shrine = null;
+      this.shrineKey = "";
+      return;
+    }
+    const key = [info.id, info.photo ?? "", info.no, info.who, info.line, info.color, this.selFlat.toArray().join()].join("|");
+    if (key !== this.shrineKey) {
+      this.shrine?.dispose();
+      this.shrine = new Shrine(info, this.p, this.glowTex, it.place === "하늘" || !!it.pet);
+      this.shrineKey = key;
+      this.scene.add(this.shrine.group);
+      this.placeShrine();
+    }
+    this.shrine?.setCount(info.count);
+  }
+
+  /** 작은 자리가 놓일 곳 (받침 바닥 기준). 카메라에서 볼 때 등불 오른쪽, 항구에선 부두 위 */
+  private shrineSpot(it: Item, flat: THREE.Vector3) {
+    const right = this.rightOf(flat);
+    if (it.place === "하늘" || it.pet) return it.lamp.clone().addScaledVector(right, 2.1).add(new THREE.Vector3(0, -1.7, 0));
+    if (it.place === "항구") {
+      // 부두 가운데, 카메라에서 조금 먼 쪽으로 부두를 따라 옮겨서 물 위에 뜨지 않게
+      const h = harborSlot(it.idx);
+      const fw = new THREE.Vector3(Math.sin(h.yaw), 0, Math.cos(h.yaw));
+      const way = fw.dot(flat) > 0 ? -1 : 1;
+      return new THREE.Vector3(it.group.position.x - Math.cos(h.yaw) * h.side, h.deck, it.group.position.z + Math.sin(h.yaw) * h.side).addScaledVector(fw, way * 1.6);
+    }
+    const p = it.group.position.clone().addScaledVector(right, 2.1).addScaledVector(flat, 0.7);
+    p.y = Math.max(0.2, groundAt(p.x, p.z)) - 0.05;
+    return p;
+  }
+
+  private placeShrine() {
+    const sh = this.shrine, info = this.shrineInfo;
+    const it = info ? this.items.get(info.id) : undefined;
+    if (!sh || !it) {
+      if (info && !sh) this.setShrine(info);
+      return;
+    }
+    const flat = this.selFlat;
+    sh.group.rotation.set(0, Math.atan2(flat.x, flat.z) - 0.16, 0);
+    sh.group.position.copy(this.shrineSpot(it, flat));
   }
 
   // ---------- 카메라 ----------
@@ -1045,16 +1114,23 @@ export class Village {
     if (id) {
       const it = this.items.get(id);
       if (!it) return;
-      // 등불에 바짝 다가가요. 아래쪽 시트에 가리지 않게 등불이 화면 위쪽에 오도록 조금 아래를 봐요.
+      // 등불에 다가가요. 곁에 작은 자리(사진, 쪽지, 작은 등)가 함께 보이게 조금 오른쪽을 보고,
+      // 아래쪽 시트(화면 아래 절반)에 가리지 않게 등불이 화면 위쪽에 오도록 아래를 봐요.
       const flat = this.camera.position.clone().sub(it.lamp).setY(0).normalize();
       if (!flat.lengthSq()) flat.set(0, 0, 1);
-      // 시트가 화면 아래 2/3쯤을 덮으니, 등불이 화면 위쪽 1/3 안에 오도록 한참 아래를 봐요
-      const pos = it.lamp.clone().addScaledVector(flat, 20).add(new THREE.Vector3(0, 3.5, 0));
-      const target = it.lamp.clone().add(new THREE.Vector3(0, -3.6, 0));
+      this.selFlat.copy(flat);
+      // 등불과 곁의 작은 자리 사이 가운데를 봐요
+      const spot = this.shrineSpot(it, flat).add(new THREE.Vector3(0, 1.5, 0));
+      const mid = it.lamp.clone().lerp(spot, 0.5);
+      const d = this.narrow ? 15 : 13;
+      const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, 4.6, 0));
+      const target = mid.clone().add(new THREE.Vector3(0, this.narrow ? -3.3 : -2.9, 0));
       this.flyTo(pos, target, 1100);
+      this.placeShrine();
       this.follow = it.pet ? it.lamp.clone() : null;
     } else if (was) {
       this.follow = null;
+      this.setShrine(null);
       const it = this.items.get(was);
       if (it) this.focusPlace(it.place);
     }
@@ -1194,6 +1270,10 @@ export class Village {
       }
     }
     this.sailFerry(calm ? null : t);
+    if (this.shrine) {
+      if (this.shrine.floating) this.placeShrine(); // 하늘 등불과 아이들은 움직이니 따라가요
+      this.shrine.update(now, calm);
+    }
 
     const focus = this.selected;
     for (const it of this.items.values()) {
@@ -1310,6 +1390,7 @@ export class Village {
 
   dispose() {
     cancelAnimationFrame(this.raf);
+    this.shrine?.dispose();
     this.paused = true;
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.ro.disconnect();

@@ -19,10 +19,14 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, me, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
+export function LanternDetail({ lantern, me, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   /** 지금 보는 사람 (자기가 남긴 말을 지울 수 있게) */
   me: string | null;
+  /** 자리 번호 ("항구 12")와 같은 장소의 이전·다음 등불로 가기 */
+  no?: string;
+  onPrev?: () => void;
+  onNext?: () => void;
   isMine: boolean;
   isHere: boolean;
   warmth: number;
@@ -150,6 +154,13 @@ export function LanternDetail({ lantern, me, isMine, isHere, warmth, sent, notes
         {onRecord && <button className="text-btn" onClick={onRecord}>10초 영상</button>}
         <button className="text-btn" onClick={onClose} aria-label="닫기">닫기</button>
       </div>
+      {no && (
+        <nav className="lantern-nav" aria-label="같은 곳의 다른 등불">
+          {onPrev && <button className="text-btn" onClick={onPrev}>← 이전</button>}
+          <span>{no}번 등불</span>
+          {onNext && <button className="text-btn" onClick={onNext}>다음 →</button>}
+        </nav>
+      )}
       <p className="where">
         {lantern.place === "무지개" ? `무지개마을에서 지내요 · ${lantern.species ?? "반려동물"}` : miss ? `하늘에 띄운 풍등 · ${lantern.kind}` : `${placeOf(lantern.place)}에 걸린 등불 · ${lantern.kind}`}
       </p>
@@ -201,8 +212,8 @@ export function LanternDetail({ lantern, me, isMine, isHere, warmth, sent, notes
       )}
       <p className="small warmth-line">
         {miss
-          ? warmth ? `이 등불 앞에서 ${warmth}번 추모했어요.` : "아직 추모한 사람이 없어요."
-          : warmth ? `이 등불에 온기가 ${warmth}번 닿았어요.` : "아직 닿은 온기가 없어요."}
+          ? warmth ? `이 등불 앞에서 ${warmth}번 추모했어요. 추모할 때마다 곁에 작은 등이 하나씩 놓여요.` : "아직 추모한 사람이 없어요. 추모하면 곁에 작은 등이 하나 놓여요."
+          : warmth ? `이 등불에 온기가 ${warmth}번 닿았어요. 온기마다 곁에 작은 등이 하나씩 놓여요.` : "아직 닿은 온기가 없어요. 온기를 보내면 곁에 작은 등이 하나 놓여요."}
       </p>
 
       {/* 기다림의 길: 시작한 날 → 오늘 → 돌아오는 날 (그리움은 함께한 시간) */}

@@ -90,6 +90,22 @@ export function harborSlot(i: number) {
   return { x: p.x + Math.cos(p.yaw) * side, z: p.z - Math.sin(p.yaw) * side, deck: p.deck, side, yaw: p.yaw };
 }
 
+// ---------- 자리 번호 ----------
+
+/**
+ * 같은 장소 안에서 건 순서대로 매긴 번호("항구 12")와 앞뒤 등불.
+ * 상세에서 이전·다음으로 옆 등불에 가 볼 수 있어요.
+ */
+export function neighbors(lanterns: { id: string; place: string; created_at: string }[], id: string) {
+  const me = lanterns.find((l) => l.id === id);
+  if (!me) return null;
+  const place = placeOf(me.place);
+  const list = lanterns.filter((l) => placeOf(l.place) === place).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const i = list.findIndex((l) => l.id === id);
+  const at = (k: number) => list[(k + list.length) % list.length].id;
+  return { no: `${place} ${i + 1}`, total: list.length, prev: at(i - 1), next: at(i + 1) };
+}
+
 // ---------- 장소 ----------
 
 export const PLACE_INFO: Record<Place, { x: number; z: number; blurb: string; hang: boolean }> = {
