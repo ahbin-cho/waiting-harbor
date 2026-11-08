@@ -177,6 +177,9 @@ export class Village {
   private shrine: Shrine | null = null;
   private shrineInfo: ShrineInfo | null = null;
   private shrineKey = "";
+  /** 나무: 등불을 열면 카메라와 등불 사이를 가리는 나무를 잠시 비켜 둬요 */
+  private trees: { spots: [number, number, number][]; meshes: THREE.InstancedMesh[]; saved: THREE.Matrix4[][] } | null = null;
+  private treeClear: { eye: THREE.Vector3; lamp: THREE.Vector3; spot: THREE.Vector3 } | null = null;
   /** 열린 등불에서 카메라 쪽 (바닥 방향) */
   private selFlat = new THREE.Vector3(0, 0, 1);
   private down: { x: number; y: number; t: number } | null = null;
@@ -386,6 +389,9 @@ export class Village {
       });
     });
     this.env.add(trunk, ...meshes);
+    const all = [trunk, ...meshes];
+    this.trees = { spots, meshes: all, saved: all.map((m) => spots.map((_, i) => { const x = new THREE.Matrix4(); m.getMatrixAt(i, x); return x; })) };
+    this.applyTreeClear();
 
     // 부두: 휘어진 길을 따라 널빤지를 하나씩. 높이와 기울기가 조금씩 달라요.
     const prand = rng(5);
@@ -1013,9 +1019,41 @@ export class Village {
       this.shrine = new Shrine(info, this.p, this.glowTex, it.place === "하늘" || !!it.pet);
       this.shrineKey = key;
       this.scene.add(this.shrine.group);
+      this.shrine.group.rotation.y = Math.atan2(this.selFlat.x, this.selFlat.z) - 0.12;
       this.placeShrine();
     }
     this.shrine?.setCount(info.count);
+  }
+
+  /** 카메라와 등불·작은 자리 사이를 가리는 나무를 숨기거나(열었을 때) 되돌려요(닫았을 때) */
+  private applyTreeClear() {
+    const tr = this.trees;
+    if (!tr) return;
+    const c = this.treeClear;
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    // 바닥에서 점 p 와 선분 a-b 사이 거리, 그리고 선분 위 위치(0~1)
+    const seg = (px: number, pz: number, a: THREE.Vector3, b: THREE.Vector3) => {
+      const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz || 1;
+      const t = THREE.MathUtils.clamp(((px - a.x) * dx + (pz - a.z) * dz) / L, 0, 1);
+      return { d: Math.hypot(a.x + dx * t - px, a.z + dz * t - pz), t };
+    };
+    tr.spots.forEach(([x, z, sc], i) => {
+      let hide = false;
+      if (c) {
+        const r = 1.3 * sc + 0.7;
+        const toLamp = seg(x, z, c.eye, c.lamp), toSpot = seg(x, z, c.eye, c.spot);
+        hide =
+          (toLamp.d < r && toLamp.t < 0.97) ||
+          (toSpot.d < r && toSpot.t < 0.97) ||
+          Math.hypot(x - c.spot.x, z - c.spot.z) < r + 1.4 ||
+          Math.hypot(x - c.lamp.x, z - c.lamp.z) < r * 0.8;
+      }
+      tr.meshes.forEach((m, k) => m.setMatrixAt(i, hide ? zero : tr.saved[k][i]));
+    });
+    tr.meshes.forEach((m) => {
+      m.instanceMatrix.needsUpdate = true;
+      m.computeBoundingSphere();
+    });
   }
 
   /** 작은 자리가 놓일 곳 (받침 바닥 기준). 카메라에서 볼 때 등불 오른쪽, 항구에선 부두 위 */
@@ -1042,7 +1080,6 @@ export class Village {
       return;
     }
     const flat = this.selFlat;
-    sh.group.rotation.set(0, Math.atan2(flat.x, flat.z) - 0.16, 0);
     sh.group.position.copy(this.shrineSpot(it, flat));
   }
 
@@ -1123,14 +1160,20 @@ export class Village {
       const spot = this.shrineSpot(it, flat).add(new THREE.Vector3(0, 1.5, 0));
       const mid = it.lamp.clone().lerp(spot, 0.5);
       const d = this.narrow ? 15 : 13;
-      const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, 4.6, 0));
-      const target = mid.clone().add(new THREE.Vector3(0, this.narrow ? -3.3 : -2.9, 0));
+      // 숲은 나무 위에서 조금 더 내려다봐요
+      const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, it.place === "숲" ? 8 : 4.6, 0));
+      this.treeClear = { eye: pos.clone(), lamp: it.lamp.clone(), spot: spot.clone() };
+      this.applyTreeClear();
+      // 숲은 등불이 높이 매달려 있어서 위아래로 길어요. 조금 더 아래를 봐서 자리 받침까지 시트 위에 오게
+      const target = mid.clone().add(new THREE.Vector3(0, (this.narrow ? -3.3 : -2.9) - (PLACE_INFO[it.place].hang ? 1.1 : 0), 0));
       this.flyTo(pos, target, 1100);
       this.placeShrine();
       this.follow = it.pet ? it.lamp.clone() : null;
     } else if (was) {
       this.follow = null;
       this.setShrine(null);
+      this.treeClear = null;
+      this.applyTreeClear();
       const it = this.items.get(was);
       if (it) this.focusPlace(it.place);
     }
@@ -1272,6 +1315,11 @@ export class Village {
     this.sailFerry(calm ? null : t);
     if (this.shrine) {
       if (this.shrine.floating) this.placeShrine(); // 하늘 등불과 아이들은 움직이니 따라가요
+      // 사람이 마을을 돌려 봐도 작은 자리는 늘 이쪽을 바라봐요
+      const g = this.shrine.group, cp = this.camera.position;
+      const want = Math.atan2(cp.x - g.position.x, cp.z - g.position.z) - 0.12;
+      const dy = Math.atan2(Math.sin(want - g.rotation.y), Math.cos(want - g.rotation.y));
+      g.rotation.y += dy * (calm ? 1 : 0.12);
       this.shrine.update(now, calm);
     }
 
