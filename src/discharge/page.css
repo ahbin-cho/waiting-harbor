@@ -1,8 +1,10 @@
 /* 글자로 읽는 페이지(전역일 계산기 등). 앱과 같은 토큰을 쓰고, 스크롤이 돼요. */
 html:has(body.page),body.page{height:auto;overflow:auto}
+/* 글 페이지: 아래로 끝까지 내렸을 때(사파리의 튕김 포함) 바닥 색이 페이지 바닥과 같게 */
+html:has(body.page){background:var(--paper)}
 body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260px,var(--paper) 520px);background-attachment:scroll;min-height:100%}
 :root[data-theme="night"] body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260px,var(--paper) 520px)}
-.page-wrap{max-width:600px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 48px max(20px,env(safe-area-inset-left,0px))}
+.page-wrap{max-width:600px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(48px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
 .page-nav{display:flex;justify-content:space-between;align-items:center}
 .page-nav .home{font-family:var(--display);font-weight:700;font-size:1.15rem;letter-spacing:-.05em;color:var(--ink);text-decoration:none}
 .page-head{position:static;margin:34px 0 22px;padding:0;background:none;pointer-events:auto}

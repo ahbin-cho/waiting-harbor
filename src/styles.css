@@ -16,8 +16,7 @@
   --hand:"Nanum Pen Script","Gaegu",cursive; /* 사람들이 직접 쓴 한 줄 */
   color-scheme: dark;
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
+  /* 화면 끝(노치, 홈 표시줄 아래)까지 마을이 채워요. 안전 영역 여백은 머리글과 바닥 줄이 각자 둬요. */
   background:var(--sky-top);
 }
 /* 노을 테마: 해가 막 진 항구. 화면 시트는 밤과 같고, 하늘과 위아래 그라데이션만 노을빛이에요. */
@@ -79,7 +78,7 @@ body{
 /* 머리글: 지도 위에 얹혀요 */
 header{
   position:absolute;top:0;left:0;right:0;z-index:5;pointer-events:none;
-  padding:22px max(20px,env(safe-area-inset-right,0px)) 28px max(20px,env(safe-area-inset-left,0px));
+  padding:calc(22px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 28px max(20px,env(safe-area-inset-left,0px));
   background:linear-gradient(to bottom,rgba(var(--fade-top),.9) 0%,rgba(var(--fade-top),.7) 60%,rgba(var(--fade-top),0));
   /* 하늘이 밝아도 글자가 묻히지 않게 아주 옅은 그림자 */
   text-shadow:0 1px 6px rgba(var(--fade-top),.9);
@@ -122,7 +121,7 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;m
 /* 아래 막대 */
 .bar{
   position:absolute;left:0;right:0;bottom:0;z-index:5;pointer-events:none;
-  padding:28px max(20px,env(safe-area-inset-right,0px)) 18px max(20px,env(safe-area-inset-left,0px));
+  padding:28px max(20px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
   display:flex;gap:14px;align-items:flex-end;
   background:linear-gradient(to top,rgba(var(--fade-bottom),.9),rgba(var(--fade-bottom),0));
 }
