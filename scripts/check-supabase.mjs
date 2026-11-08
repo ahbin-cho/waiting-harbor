@@ -19,6 +19,9 @@ if (!url || !key || url.includes("xxxx") || key === "your-anon-key") {
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 
 const auth = await supabase.auth.signInAnonymously();
+if (auth.error && /fetch failed|network|ENOTFOUND|ECONN/i.test(auth.error.message)) {
+  fail(`Supabase 에 접속하지 못했어요: ${auth.error.message}`, ".env 의 VITE_SUPABASE_URL 주소와 인터넷 연결을 확인해 주세요 (주소 끝의 /rest/v1/ 은 빼요)");
+}
 if (auth.error) {
   fail(`익명 로그인 실패: ${auth.error.message}`, "README 2단계: Authentication > Sign In / Providers 에서 Anonymous sign-ins 를 켜주세요");
 }
