@@ -5,11 +5,12 @@ import { Village } from "../three/Village";
 import type { Shot } from "../lib/story";
 import type { ThemeName } from "../lib/theme";
 import { startClip, type ClipText } from "../lib/clip";
+import type { ShrineInfo } from "../three/shrine";
 
 export type Focus = { place: Place | "all"; n: number };
 
 /** three.js 로 그린 3D 밤 마을. 이름표는 HTML 로 그 위에 얹어요. */
-export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, onPick, theme, record, onClip }: {
+export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, onPick, theme, record, onClip }: {
   lanterns: Lantern[];
   me: string | null;
   online: Set<string>;
@@ -17,6 +18,8 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   focus: Focus | null;
   shot: { name: Shot; n: number } | null;
   selectedId: string | null;
+  /** 열린 등불 곁의 작은 자리 (사진, 번호, 한 줄, 작은 등 수) */
+  shrine: ShrineInfo | null;
   onPick: (id: string) => void;
   theme: ThemeName;
   /** 10초 영상 찍기 요청 */
@@ -57,6 +60,8 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
     })();
   }, [record]);
   useEffect(() => v.current?.setSelected(selectedId), [selectedId]);
+  const shrineKey = shrine ? [shrine.id, shrine.photo, shrine.no, shrine.who, shrine.line, shrine.color, shrine.count].join("|") : "";
+  useEffect(() => v.current?.setShrine(shrine), [shrineKey, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (pulseId) v.current?.pulse(pulseId);
   }, [pulseId]);

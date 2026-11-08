@@ -2,7 +2,9 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import type { Focus } from "./components/Village3D";
 // 3D 마을(three.js)은 무거워서 화면이 먼저 뜬 뒤에 따로 불러와요. 첫 화면이 빨라지고 검색 점수(속도)에도 좋아요.
 const Village3D = lazy(() => import("./components/Village3D").then((m) => ({ default: m.Village3D })));
-import { PLACES, placeOf } from "./lib/places";
+import { PLACES, neighbors, placeOf } from "./lib/places";
+import { COLORS, colorOf } from "./lib/looks";
+import type { ShrineInfo } from "./three/shrine";
 import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
@@ -98,6 +100,19 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, h.status]);
   const picked = view.type === "detail" ? h.lanterns.find((l) => l.id === view.id) : undefined;
+  // 열린 등불의 자리 번호와 앞뒤 등불, 곁에 놓일 작은 자리
+  const nav = picked ? neighbors(h.lanterns, picked.id) : null;
+  const shrine: ShrineInfo | null = picked
+    ? {
+        id: picked.id,
+        who: picked.who.trim() || "그 사람",
+        line: picked.line ?? "",
+        no: nav?.no ?? placeOf(picked.place),
+        photo: h.photoUrls[picked.id],
+        count: h.warmthCount.get(picked.id) ?? 0,
+        color: COLORS[colorOf(picked.color)],
+      }
+    : null;
   // 새 등불 걸기를 연 순간을 세요 (고치기는 빼고)
   const formNew = view.type === "form" && !view.id;
   useEffect(() => {
@@ -136,7 +151,7 @@ export default function App() {
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "detail" ? view.id : null} shrine={shrine} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {
@@ -230,6 +245,9 @@ export default function App() {
             onAddNote={(body, open) => h.addNote(picked.id, body, open)}
             onRemoveNote={(id) => h.removeNote(picked.id, id)}
             me={h.me}
+            no={nav?.no}
+            onPrev={nav && nav.total > 1 ? () => setView({ type: "detail", id: nav.prev }) : undefined}
+            onNext={nav && nav.total > 1 ? () => setView({ type: "detail", id: nav.next }) : undefined}
             messages={h.messages[picked.id]}
             onLoadMessages={() => h.loadMessages(picked.id)}
             onAddMessage={(body) => h.addMessage(picked.id, body)}
