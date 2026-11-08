@@ -3,6 +3,8 @@
 // 그리고 추모(온기)가 닿을 때마다 하나씩 놓이는 작은 등. 빛을 내는 건 작은 등뿐이에요.
 import * as THREE from "three";
 import type { Palette } from "../lib/theme";
+import type { OfferingKind } from "../lib/offerings";
+import { makeOffering, spread } from "./offerings";
 
 export type ShrineInfo = {
   id: string;
@@ -16,6 +18,8 @@ export type ShrineInfo = {
   count: number;
   /** 등불 색 (#rrggbb) */
   color: string;
+  /** 놓고 간 것들 (종류별 수) */
+  offerings?: Partial<Record<OfferingKind, number>>;
 };
 
 const MAX_LAMPS = 14;
@@ -68,16 +72,27 @@ export class Shrine {
   private motes: { s: THREE.Sprite; v: THREE.Vector3; t0: number }[] = [];
   private born = performance.now();
   private trash: { dispose(): void }[] = [];
+  private offerGroup = new THREE.Group();
+  private offerKey = "";
+  private palette: Palette;
 
   constructor(info: ShrineInfo, p: Palette, glowTex: THREE.Texture, floating: boolean) {
     this.floating = floating;
     this.glowTex = glowTex;
+    this.palette = p;
     const g = this.group;
     const keep = <T extends { dispose(): void }>(x: T) => (this.trash.push(x), x);
     const wood = keep(new THREE.MeshStandardMaterial({ color: p.pier, roughness: 1 }));
     const boardMat = keep(new THREE.MeshStandardMaterial({ color: p.shrine, roughness: 0.95 }));
     const lift = floating ? 0 : 0.32;
 
+    // 떠 있는 자리엔 작은 선반: 작은 등과 놓고 간 것이 올라가요
+    if (floating) {
+      const shelf = new THREE.Mesh(keep(new THREE.BoxGeometry(2.7, 0.07, 0.62)), wood);
+      shelf.position.set(0, -0.05, 0.18);
+      shelf.rotation.z = -0.01;
+      g.add(shelf);
+    }
     // 받침 (하늘과 무지개마을에선 떠 있으니 받침 없이)
     if (!floating) {
       const base = new THREE.Mesh(keep(new THREE.BoxGeometry(3.0, 0.32, 1.15)), wood);
@@ -193,13 +208,14 @@ export class Shrine {
     for (let i = 0; i < MAX_LAMPS; i++) {
       const row = i < 8 ? 0 : 1, k = row ? i - 8 : i, n = row ? 6 : 8;
       const x = -1.25 + (k + 0.5) * (2.5 / n) + Math.sin(i * 12.9) * 0.05;
-      const z = floating ? 0.15 + row * 0.1 : row ? 0.12 : 0.5;
-      const y = floating ? 0.05 - row * 0.2 + Math.sin(i * 7.1) * 0.04 : lift + 0.07;
+      const z = floating ? (row ? 0.0 : 0.38) : row ? 0.12 : 0.5;
+      const y = floating ? 0.07 : lift + 0.07;
       this.lampSpots.push(new THREE.Vector3(x, y, z));
     }
     this.lampMat = keep(new THREE.MeshStandardMaterial({ color: info.color, emissive: info.color, emissiveIntensity: 1.6, roughness: 0.6 }));
-    g.add(this.lamps);
+    g.add(this.lamps, this.offerGroup);
     this.setCount(info.count);
+    this.setOfferings(info.offerings);
   }
 
   /** 닿은 추모 수만큼 작은 등을 놓아요 (최대 14개) */
@@ -224,6 +240,23 @@ export class Shrine {
     this.shown = n;
   }
   private lampGeo?: THREE.BufferGeometry;
+
+  /** 놓고 간 것들을 받침(또는 선반) 위, 작은 등 줄 사이에 흐트러지게 놓아요 (최대 12개) */
+  setOfferings(counts: ShrineInfo["offerings"]) {
+    const key = JSON.stringify(counts ?? {});
+    if (key === this.offerKey) return;
+    this.offerKey = key;
+    this.offerGroup.clear();
+    const list = spread(counts ?? {}, 12);
+    const top = this.floating ? -0.015 : 0.32;
+    list.forEach((k, i) => {
+      const o = makeOffering(k, this.palette, i + 1);
+      const x = -1.2 + ((i + 0.5) / Math.max(list.length, 6)) * 2.4 + Math.sin(i * 4.7) * 0.08;
+      o.position.set(x, top, 0.27 + Math.sin(i * 2.3) * 0.05);
+      o.scale.setScalar(1.7);
+      this.offerGroup.add(o);
+    });
+  }
 
   /** 추모(온기)를 보내면 작은 빛 알갱이가 등판 앞에서 피어올라요 */
   burst() {

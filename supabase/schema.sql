@@ -147,6 +147,35 @@ create policy "messages insert" on public.messages for insert with check (auth.u
 drop policy if exists "messages delete" on public.messages;
 create policy "messages delete" on public.messages for delete using (auth.uid() = from_id or public.owns_lantern(lantern_id));
 
+-- 놓고 가는 것: 국화, 들꽃, 간식, 공, 종이배, 조약돌. 한 사람이 등불마다 하루에 하나.
+-- 등불 주인도 자기 등불(떠난 아이)에게 놓을 수 있어요. 누구나 볼 수 있고, 놓은 사람만 거둘 수 있어요.
+-- day 는 놓은 사람의 날짜예요 (시간대 차이로 하루 앞뒤까지 받아요).
+create table if not exists public.offerings (
+  id         bigint generated always as identity primary key,
+  lantern_id uuid not null references public.lanterns(id) on delete cascade,
+  from_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  kind       text not null check (kind in ('국화', '들꽃', '간식', '공', '종이배', '조약돌')),
+  day        date not null default current_date,
+  created_at timestamptz not null default now(),
+  unique (from_id, lantern_id, day)
+);
+create index if not exists offerings_lantern_idx on public.offerings (lantern_id, day);
+alter table public.offerings enable row level security;
+drop policy if exists "offerings read" on public.offerings;
+create policy "offerings read"   on public.offerings for select using (true);
+drop policy if exists "offerings insert" on public.offerings;
+create policy "offerings insert" on public.offerings for insert
+  with check (auth.uid() = from_id and day between current_date - 1 and current_date + 1);
+drop policy if exists "offerings delete" on public.offerings;
+create policy "offerings delete" on public.offerings for delete using (auth.uid() = from_id);
+-- 등불마다 놓인 것의 수 (전부 내려받지 않고 요약만). yesterday: 어제 놓인 수
+create or replace function public.offering_counts() returns table (lantern_id uuid, kind text, n bigint, yesterday bigint)
+  language sql stable security definer set search_path = public as $$
+  select o.lantern_id, o.kind, count(*), count(*) filter (where o.day = current_date - 1)
+  from public.offerings o group by o.lantern_id, o.kind
+$$;
+grant execute on function public.offering_counts() to anon, authenticated;
+
 -- 등불 사진: 등불마다 한 장. 다른 사람에게 보일지는 등불 주인이 정해요 (photo_public).
 -- 파일은 Storage 'photos' 버킷의 {user_id}/{등불 id}.jpg 에 있어요.
 alter table public.lanterns add column if not exists photo_path text;
@@ -200,7 +229,7 @@ create table if not exists public.events (
   user_id    uuid default auth.uid() references auth.users(id) on delete set null,
   name       text not null check (name in (
     'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
-    'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left'
+    'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left'
   )),
   props      jsonb not null default '{}' check (octet_length(props::text) <= 400),
   via        text not null default '' check (char_length(via) <= 60),   -- 어디서 왔는지 (share, rainbow, discharge, 검색 사이트 이름, utm_source)
@@ -211,7 +240,7 @@ create index if not exists events_name_time_idx on public.events (name, created_
 alter table public.events drop constraint if exists events_name_check;
 alter table public.events add constraint events_name_check check (name in (
   'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
-  'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left'
+  'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left'
 ));
 create index if not exists events_user_idx on public.events (user_id, created_at);
 alter table public.events enable row level security;

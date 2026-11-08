@@ -1,5 +1,5 @@
 // Supabase 설정이 없을 때 보여주는 체험용 등불. 저장되지 않아요.
-import type { Lantern, Message, Note, Warmth } from "./supabase";
+import type { Lantern, Message, Note, OfferingCount, Warmth } from "./supabase";
 import { today, ymd } from "./waiting";
 
 export const DEMO_ME = "demo-me";
@@ -105,3 +105,18 @@ export const demoMessages = (): Message[] => {
   ];
   return rows.map(([lantern_id, d, body], i) => ({ id: -(i + 1), lantern_id, from_id: `demo-v${i}`, body, created_at: new Date(Date.now() + d * 86_400_000).toISOString() }));
 };
+
+/** 체험용 놓고 간 것 */
+export const demoOfferings = (): OfferingCount[] => [
+  { lantern_id: "demo-0", kind: "들꽃", n: 4, yesterday: 1 },
+  { lantern_id: "demo-0", kind: "조약돌", n: 2, yesterday: 0 },
+  { lantern_id: "demo-1", kind: "종이배", n: 3, yesterday: 1 },
+  { lantern_id: "demo-3", kind: "들꽃", n: 6, yesterday: 2 },
+  { lantern_id: "demo-3", kind: "종이배", n: 2, yesterday: 1 },
+  { lantern_id: "demo-8", kind: "조약돌", n: 3, yesterday: 0 },
+  { lantern_id: "demo-miss-0", kind: "국화", n: 7, yesterday: 2 },
+  { lantern_id: "demo-pet-0", kind: "간식", n: 3, yesterday: 1 },
+  { lantern_id: "demo-pet-0", kind: "공", n: 2, yesterday: 0 },
+  { lantern_id: "demo-pet-1", kind: "국화", n: 4, yesterday: 1 },
+  { lantern_id: "demo-pet-1", kind: "간식", n: 2, yesterday: 1 },
+];

@@ -7,6 +7,8 @@ import { ISLANDS, PIER, PLACE_INFO, RAINBOW, fbm, groundAt, harborSlot, jitter, 
 import { speciesOf } from "../lib/pets";
 import { makePet, type PetRig } from "./pets";
 import { Shrine, type ShrineInfo } from "./shrine";
+import { makeOffering, spread } from "./offerings";
+import type { OfferingKind } from "../lib/offerings";
 import { badgeText, daysLeft, glowOf, isMiss } from "../lib/waiting";
 import type { Shot } from "../lib/story";
 import { PALETTES, type Palette, type ThemeName } from "../lib/theme";
@@ -39,6 +41,8 @@ type Item = {
   look: string;          // 색+모양, 바뀌면 다시 만들어요
   pet?: PetRig;          // 무지개마을의 아이 (등불 대신 작은 모형)
   refl?: THREE.Mesh;     // 항구 등불: 물 위에 비친 불빛
+  pile?: THREE.Group;    // 등불 발치에 놓고 간 것들
+  pileKey?: string;
 };
 
 type Tween = { from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t0: number; dur: number };
@@ -180,6 +184,8 @@ export class Village {
   private ferry!: { arrive: THREE.QuadraticBezierCurve3; leave: THREE.QuadraticBezierCurve3; dock: THREE.Vector3; heading: number };
   /** 물 위에서 흔들리는 것들 (매어 둔 배, 부표) */
   private bobs: { o: THREE.Object3D; y: number; ph: number; roll: number }[] = [];
+  /** 등불마다 놓고 간 것 (종류별 수) */
+  private offerCounts = new Map<string, Partial<Record<OfferingKind, number>>>();
   /** 지금 보고 있는 곳: 기다림 항구, 추모관, 또는 이야기처럼 모두 */
   private world: World | "all" = "wait";
   /** 열린 등불 곁의 작은 자리 */
@@ -936,6 +942,7 @@ export class Village {
       const out = Math.sign(h.side) * (PIER.w / 2 - Math.abs(h.side) + 1.2);
       it.refl.position.set(x + Math.cos(h.yaw) * out, 0.36, z - Math.sin(h.yaw) * out);
     }
+    this.placePile(it);
 
     this.setTag(it, l);
   }
@@ -1052,6 +1059,7 @@ export class Village {
 
   private remove(it: Item) {
     this.scene.remove(it.group);
+    if (it.pile) this.scene.remove(it.pile);
     if (it.refl) {
       this.scene.remove(it.refl);
       (it.refl.material as THREE.Material).dispose();
@@ -1074,6 +1082,8 @@ export class Village {
     this.shrine = null;
     this.shrineKey = "";
     queueMicrotask(() => this.setShrine(this.shrineInfo));
+    for (const it of this.items.values()) it.pileKey = undefined;
+    queueMicrotask(() => this.setOfferings(this.offerCounts));
     this.env.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();
@@ -1138,6 +1148,39 @@ export class Village {
       this.placeShrine();
     }
     this.shrine?.setCount(info.count);
+    this.shrine?.setOfferings(info.offerings);
+  }
+
+  /** 놓고 간 것을 땅에 건 등불 발치에 놓아요 (하늘 등불과 무지개마을 아이는 곁의 작은 자리에만) */
+  setOfferings(counts: Map<string, Partial<Record<OfferingKind, number>>>) {
+    this.offerCounts = counts;
+    for (const it of this.items.values()) this.placePile(it);
+  }
+
+  private placePile(it: Item) {
+    const counts = it.pet || it.place === "하늘" ? undefined : this.offerCounts.get(it.id);
+    const key = counts ? JSON.stringify(counts) + "|" + it.group.position.toArray().map((v) => v.toFixed(2)).join() : "";
+    if (key === it.pileKey) return;
+    it.pileKey = key;
+    if (it.pile) this.scene.remove(it.pile);
+    it.pile = undefined;
+    const list = counts ? spread(counts, 9) : [];
+    if (!list.length) return;
+    const pile = new THREE.Group();
+    const base = it.group.position;
+    const deck = it.place === "항구";
+    list.forEach((k, i) => {
+      // 기둥 둘레에 흐트러지게: 해바라기 씨처럼 퍼지고 조금씩 어긋나요
+      const a = i * 2.39996 + jitter(i + it.idx * 13, 11) * 0.5;
+      const r = 0.38 + Math.sqrt(i) * 0.2 + jitter(i + it.idx * 7, 12) * 0.06;
+      const x = base.x + Math.cos(a) * r, z = base.z + Math.sin(a) * r;
+      const o = makeOffering(k, this.p, i + it.idx * 31 + 1);
+      o.position.set(x, deck ? base.y : Math.max(0.2, groundAt(x, z)) - 0.02, z);
+      o.scale.setScalar(1.35);
+      pile.add(o);
+    });
+    it.pile = pile;
+    this.scene.add(pile);
   }
 
   /** 카메라와 등불·작은 자리 사이를 가리는 나무를 숨기거나(열었을 때) 되돌려요(닫았을 때) */
@@ -1489,6 +1532,7 @@ export class Village {
       // 다른 곳(기다림/추모관)의 등불은 숨겨요
       const vis = this.shown(it) && !(this.selected && this.lampClear.has(it.id));
       it.group.visible = vis;
+      if (it.pile) it.pile.visible = vis;
       // 멀리서도 누르기 쉽게, 멀수록 누르는 자리를 조금 키워요
       it.hit.scale.setScalar(THREE.MathUtils.clamp(this.camera.position.distanceTo(it.lamp) / 24, 1, 2.2));
       if (it.refl) it.refl.visible = vis;
