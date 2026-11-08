@@ -315,38 +315,32 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     if (!error) setTalks((m) => ({ ...m, [lanternId]: (data as Talk[]).reverse() }));
   }, []);
 
-  /** 말을 보내면 내 말이 바로 보이고, 답장이 오면 이어 붙어요 */
-  const sendTalk = useCallback(
-    async (lanternId: string, text: string) => {
-      const now = new Date().toISOString();
-      const mine: Talk = { id: -Date.now(), lantern_id: lanternId, role: "me", body: text, created_at: now };
-      setTalks((m) => ({ ...m, [lanternId]: [...(m[lanternId] ?? []), mine] }));
-      let reply: string;
-      if (demo) {
-        const l = lanternsRef.current.find((x) => x.id === lanternId);
-        await new Promise((r) => setTimeout(r, 900));
-        const recent = (talksRef.current[lanternId] ?? []).filter((t) => t.role === "them").slice(-4).map((t) => t.body);
-        reply = templateReply({ who: l?.who ?? "", isPet: l?.place === "무지개", species: speciesOf(l?.species) }, text, Date.now() >>> 10, recent);
-      } else {
-        const { data } = await supabase.auth.getSession();
-        const res = await fetch("/api/talk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
-          body: JSON.stringify({ lanternId, text }),
-        });
-        if (!res.ok) {
-          // 보내지 못한 말은 거둬요
-          setTalks((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((t) => t.id !== mine.id) }));
-          throw new Error(res.status === 429 ? "limit" : "failed");
-        }
-        reply = ((await res.json()) as { reply: string }).reply;
-        track("talk_sent");
+  /**
+   * 말을 보내요. 내 말이 바로 보이고, 잠깐 뒤 답장이 이어 붙어요.
+   * 답장(reply)은 고른 선택지의 말이거나, 직접 쓴 말이면 무료 답장(templateReply)으로 골라요.
+   * 서버 없이 Supabase 에 두 줄을 한 번에 저장해요 (권한과 하루 제한은 RLS 가 지켜요).
+   */
+  const sendTalk = useCallback(async (lanternId: string, text: string, given?: string) => {
+    const mine: Talk = { id: -Date.now(), lantern_id: lanternId, role: "me", body: text, created_at: new Date().toISOString() };
+    setTalks((m) => ({ ...m, [lanternId]: [...(m[lanternId] ?? []), mine] }));
+    const l = lanternsRef.current.find((x) => x.id === lanternId);
+    const recent = (talksRef.current[lanternId] ?? []).filter((t) => t.role === "them").slice(-4).map((t) => t.body);
+    const reply = given ?? templateReply({ who: l?.who ?? "", isPet: l?.place === "무지개", species: speciesOf(l?.species) }, text, Date.now() >>> 10, recent);
+    await new Promise((r) => setTimeout(r, 650 + Math.min(900, reply.length * 12))); // 답장을 쓰는 것처럼 잠깐
+    if (!demo) {
+      const { error } = await supabase.from("talks").insert([
+        { lantern_id: lanternId, role: "me", body: text },
+        { lantern_id: lanternId, role: "them", body: reply },
+      ]);
+      if (error) {
+        setTalks((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((t) => t.id !== mine.id) }));
+        throw new Error("limit");
       }
-      const them: Talk = { id: -Date.now() - 1, lantern_id: lanternId, role: "them", body: reply, created_at: new Date().toISOString() };
-      setTalks((m) => ({ ...m, [lanternId]: [...(m[lanternId] ?? []), them] }));
-    },
-    [],
-  );
+      track("talk_sent", { how: given ? "choice" : "typed" });
+    }
+    const them: Talk = { id: -Date.now() - 1, lantern_id: lanternId, role: "them", body: reply, created_at: new Date().toISOString() };
+    setTalks((m) => ({ ...m, [lanternId]: [...(m[lanternId] ?? []), them] }));
+  }, []);
 
   /** 이야기를 모두 지워요 */
   const clearTalks = useCallback(async (lanternId: string) => {
