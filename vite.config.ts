@@ -19,7 +19,7 @@ function seo(): Plugin {
   const clean = (v?: string) => v?.trim().replace(/^[a-z-]+-site-verification=/i, "");
   const verify = [
     ["google-site-verification", clean(env.GOOGLE_SITE_VERIFICATION) || "u2fXDDS4E4pddcAmYCj8OwICB7p-PJFFZu92zQatiS0"],
-    ["naver-site-verification", clean(env.NAVER_SITE_VERIFICATION)],
+    ["naver-site-verification", clean(env.NAVER_SITE_VERIFICATION) || "8315ba00cc3bd2d342377acce3a2920614fb451c"],
   ]
     .filter(([, v]) => v)
     .map(([n, v]) => `<meta name="${n}" content="${v}" />`)
