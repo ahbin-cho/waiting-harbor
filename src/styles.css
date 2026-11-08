@@ -291,6 +291,5 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .scene.focusing .sheet{max-height:64%}
 
 /* 등불 보내기 */
-img.share-card{display:block;width:min(100%,240px);aspect-ratio:9/16;margin:14px auto 6px;border-radius:12px;background:var(--field);object-fit:cover}
 .share-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.btn.kakao{background:#FEE500;color:#191600}
+.share-url{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere;user-select:all}

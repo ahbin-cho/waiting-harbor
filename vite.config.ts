@@ -35,7 +35,7 @@ function seo(): Plugin {
       this.emitFile({
         type: "asset",
         fileName: "robots.txt",
-        // 공유 링크(/l/…)와 카드 이미지(/api/og)는 미리보기 수집기가 읽어야 해서 막지 않아요. 대신 그 페이지에 noindex 를 걸어요.
+        // 공유 링크(/l/…)는 미리보기 수집기가 읽어야 해서 막지 않아요. 대신 그 페이지에 noindex 를 걸어요.
         source: `User-agent: *\nAllow: /\n\nSitemap: ${site}/sitemap.xml\n`,
       });
       this.emitFile({
