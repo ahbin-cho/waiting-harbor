@@ -128,6 +128,8 @@ export class Village {
   private down: { x: number; y: number; t: number } | null = null;
   private ro: ResizeObserver;
   private paused = false;
+  /** 10초 영상 찍는 중: 등불 주위를 천천히 돌아요 */
+  private cine: { id: string; t0: number; dur: number; a0: number; onFrame: (c: HTMLCanvasElement, k: number) => void; done: () => void } | null = null;
   private p: Palette = PALETTES.night;
   private env = new THREE.Group(); // 하늘과 땅. 테마를 바꾸면 통째로 다시 만들어요
   private moonSprite!: THREE.Sprite;
@@ -799,6 +801,18 @@ export class Village {
     }
   }
 
+  /** 등불(또는 아이) 주위를 seconds 동안 천천히 돌면서, 매 장면을 onFrame 으로 넘겨요 */
+  recordOrbit(id: string, seconds: number, onFrame: (c: HTMLCanvasElement, k: number) => void) {
+    const it = this.items.get(id);
+    if (!it) return Promise.resolve();
+    this.tween = null;
+    this.controls.autoRotate = false;
+    const off = this.camera.position.clone().sub(it.lamp);
+    return new Promise<void>((resolve) => {
+      this.cine = { id, t0: performance.now(), dur: seconds * 1000, a0: Math.atan2(off.z, off.x), onFrame, done: resolve };
+    });
+  }
+
   // ---------- 입력 ----------
 
   private onDown = (e: PointerEvent) => {
@@ -852,15 +866,27 @@ export class Village {
       this.controls.target.lerpVectors(this.tween.from[1], this.tween.to[1], e);
       if (k >= 1) this.tween = null;
     }
+    // 영상 찍는 중: 카메라를 직접 움직여요 (사람 조작과 자동 둘러보기는 잠시 멈춰요)
+    if (this.cine) {
+      const c = this.cine, it = this.items.get(c.id);
+      const k = Math.min(1, (now - c.t0) / c.dur);
+      if (it) {
+        const a = c.a0 + k * 1.1;
+        const dist = 17 - k * 5, up = 4.2 - k * 1.6;
+        this.camera.position.set(it.lamp.x + Math.cos(a) * dist, it.lamp.y + up, it.lamp.z + Math.sin(a) * dist);
+        this.controls.target.copy(it.lamp).add(new THREE.Vector3(0, -1.2, 0));
+      }
+    }
     // 마을 밖으로 너무 멀리 가지 않게
     const tg = this.controls.target;
     tg.x = THREE.MathUtils.clamp(tg.x, -75, 120);
     tg.z = THREE.MathUtils.clamp(tg.z, -70, 45);
     tg.y = THREE.MathUtils.clamp(tg.y, -2, 14);
-    this.controls.update();
+    if (!this.cine) this.controls.update();
+    else this.camera.lookAt(this.controls.target);
 
     // 가만히 두면 아주 천천히 둘러봐요
-    this.controls.autoRotate = !calm && !this.tween && !this.selected && now - this.lastTouch > 7000;
+    this.controls.autoRotate = !calm && !this.tween && !this.cine && !this.selected && now - this.lastTouch > 7000;
     if (!calm) {
       this.waterTime.value = t;
       for (const m of this.mist) {
@@ -948,6 +974,15 @@ export class Village {
 
     this.placeTags();
     this.renderer.render(this.scene, this.camera);
+    if (this.cine) {
+      // 그린 직후에 옮겨 그려야 화면이 비지 않아요
+      const c = this.cine, k = Math.min(1, (now - c.t0) / c.dur);
+      c.onFrame(this.renderer.domElement, k);
+      if (k >= 1) {
+        this.cine = null;
+        c.done();
+      }
+    }
   };
 
   private v = new THREE.Vector3();

@@ -18,7 +18,7 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, canShare }: {
+export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, onWarm, onEdit, onClose, canShare, onRecord }: {
   lantern: Lantern;
   isMine: boolean;
   isHere: boolean;
@@ -32,6 +32,8 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
   onEdit: () => void;
   onClose: () => void;
   canShare: boolean;
+  /** 10초 영상 만들기 (지원하지 않는 브라우저면 없음) */
+  onRecord?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -209,6 +211,7 @@ export function LanternDetail({ lantern, isMine, isHere, warmth, sent, notes, on
             {sent ? "오늘 온기를 보냈어요" : "온기 보내기"}
           </button>
         )}
+        {onRecord && <button className="ghost" onClick={onRecord}>10초 영상</button>}
         {canShare && <button className="ghost" onClick={share}>{isMine ? "내 등불 보내기" : "공유하기"}</button>}
         <button className="ghost" onClick={onClose}>닫기</button>
       </div>
