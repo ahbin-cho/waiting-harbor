@@ -37,6 +37,10 @@ Vite + React + TypeScript, three.js (3D 마을), Supabase (DB, 익명 로그인,
    npm run dev
    ```
 
+## 예시 데이터 넣기 (선택)
+
+마을이 비어 보이면 Supabase SQL Editor 에서 `supabase/seed.sql` 을 실행하세요. 익명 마을 사람 10명과 등불 19개(기다림 10, 하늘의 풍등 3, 무지개마을 아이 6), 일기, 응원·추모의 말, 온기가 들어가요. 날짜는 실행한 날 기준이고, 여러 번 실행해도 한 번만 들어가요. 파일 맨 아래 주석을 풀면 원하는 등불을 직접 하나씩 더 넣을 수 있어요. 지울 때는 `supabase/unseed.sql` 을 실행하세요.
+
 ## 검색 등록 (배포 후 한 번)
 1. **구글**: https://search.google.com/search-console 에서 "URL 접두어"로 사이트 주소를 추가하고, "HTML 태그" 인증 코드(content 값)를 Vercel 환경 변수 `GOOGLE_SITE_VERIFICATION`에 넣고 다시 배포해요. 인증 뒤 Sitemaps 에 `sitemap.xml` 을 제출해요.
 2. **네이버**: https://searchadvisor.naver.com 에서 사이트를 등록하고, "HTML 태그" 인증 코드를 `NAVER_SITE_VERIFICATION`에 넣고 다시 배포해요. 인증 뒤 "요청 → 사이트맵 제출"에 `sitemap.xml` 을 넣어요.
