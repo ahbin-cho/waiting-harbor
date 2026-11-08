@@ -37,6 +37,14 @@ Vite + React + TypeScript, three.js (3D 마을), Supabase (DB, 익명 로그인,
    npm run dev
    ```
 
+## 의견 메일 받기 (선택)
+"의견" 버튼으로 받은 말은 Supabase `feedback` 테이블에 쌓이고, 아래를 설정하면 메일로도 와요.
+1. https://resend.com 에 가입하고 API 키를 만들어요.
+2. Vercel 환경 변수에 넣어요.
+   - `RESEND_API_KEY`: Resend API 키
+   - `FEEDBACK_TO`: 의견을 받을 메일 주소 (도메인을 인증하기 전에는 Resend 가입 메일 주소만 받을 수 있어요)
+   - `FEEDBACK_FROM` (선택): 보내는 주소. 도메인을 인증했다면 `기다림 항구 <hello@내도메인>`처럼 적어요
+
 ## 배포
 Vercel 이나 Netlify 에 저장소를 연결하고, 환경 변수 두 개(`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)만 넣으면 돼요.
 

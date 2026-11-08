@@ -248,3 +248,7 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .my-list .choice{width:100%}
 .bar .bar-ghost{pointer-events:auto;white-space:nowrap}
 .bar-ghost small{color:var(--muted);margin-left:2px}
+
+/* 의견 남기기 */
+textarea.plain{font-family:var(--body);font-size:1rem;height:120px;line-height:1.6}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}

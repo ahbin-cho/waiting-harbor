@@ -194,5 +194,17 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     [me, warmth, lanterns],
   );
 
-  return { me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
+  /** 의견 남기기: 서버(/api/feedback)가 저장하고 운영자에게 메일로 보내요 */
+  const sendFeedback = useCallback(async (body: string, contact: string, website: string) => {
+    if (demo) throw new Error("demo");
+    const { data } = await supabase.auth.getSession();
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ body, contact, website, page: location.pathname }),
+    });
+    if (!res.ok) throw new Error(res.status === 429 ? "limit" : "failed");
+  }, []);
+
+  return { sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote };
 }

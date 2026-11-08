@@ -124,6 +124,24 @@ create policy "warmth read"   on public.warmth for select using (true);
 drop policy if exists "warmth insert" on public.warmth;
 create policy "warmth insert" on public.warmth for insert with check (auth.uid() = from_id and not public.owns_lantern(to_id));
 
+-- 의견: 마을 사람들이 등대지기(운영자)에게 남기는 말. 운영자만 대시보드에서 봐요 (읽기 정책 없음).
+create table if not exists public.feedback (
+  id         bigint generated always as identity primary key,
+  user_id    uuid default auth.uid() references auth.users(id) on delete set null,
+  body       text not null check (char_length(body) between 1 and 1000),
+  contact    text not null default '' check (char_length(contact) <= 100),
+  page       text not null default '' check (char_length(page) <= 200),
+  created_at timestamptz not null default now()
+);
+alter table public.feedback enable row level security;
+-- 한 사람이 하루에 5개까지
+create or replace function public.my_feedback_today() returns bigint
+  language sql stable security definer set search_path = public as $$
+  select count(*) from public.feedback where user_id = auth.uid() and created_at > now() - interval '1 day'
+$$;
+drop policy if exists "feedback insert" on public.feedback;
+create policy "feedback insert" on public.feedback for insert with check (auth.uid() = user_id and public.my_feedback_today() < 5);
+
 -- updated_at 자동 갱신
 create or replace function public.touch_updated_at() returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end $$;

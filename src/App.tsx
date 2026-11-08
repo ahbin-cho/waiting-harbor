@@ -5,6 +5,7 @@ import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
 import { Story } from "./components/Story";
+import { Feedback } from "./components/Feedback";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
 import { THEME_LABEL, THEME_ORDER, applyUiTheme, resolveTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
@@ -12,7 +13,7 @@ import { MAX_LANTERNS, demo, useHarbor } from "./hooks/useHarbor";
 import { badgeText, titleOf } from "./lib/waiting";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" };
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -110,6 +111,7 @@ export default function App() {
           <div className="title-tools">
             <button className="text-btn" onClick={nextTheme} aria-label={`테마 바꾸기. 지금은 ${THEME_LABEL[themeChoice]}`}>{THEME_LABEL[themeChoice]}</button>
             <button className="text-btn" onClick={() => setStory(0)}>이야기</button>
+            <button className="text-btn" onClick={() => setView({ type: "feedback" })}>의견</button>
           </div>
         </div>
         <p className="stats">등불 {h.lanterns.length}개, 지금 {h.hereCount}명이 깨어 있어요.</p>
@@ -187,6 +189,7 @@ export default function App() {
             onClose={close}
           />
         )}
+        {view.type === "feedback" && <Feedback onSend={h.sendFeedback} onClose={close} demo={demo} />}
         {view.type === "mine" && (
           <>
             <h2 id="sheet-title">내 등불</h2>

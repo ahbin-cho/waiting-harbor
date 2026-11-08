@@ -19,6 +19,7 @@
 - `src/lib/pets.ts`, `src/three/pets.ts`: 무지개마을 아이들 (강아지, 고양이, 새, 물고기, 햄스터·토끼, 거북이·도마뱀, 곤충, 그 밖의 아이)
 - `src/lib/theme.ts`: 테마(밤/새벽/시간 따라) 색과 저장
 - `discharge/`, `src/discharge/`: 전역일 계산기 (검색으로 들어오는 글 페이지, 3D 없이 가볍게)
+- `api/feedback.ts`, `src/components/Feedback.tsx`: 의견 남기기 (Supabase `feedback` 저장 + Resend 메일, 받는 주소는 환경 변수 `FEEDBACK_TO`에만)
 - `src/lib/waiting.ts`: 날짜 계산, 조사(을/를) 처리
 - `supabase/schema.sql`: 테이블, RLS 정책, Realtime 설정
 
