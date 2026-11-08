@@ -433,7 +433,7 @@ export default function App() {
               photoUrl={h.photoUrls[l.id]}
               talks={h.talks[l.id]}
               onLoad={() => h.loadTalks(l.id)}
-              onSend={(text) => h.sendTalk(l.id, text)}
+              onSend={(text, reply) => h.sendTalk(l.id, text, reply)}
               onClear={() => h.clearTalks(l.id)}
               onBack={() => setView({ type: "detail", id: l.id })}
               onClose={close}
