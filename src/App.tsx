@@ -55,6 +55,7 @@ export default function App() {
       return "wait";
     }
   });
+  useEffect(() => setWorldForTheme(story != null ? "wait" : world), [world, story]);
   const setWorld = useCallback((w: World) => {
     setWorldState(w);
     try {
@@ -66,7 +67,10 @@ export default function App() {
   const [shot, setShot] = useState<{ name: Shot; n: number } | null>(null);
   // 테마: 밤 / 노을
   const [theme, setTheme] = useState<ThemeChoice>(() => savedTheme());
-  useEffect(() => applyUiTheme(theme), [theme]);
+  // 추모관은 늘 포근한 낮(haven), 기다림 항구는 고른 테마(밤/노을)
+  const [worldForTheme, setWorldForTheme] = useState<"wait" | "miss">("wait");
+  const sceneTheme = worldForTheme === "miss" ? "haven" : theme;
+  useEffect(() => applyUiTheme(sceneTheme), [sceneTheme]);
   const chooseTheme = (c: ThemeChoice) => {
     setTheme(c);
     saveTheme(c);
@@ -173,6 +177,7 @@ export default function App() {
         count: h.warmthCount.get(focused.id) ?? 0,
         color: COLORS[colorOf(focused.color)],
         offerings: h.offerings.counts.get(focused.id),
+        pet: placeOf(focused.place) === "무지개",
       }
     : null;
   // 새 등불 걸기를 연 순간을 세요 (고치기는 빼고)
@@ -220,7 +225,7 @@ export default function App() {
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme} world={story != null ? "all" : world}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} onPick={(id) => !recording && setView({ type: "detail", id })} theme={sceneTheme} world={story != null ? "all" : world}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {
@@ -237,11 +242,11 @@ export default function App() {
         <div className="title-row">
           <h1>기다림 항구</h1>
           <div className="title-tools">
-            <span className="theme-switch" role="group" aria-label="테마">
+            {world === "wait" && <span className="theme-switch" role="group" aria-label="테마">
               {THEME_ORDER.map((c) => (
                 <button key={c} className="text-btn" aria-pressed={theme === c} onClick={() => chooseTheme(c)}>{THEME_LABEL[c]}</button>
               ))}
-            </span>
+            </span>}
             <button className="text-btn" onClick={() => setStory(0)}>이야기</button>
             <button className="text-btn" onClick={() => setView({ type: "feedback" })}>의견</button>
           </div>

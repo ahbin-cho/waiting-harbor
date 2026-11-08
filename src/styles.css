@@ -39,6 +39,23 @@
   --fade-top:197,212,234; --fade-bottom:247,248,251; --veil:rgba(30,36,54,.12); --tag-shadow:rgba(255,255,255,.95);
   color-scheme: light;
 }
+/* 추모관 테마: 해가 높은 낮의 파스텔 하늘. 시트는 밝은 종이, 글자는 짙은 남색. 포근하고 무겁지 않게. */
+:root[data-theme="haven"]{
+  --sky-top:#9FD2EC; --sky-mid:#CFE6F2; --sky-low:#FAE3D4; --haze:#F4E6EA;
+  --sea:#9CCBE2; --sea-deep:#7FB4D0;
+  --land:#9FC79E; --land-far:#CFDCEF; --tree-back:#76A582; --pier:#B48D72; --pier-top:#C29C80; --tower:#F6EFE6;
+  --moon:#FFF7EA;
+  --ink:#24304A; --muted:#55617A; --faint:#7F8AA0;
+  --paper:#FFFAF4; --line:rgba(36,48,74,.14); --field:rgba(36,48,74,.04);
+  --lamp:#F4A988; --lamp-ink:#3A1E12;
+  --danger:#B8402C;
+  --fade-top:180,218,238; --fade-bottom:255,250,244; --veil:rgba(36,48,74,.10); --tag-shadow:rgba(255,255,255,.95);
+  color-scheme: light;
+}
+/* 추모관의 시트와 버튼은 조금 더 둥글게 */
+:root[data-theme="haven"] .sheet{border-radius:22px 22px 0 0}
+:root[data-theme="haven"] .btn,:root[data-theme="haven"] .ghost,:root[data-theme="haven"] .chip{border-radius:999px}
+:root[data-theme="haven"] .daily{border-radius:18px}
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%}
 body{
