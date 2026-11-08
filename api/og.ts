@@ -11,12 +11,26 @@ const h = (type: string, style: Record<string, unknown>, ...children: (Node | st
 });
 
 /** 카드에 쓰는 글자만 담은 작은 폰트를 Google Fonts 에서 받아요 */
-async function font(family: string, weight: number, text: string) {
-  const css = await (await fetch(`https://fonts.googleapis.com/css2?family=${family}:wght@${weight}&text=${encodeURIComponent(text)}`)).text();
-  const src = css.match(/src: url\((.+?)\) format\('(opentype|truetype)'\)/)?.[1];
-  if (!src) throw new Error(`font ${family}`);
-  return (await fetch(src)).arrayBuffer();
+// Google 은 요청한 브라우저에 따라 글꼴 형식을 바꿔 줘요. 카드 생성기는 woff2 를 못 읽어서,
+// 오래된 사파리처럼 요청해 TTF 를 받아요. 그래도 실패하면 null (기본 글꼴로 그려요).
+const OLD_SAFARI = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1";
+async function font(family: string, weight: number, text: string): Promise<ArrayBuffer | null> {
+  try {
+    const res = await fetch(`https://fonts.googleapis.com/css2?family=${family}:wght@${weight}&text=${encodeURIComponent(text)}`, {
+      headers: { "User-Agent": OLD_SAFARI },
+    });
+    const css = await res.text();
+    const src = css.match(/src: url\((.+?)\) format\('(opentype|truetype|woff)'\)/)?.[1];
+    if (!src) return null;
+    return await (await fetch(src)).arrayBuffer();
+  } catch {
+    return null;
+  }
 }
+
+/** 받아 온 글꼴만 넘겨요 */
+const fontsOf = (list: { name: string; data: ArrayBuffer | null; weight: 400 | 700 }[]) =>
+  list.filter((f) => f.data).map((f) => ({ name: f.name, data: f.data as ArrayBuffer, weight: f.weight, style: "normal" as const }));
 
 /** 사이트 대표 카드 (등불 여러 개가 걸린 밤 마을). public/og.png 로 저장해서 써요. */
 async function homeCard() {
@@ -40,16 +54,25 @@ async function homeCard() {
   );
   return new ImageResponse(card as never, {
     width: 1200, height: 630,
-    fonts: [{ name: "Gaegu", data: gaegu, weight: 700, style: "normal" }, { name: "Plex", data: plex, weight: 400, style: "normal" }],
+    fonts: fontsOf([{ name: "Gaegu", data: gaegu, weight: 700 }, { name: "Plex", data: plex, weight: 400 }]),
   });
 }
 
 export default async function handler(req: Request) {
+  // 실패하면 빈 오류 대신 어디서 막혔는지 글자로 보여줘요 (비밀 값은 담지 않아요)
+  try {
+    return await draw(req);
+  } catch (e) {
+    return new Response(`card error: ${(e as Error).message}`, { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
+  }
+}
+
+async function draw(req: Request) {
   const q = new URL(req.url).searchParams;
   const id = q.get("id");
   if (!id) return homeCard();
   const l = await getLantern(id);
-  if (!l) return new Response("not found", { status: 404 });
+  if (!l) return new Response("not found: 등불을 찾지 못했어요 (아이디를 확인해 주세요)", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
   if (q.get("s") === "1") return storyCard(l, new URL(req.url).host);
 
   const f = facts(l);
@@ -97,11 +120,11 @@ export default async function handler(req: Request) {
   return new ImageResponse(card as never, {
     width: 1200,
     height: 630,
-    fonts: [
-      { name: "Gaegu", data: gaegu, weight: 700, style: "normal" },
-      { name: "Pen", data: pen, weight: 400, style: "normal" },
-      { name: "Plex", data: plex, weight: 400, style: "normal" },
-    ],
+    fonts: fontsOf([
+      { name: "Gaegu", data: gaegu, weight: 700 },
+      { name: "Pen", data: pen, weight: 400 },
+      { name: "Plex", data: plex, weight: 400 },
+    ]),
     headers: { "cache-control": "public, max-age=3600, s-maxage=3600" },
   });
 }
@@ -144,11 +167,11 @@ async function storyCard(l: Awaited<ReturnType<typeof getLantern>> & object, hos
   return new ImageResponse(card as never, {
     width: 1080,
     height: 1920,
-    fonts: [
-      { name: "Gaegu", data: gaegu, weight: 700, style: "normal" },
-      { name: "Pen", data: pen, weight: 400, style: "normal" },
-      { name: "Plex", data: plex, weight: 400, style: "normal" },
-    ],
+    fonts: fontsOf([
+      { name: "Gaegu", data: gaegu, weight: 700 },
+      { name: "Pen", data: pen, weight: 400 },
+      { name: "Plex", data: plex, weight: 400 },
+    ]),
     headers: { "cache-control": "public, max-age=3600, s-maxage=3600" },
   });
 }
