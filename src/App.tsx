@@ -5,6 +5,8 @@ const Village3D = lazy(() => import("./components/Village3D").then((m) => ({ def
 import { PLACE_LABEL, WORLD_NAME, WORLD_PLACES, neighbors, placeOf, worldOf, type World } from "./lib/places";
 import { COLORS, colorOf } from "./lib/looks";
 import type { ShrineInfo } from "./three/shrine";
+import { dailyWord, type DailyWord } from "./lib/daily";
+import { today as todayDate, ymd as ymdOf } from "./lib/waiting";
 import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
 import { Sheet } from "./components/Sheet";
@@ -86,6 +88,36 @@ export default function App() {
 
   // 한 사람이 등불을 여러 개 걸 수 있어요 (기다리는 사람, 그리워하는 사람, 무지개마을의 아이…)
   const mine = h.lanterns.filter((l) => l.user_id === h.me);
+
+  // 하루 한마디: 어제 다녀간 흔적과 함께, 내 등불에 하루 한 번 건네는 말
+  const dayStr = ymdOf(todayDate());
+  const warmYesterday = (() => {
+    const y = todayDate();
+    y.setDate(y.getDate() - 1);
+    const ys = ymdOf(y), m = new Map<string, number>();
+    for (const w of h.warmth) if (w.day === ys) m.set(w.to_id, (m.get(w.to_id) ?? 0) + 1);
+    return m;
+  })();
+  const wordFor = (l: (typeof mine)[number]): DailyWord =>
+    dailyWord(l, { warmYesterday: warmYesterday.get(l.id) ?? 0, offerYesterday: h.offerings.yesterday.get(l.id) ?? 0 }, dayStr);
+  const [dailySeen, setDailySeen] = useState(() => {
+    try {
+      return localStorage.getItem("harbor.daily") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const seeDaily = () => {
+    setDailySeen(dayStr);
+    try {
+      localStorage.setItem("harbor.daily", dayStr);
+    } catch {
+      /* 저장 못 해도 괜찮아요 */
+    }
+  };
+  // 등불이 여럿이면 날마다 돌아가며 하나씩
+  const dailyLantern = mine.length ? mine[Number(dayStr.replace(/-/g, "")) % mine.length] : undefined;
+  const daily = h.status === "ready" && dailyLantern && dailySeen !== dayStr && story == null && view.type === "none" && !preset ? wordFor(dailyLantern) : null;
   const full = mine.length >= MAX_LANTERNS;
   const openMine = () => setView(mine.length === 1 ? { type: "detail", id: mine[0].id } : { type: "mine" });
 
@@ -140,6 +172,7 @@ export default function App() {
         photo: h.photoUrls[focused.id],
         count: h.warmthCount.get(focused.id) ?? 0,
         color: COLORS[colorOf(focused.color)],
+        offerings: h.offerings.counts.get(focused.id),
       }
     : null;
   // 새 등불 걸기를 연 순간을 세요 (고치기는 빼고)
@@ -187,7 +220,7 @@ export default function App() {
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme} world={story != null ? "all" : world}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} onPick={(id) => !recording && setView({ type: "detail", id })} theme={theme} world={story != null ? "all" : world}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {
@@ -245,6 +278,25 @@ export default function App() {
       </header>
       {h.status !== "ready" || !here.length ? <p className="empty">{empty}</p> : null}
 
+      {daily && (
+        <aside className="daily" aria-label="하루 한마디">
+          <p className="daily-from">{daily.from}</p>
+          <p className="daily-text">{daily.text}</p>
+          {daily.facts && <p className="daily-facts">{daily.facts}</p>}
+          <div className="daily-tools">
+            <button
+              className="btn"
+              onClick={() => {
+                seeDaily();
+                setView({ type: "detail", id: daily.lanternId });
+              }}
+            >
+              보러 가기
+            </button>
+            <button className="text-btn" onClick={seeDaily}>닫기</button>
+          </div>
+        </aside>
+      )}
       <div className="bar">
         <span className="hint">{hint}</span>
         {mine.length > 0 && (
@@ -301,6 +353,13 @@ export default function App() {
             onAddNote={(body, open) => h.addNote(picked.id, body, open)}
             onRemoveNote={(id) => h.removeNote(picked.id, id)}
             me={h.me}
+            daily={picked.user_id === h.me ? wordFor(picked) : undefined}
+            offerings={h.offerings.counts.get(picked.id)}
+            myOffer={h.myOffers[picked.id]}
+            onOffer={async (kind) => {
+              await h.leaveOffering(picked.id, kind);
+              pulse(picked.id);
+            }}
             no={nav?.no}
             onPrev={nav && nav.total > 1 ? () => setView({ type: "detail", id: nav.prev }) : undefined}
             onNext={nav && nav.total > 1 ? () => setView({ type: "detail", id: nav.next }) : undefined}

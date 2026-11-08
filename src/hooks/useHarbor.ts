@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { configured, supabase, type Lantern, type Message, type Note, type Warmth } from "../lib/supabase";
+import { configured, supabase, type Lantern, type Message, type Note, type OfferingCount, type Warmth } from "../lib/supabase";
 import { today, ymd } from "../lib/waiting";
 import { track, trackReady } from "../lib/track";
-import { DEMO_ME, demoLanterns, demoMessages, demoMissing, demoNotes, demoOnline, demoWarmth } from "../lib/demo";
+import { isOffering, type OfferingKind } from "../lib/offerings";
+import { DEMO_ME, demoLanterns, demoMessages, demoMissing, demoNotes, demoOfferings, demoOnline, demoWarmth } from "../lib/demo";
 
 /** Supabase 설정이 없으면 체험 모드로 열려요. 아무것도 저장되지 않아요. */
 export const demo = !configured;
@@ -18,6 +19,9 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
   const [me, setMe] = useState<string | null>(demo ? DEMO_ME : null);
   const [lanterns, setLanterns] = useState<Lantern[]>(demo ? () => [...demoLanterns(), ...demoMissing()] : []);
   const [warmth, setWarmth] = useState<Warmth[]>(demo ? demoWarmth : []);
+  // 놓고 간 것: 등불마다 종류별 수와 어제 놓인 수, 그리고 오늘 내가 놓은 것
+  const [offerRows, setOfferRows] = useState<OfferingCount[]>(demo ? demoOfferings : []);
+  const [myOffers, setMyOffers] = useState<Record<string, OfferingKind>>({});
   const [online, setOnline] = useState<Set<string>>(demo ? demoOnline : () => new Set());
   const [hereCount, setHereCount] = useState(demo ? 4 : 1);
   const [status, setStatus] = useState<Status>(demo ? "ready" : "loading");
@@ -45,14 +49,19 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     if (!configured || !me) return;
     let alive = true;
     (async () => {
-      const [l, w] = await Promise.all([
+      const [l, w, o, mine] = await Promise.all([
         supabase.from("lanterns").select("*").order("created_at"),
         supabase.from("warmth").select("from_id,to_id,day"),
+        supabase.rpc("offering_counts"),
+        supabase.from("offerings").select("lantern_id,kind").eq("from_id", me).eq("day", ymd(today())),
       ]);
       if (!alive) return;
       if (l.error || w.error) return setStatus("error");
       setLanterns(l.data as Lantern[]);
       setWarmth(w.data as Warmth[]);
+      // 놓고 간 것은 schema 를 아직 다시 실행하지 않았으면 없을 수 있어요. 그래도 마을은 열어요.
+      if (!o.error) setOfferRows((o.data as OfferingCount[]).map((r) => ({ ...r, n: Number(r.n), yesterday: Number(r.yesterday) })));
+      if (!mine.error) setMyOffers(Object.fromEntries((mine.data as { lantern_id: string; kind: OfferingKind }[]).map((r) => [r.lantern_id, r.kind])));
       setStatus("ready");
     })();
 
@@ -193,6 +202,37 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     }
     setMessages((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((n) => n.id !== id) }));
   }, []);
+
+  // ---------- 놓고 가는 것 ----------
+  /** 등불마다 { 종류: 수 } 와 어제 놓인 수 */
+  const offerings = useMemo(() => {
+    const counts = new Map<string, Partial<Record<OfferingKind, number>>>();
+    const yesterday = new Map<string, number>();
+    for (const r of offerRows) {
+      if (!isOffering(r.kind)) continue;
+      const c = counts.get(r.lantern_id) ?? {};
+      c[r.kind] = (c[r.kind] ?? 0) + r.n;
+      counts.set(r.lantern_id, c);
+      yesterday.set(r.lantern_id, (yesterday.get(r.lantern_id) ?? 0) + r.yesterday);
+    }
+    return { counts, yesterday };
+  }, [offerRows]);
+
+  /** 등불 앞에 오늘 하나를 놓아요 (한 사람이 등불마다 하루 하나) */
+  const leaveOffering = useCallback(
+    async (lanternId: string, kind: OfferingKind) => {
+      if (!me) throw new Error("no-user");
+      if (myOffers[lanternId]) return;
+      if (!demo) {
+        const { error } = await supabase.from("offerings").insert({ lantern_id: lanternId, from_id: me, kind, day: ymd(today()) });
+        if (error) throw error;
+        track("offering_left", { kind });
+      }
+      setMyOffers((m) => ({ ...m, [lanternId]: kind }));
+      setOfferRows((rows) => [...rows, { lantern_id: lanternId, kind, n: 1, yesterday: 0 }]);
+    },
+    [me, myOffers],
+  );
 
   const sentToday = useCallback(
     (to: string) => warmth.some((w) => w.from_id === me && w.to_id === to && w.day === ymd(today())),
@@ -343,5 +383,5 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     setLanterns((all) => all.map((x) => (x.id === l.id ? { ...x, photo_public: isPublic } : x)));
   }, []);
 
-  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote, messages, loadMessages, addMessage, removeMessage };
+  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote, messages, loadMessages, addMessage, removeMessage, warmth, offerings, myOffers, leaveOffering };
 }

@@ -34,6 +34,8 @@ export type Lantern = {
 
 /** 온기: from_id 는 보낸 사람, to_id 는 받은 등불 */
 export type Warmth = { from_id: string; to_id: string; day: string };
+/** 등불마다 놓인 것의 수 (offering_counts 함수) */
+export type OfferingCount = { lantern_id: string; kind: string; n: number; yesterday: number };
 
 /** 기다림 일기: 등불 주인이 날마다 남기는 글 */
 export type Message = { id: number; lantern_id: string; from_id: string; body: string; created_at: string };

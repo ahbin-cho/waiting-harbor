@@ -6,11 +6,12 @@ import type { Shot } from "../lib/story";
 import type { ThemeName } from "../lib/theme";
 import { startClip, type ClipText } from "../lib/clip";
 import type { ShrineInfo } from "../three/shrine";
+import type { OfferingKind } from "../lib/offerings";
 
 export type Focus = { place: Place | "all"; n: number };
 
 /** three.js 로 그린 3D 밤 마을. 이름표는 HTML 로 그 위에 얹어요. */
-export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, onPick, theme, world, record, onClip }: {
+export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, offerings, onPick, theme, world, record, onClip }: {
   lanterns: Lantern[];
   me: string | null;
   online: Set<string>;
@@ -20,6 +21,8 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   selectedId: string | null;
   /** 열린 등불 곁의 작은 자리 (사진, 번호, 한 줄, 작은 등 수) */
   shrine: ShrineInfo | null;
+  /** 등불마다 놓고 간 것 (종류별 수) */
+  offerings: Map<string, Partial<Record<OfferingKind, number>>>;
   onPick: (id: string) => void;
   theme: ThemeName;
   /** 기다림 항구 / 추모관 (이야기 중엔 모두) */
@@ -45,6 +48,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   }, []);
 
   useEffect(() => v.current?.setData(lanterns, me, online), [lanterns, me, online]);
+  useEffect(() => v.current?.setOfferings(offerings), [offerings]);
   useEffect(() => v.current?.setTheme(theme), [theme]);
   useEffect(() => v.current?.setWorld(world), [world]);
   const clipDone = useRef(onClip);
@@ -64,7 +68,7 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
     })();
   }, [record]);
   useEffect(() => v.current?.setSelected(selectedId), [selectedId]);
-  const shrineKey = shrine ? [shrine.id, shrine.photo, shrine.no, shrine.who, shrine.line, shrine.color, shrine.count].join("|") : "";
+  const shrineKey = shrine ? [shrine.id, shrine.photo, shrine.no, shrine.who, shrine.line, shrine.color, shrine.count, JSON.stringify(shrine.offerings ?? {})].join("|") : "";
   useEffect(() => v.current?.setShrine(shrine), [shrineKey, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (pulseId) v.current?.pulse(pulseId);

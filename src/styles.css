@@ -298,6 +298,19 @@ video.clip{display:block;width:min(100%,280px);aspect-ratio:9/16;margin:16px aut
 img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;border-radius:12px;background:var(--field)}
 .photo-empty{height:180px;display:grid;place-items:center;border-radius:12px;background:var(--field);color:var(--muted);font-size:.85rem}
 .photo-who{color:var(--faint);font-size:.8rem}
+/* 하루 한마디: 바닥 줄 위에 얹히는 쪽지 */
+.daily{
+  position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:6;
+  max-width:420px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px 12px;
+}
+.daily-from{margin:0 0 6px;font-family:var(--display);font-weight:700;font-size:.95rem;color:var(--muted)}
+.daily-text{margin:0;font-family:var(--hand);font-size:1.35rem;line-height:1.35;color:var(--ink)}
+.daily-facts{margin:8px 0 0;font-size:.82rem;color:var(--muted);line-height:1.6}
+.daily-tools{display:flex;align-items:center;gap:16px;margin-top:12px}
+.daily-in{margin:14px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:10px}
+.scene.focusing .daily{display:none}
+/* 놓고 가기 */
+.offer .chips{margin-bottom:6px}
 /* 남긴 마음 */
 .say{margin-bottom:14px}
 .say textarea{min-height:72px}

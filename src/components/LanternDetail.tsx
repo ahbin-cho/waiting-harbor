@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Lantern, Message, Note } from "../lib/supabase";
+import type { DailyWord } from "../lib/daily";
+import { OFFER_ONE, offeringSummary, offeringsFor, type OfferingKind } from "../lib/offerings";
 import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
@@ -19,10 +21,16 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, me, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
+export function LanternDetail({ lantern, me, daily, offerings, myOffer, onOffer, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   /** 지금 보는 사람 (자기가 남긴 말을 지울 수 있게) */
   me: string | null;
+  /** 내 등불이면 오늘의 한마디 */
+  daily?: DailyWord;
+  /** 놓고 간 것들 (종류별 수), 오늘 내가 놓은 것, 놓기 */
+  offerings?: Partial<Record<OfferingKind, number>>;
+  myOffer?: OfferingKind;
+  onOffer: (kind: OfferingKind) => Promise<void>;
   /** 자리 번호 ("항구 12")와 같은 장소의 이전·다음 등불로 가기 */
   no?: string;
   onPrev?: () => void;
@@ -63,6 +71,19 @@ export function LanternDetail({ lantern, me, no, onPrev, onNext, isMine, isHere,
   const [saying, setSaying] = useState(false);
   const sayRef = useRef<HTMLTextAreaElement>(null);
   const said = messages ?? [];
+  const [offering, setOffering] = useState(false);
+  async function offer(kind: OfferingKind) {
+    setOffering(true);
+    setErr("");
+    try {
+      await onOffer(kind);
+    } catch {
+      setErr("놓지 못했어요. 잠시 뒤 다시 눌러 주세요.");
+    } finally {
+      setOffering(false);
+    }
+  }
+  const laid = offeringSummary(offerings);
   const n = daysLeft(lantern);
   const since = daysSince(lantern);
   const pct = Math.round(progressOf(lantern) * 100);
@@ -200,6 +221,13 @@ export function LanternDetail({ lantern, me, no, onPrev, onNext, isMine, isHere,
 
       <div className="big">{miss ? `떠난 지 ${gone}일` : ddayText(n)}</div>
       <p className="small">{story}</p>
+      {daily && (
+        <div className="daily-in">
+          <p className="daily-from">오늘의 한마디 · {daily.from}</p>
+          <p className="daily-text">{daily.text}</p>
+          {daily.facts && <p className="daily-facts">{daily.facts}</p>}
+        </div>
+      )}
       {!isMine && (
         <div className="row warm-row">
           <button className="btn" onClick={warm} disabled={busy || sent}>
@@ -210,6 +238,21 @@ export function LanternDetail({ lantern, me, no, onPrev, onNext, isMine, isHere,
           </button>
         </div>
       )}
+      <div className="offer">
+        <p className="section">놓고 가기 <small>하루에 하나</small></p>
+        {myOffer ? (
+          <p className="small">오늘 {pick(OFFER_ONE[myOffer], "을", "를")} 놓았어요. 내일 또 놓을 수 있어요.</p>
+        ) : (
+          <div className="chips">
+            {offeringsFor(lantern).map((k) => (
+              <button key={k} type="button" className="chip" disabled={offering} onClick={() => offer(k)}>
+                {OFFER_ONE[k]}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="small">{laid ? `${pick(laid, "이", "가")} 놓여 있어요.` : "아직 놓인 것이 없어요."}</p>
+      </div>
       <p className="small warmth-line">
         {miss
           ? warmth ? `이 등불 앞에서 ${warmth}번 추모했어요. 추모할 때마다 곁에 작은 등이 하나씩 놓여요.` : "아직 추모한 사람이 없어요. 추모하면 곁에 작은 등이 하나 놓여요."
