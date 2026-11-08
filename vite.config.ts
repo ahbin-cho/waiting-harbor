@@ -18,7 +18,7 @@ function seo(): Plugin {
   // "google-site-verification=…" 처럼 앞부분까지 붙여 넣어도 값만 떼어 써요.
   const clean = (v?: string) => v?.trim().replace(/^[a-z-]+-site-verification=/i, "");
   const verify = [
-    ["google-site-verification", clean(env.GOOGLE_SITE_VERIFICATION) || "u2fXDDS4E4pddcAmYCj8OwICB7p-PJFFZu92zQatiS0"],
+    ["google-site-verification", clean(env.GOOGLE_SITE_VERIFICATION) || "ClF4FSo9JbSwKyH4prbD9O-YpSyjYNieJ2F3xIdrjOw"],
     ["naver-site-verification", clean(env.NAVER_SITE_VERIFICATION) || "8315ba00cc3bd2d342377acce3a2920614fb451c"],
   ]
     .filter(([, v]) => v)
