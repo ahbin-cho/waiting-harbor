@@ -1028,3 +1028,54 @@ export function choicesOf(nodeId: string, sp: Speaker): Choice[] {
   const node = TREE[nodeId] ?? TREE.menu;
   return node.choices.filter((c) => !c.only || (c.only === "pet") === sp.isPet);
 }
+
+// ---------- 대화에 더하는 것들: 때에 맞는 첫 인사, 스티커, 선물 ----------
+
+/** 시간대와 다가오는 날(기일, 처음 만난 날)에 맞춘 첫 인사. 없으면 null (그땐 늘 하던 인사) */
+export function greetingFor(sp: Speaker, who: string, now: Date, days: { anniv: number; annivLabel: string }) {
+  const h = now.getHours();
+  const pick = (a: string[]) => a[(now.getDate() + h) % a.length];
+  if (days.anniv === 0)
+    return sp.isPet
+      ? pick([`오늘 ${days.annivLabel}이지? 기억해 줘서 고마워. 나 오늘 특별히 신났어!`, `오늘이 ${days.annivLabel}이구나. 와 줘서 고마워!`])
+      : pick([`오늘이 ${days.annivLabel}이구나. 기억해 줘서 고마워. 오늘은 너무 무리하지 마.`, `와 줬구나. 오늘 같은 날 기억해 줘서 고마워.`]);
+  if (days.anniv > 0 && days.anniv <= 7)
+    return sp.isPet ? `곧 ${days.annivLabel}이네! ${days.anniv}일 남았어. 그날도 놀러 와 줄 거지?` : `${days.annivLabel}이 ${days.anniv}일 남았구나. 그날엔 따뜻하게 지내.`;
+  if (h < 5) return sp.isPet ? pick(["이 시간까지 안 자고 있었어? 나 발치에 있을게, 같이 자자.", "늦었다! 잠 안 와? 나랑 조금만 놀고 자."]) : pick(["이 늦은 시간에 왔구나. 잠이 안 와? 조금만 얘기하고 자.", "늦었네. 오늘 하루 많이 길었지?"]);
+  if (h < 11) return sp.isPet ? pick(["좋은 아침! 아침 먹었어? 나는 먹었어!", "아침이다! 산책 가는 시간이야!"]) : pick(["좋은 아침. 아침은 챙겨 먹었어?", "아침부터 와 줬네. 오늘도 잘 보내."]);
+  if (h < 17) return null; // 낮엔 늘 하던 인사
+  if (h < 21) return sp.isPet ? pick(["왔다! 저녁이네. 오늘 하루 어땠어?", "해 질 녘이다! 나 이 시간 좋아했잖아."]) : pick(["저녁이네. 오늘 하루 어땠어?", "퇴근했어? 오늘도 고생 많았어."]);
+  return sp.isPet ? pick(["밤이다. 오늘도 와 줘서 고마워. 이불 덮고 얘기해!", "잘 시간이네. 조금만 얘기하고 푹 자!"]) : pick(["밤이 깊었네. 오늘도 와 줘서 고마워.", "자기 전에 들렀구나. 오늘도 수고했어."]);
+}
+
+/** 스티커: 말 대신 마음을 바로 전해요. 보낸 스티커 글자와, 그쪽의 반응 */
+export type Sticker = { id: string; text: string; only?: "pet" | "person"; person: string[]; pet: string[]; bySpecies?: Partial<Record<string, string[]>> };
+export const STICKERS: Sticker[] = [
+  { id: "love", text: "💛 사랑해", person: ["나도 사랑해. 많이.", "알아. 나도."], pet: ["나도! 꼬리로 하트!", "사랑해! 핥핥!"], bySpecies: { 고양이: ["…나도. 골골골."], 새: ["짹! 나도 사랑해!"] } },
+  { id: "hug", text: "🤗 안아 줄게", person: ["따뜻하다. 고마워.", "응, 꼭 안아 줘. 나도 안아 줄게."], pet: ["꼬옥! 네 품 제일 좋아.", "안아 줘! 얼굴 비빌게!"], bySpecies: { 고양이: ["…잠깐만이야. 아니, 조금 더.", "골골골. 따뜻해."] } },
+  { id: "pat", text: "✋ 쓰담쓰담", only: "pet", person: [], pet: ["헤헤, 거기! 귀 뒤!", "좋아… 계속 해 줘!"], bySpecies: { 고양이: ["턱 밑도 부탁해. 골골골.", "꾹꾹이로 답할게."], 새: ["머리 쓰담 좋아! 깃털 부풀었어!"] } },
+  { id: "pat2", text: "🫶 토닥토닥", only: "person", person: ["고마워. 너도 토닥토닥.", "그 손 따뜻하다."], pet: [] },
+  { id: "miss", text: "🥺 보고 싶어", person: ["나도 보고 싶어. 이렇게 와 줘서 고마워.", "나도. 그 마음 다 알아."], pet: ["나도 보고 싶어! 여기서 네 이름 불러.", "나도! 네 냄새 기억해."] },
+  { id: "thanks", text: "🙏 고마웠어", person: ["내가 더 고마워.", "고마워. 네 덕분에 행복했어."], pet: ["나도 고마워! 나를 데려와 줘서.", "고마워! 매일매일 좋았어."] },
+  { id: "smile", text: "😊 나 오늘 웃었어", person: ["정말? 그거면 됐어. 더 많이 웃어.", "좋다. 그 얼굴 보고 싶다."], pet: ["와! 신난다! 나도 같이 웃을게!", "웃는 네가 제일 좋아!"] },
+];
+export const stickersFor = (sp: Speaker) => STICKERS.filter((s) => !s.only || (s.only === "pet") === sp.isPet);
+export const isSticker = (text: string) => STICKERS.some((s) => s.text === text);
+
+/** 선물: 대화 중에 건네면 오늘의 "놓고 가기"로도 남아요. 받은 쪽의 반응 */
+export const GIFT_REPLY: Record<string, { person: string[]; pet: string[] }> = {
+  국화: { person: ["고마워. 예쁘다. 곁에 잘 둘게.", "꽃 향기 좋다. 고마워."], pet: ["꽃이다! 냄새 맡아도 돼? 고마워!", "예쁘다! 내 자리 옆에 둘게."] },
+  들꽃: { person: ["들꽃이네. 소박해서 더 좋다. 고마워.", "예쁘다. 너 닮았다."], pet: ["들꽃! 그 사이로 뛰어다니고 싶다!", "고마워! 꽃 냄새 좋아!"] },
+  간식: { person: ["고마워. 맛있게 먹을게."], pet: ["간식이다! 앉아, 손, 엎드려 다 할게!", "냠냠! 역시 네가 주는 게 제일 맛있어!"] },
+  공: { person: ["고마워."], pet: ["공이다! 던져 줘! 물어 올게!", "와! 이거 갖고 하루 종일 놀 거야!"] },
+  조약돌: { person: ["예쁜 돌이네. 곁에 쌓아 둘게.", "고마워. 하나씩 쌓이는 게 좋다."], pet: ["반짝반짝한 돌이다! 고마워!", "내 보물로 할게!"] },
+};
+
+/** 스티커나 선물의 반응 한 줄 (종류별 말이 있으면 섞어서) */
+export function reactOf(pool: { person: string[]; pet: string[]; bySpecies?: Partial<Record<string, string[]>> }, sp: Speaker, seed: number, recent: string[] = []) {
+  const own = sp.isPet ? (pool.bySpecies?.[sp.species ?? ""] ?? []) : [];
+  const list = [...own, ...own, ...(sp.isPet ? pool.pet : pool.person)];
+  const fresh = list.filter((x) => !recent.includes(x));
+  const use = fresh.length ? fresh : list;
+  return use.length ? use[(seed >>> 0) % use.length] : "고마워.";
+}

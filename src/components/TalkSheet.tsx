@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Lantern } from "../lib/supabase";
 import { SAFETY_REPLY, TALK_MAX, type Talk } from "../lib/talk";
-import { choicesOf, lineOf, type Speaker } from "../lib/talkTree";
+import { GIFT_REPLY, choicesOf, greetingFor, isSticker, lineOf, reactOf, stickersFor, type Speaker } from "../lib/talkTree";
+import { OFFER_ONE, offeringsFor, type OfferingKind } from "../lib/offerings";
+import { nextAnniversary, pick } from "../lib/waiting";
 
 const hm = (iso: string) => {
   const d = new Date(iso);
@@ -13,7 +15,7 @@ const hm = (iso: string) => {
  * 하고 싶은 말이 따로 있으면 "직접 쓰기"로 써도 돼요.
  * 진짜 그 사람이 아니라는 걸 늘 밝혀 두고, 상담 전화를 조용히 안내해요.
  */
-export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, onBack, onClose, demo }: {
+export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, onBack, onClose, demo, myOffer, onOffer }: {
   lantern: Lantern;
   photoUrl?: string;
   talks: Talk[] | undefined;
@@ -24,12 +26,20 @@ export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, o
   onBack: () => void;
   onClose: () => void;
   demo: boolean;
+  /** 오늘 이 등불에 이미 놓은 것, 놓기 (선물 건네기) */
+  myOffer?: OfferingKind;
+  onOffer: (kind: OfferingKind) => Promise<void>;
 }) {
   const who = lantern.who.trim() || "그 사람";
   const sp: Speaker = useMemo(() => ({ isPet: lantern.place === "무지개", species: lantern.species }), [lantern.place, lantern.species]);
   const seed = useMemo(() => Number(new Date().toISOString().slice(0, 10).replace(/-/g, "")), []);
   const [node, setNode] = useState("start");
-  const [greeting] = useState(() => lineOf("start", sp, seed + Math.floor(Math.random() * 97)));
+  // 첫 인사: 기일·처음 만난 날이 가까우면 그 이야기, 아니면 시간대에 맞게, 그것도 아니면 늘 하던 인사
+  const [greeting] = useState(() => {
+    const ann = nextAnniversary(lantern);
+    return greetingFor(sp, lantern.who, new Date(), { anniv: ann.days, annivLabel: ann.label }) ?? lineOf("start", sp, seed + Math.floor(Math.random() * 97));
+  });
+  const [tray, setTray] = useState<"" | "sticker" | "gift">("");
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,14 +57,17 @@ export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, o
     log.current?.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [list.length, busy, node]);
 
-  async function say(text: string, to?: string) {
+  async function say(text: string, to?: string, given?: string) {
     if (!text.trim() || busy) return;
     setBusy(true);
     setErr("");
+    setTray("");
     const recent = list.filter((t) => t.role === "them").slice(-6).map((t) => t.body);
-    const reply = to ? lineOf(to, sp, seed + list.length, recent) : undefined;
+    // 사진 얘기를 하면 사진을 함께 봐요 (사진이 있을 때)
+    const photoTalk = to === "photo" && photoUrl;
+    const reply = given ?? (to ? lineOf(to, sp, seed + list.length, recent) : undefined);
     try {
-      await onSend(text.trim(), reply);
+      await onSend(text.trim(), photoTalk && reply ? `${reply}\n[사진]` : reply);
       setNode(to ?? "menu");
       setDraft("");
     } catch (e) {
@@ -62,6 +75,24 @@ export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, o
     } finally {
       setBusy(false);
     }
+  }
+
+  async function sticker(id: string) {
+    const st = stickersFor(sp).find((x) => x.id === id);
+    if (!st) return;
+    const recent = list.filter((t) => t.role === "them").slice(-6).map((t) => t.body);
+    await say(st.text, undefined, reactOf(st, sp, seed + list.length * 7 + id.length, recent));
+  }
+
+  async function gift(kind: OfferingKind) {
+    if (myOffer) return setErr(`오늘은 이미 ${pick(OFFER_ONE[myOffer], "을", "를")} 건넸어요. 내일 또 건넬 수 있어요.`);
+    try {
+      await onOffer(kind);
+    } catch {
+      return setErr("건네지 못했어요. 잠시 뒤 다시 해 주세요.");
+    }
+    const recent = list.filter((t) => t.role === "them").slice(-6).map((t) => t.body);
+    await say(`🎁 ${OFFER_ONE[kind]}`, undefined, reactOf(GIFT_REPLY[kind] ?? { person: ["고마워."], pet: ["고마워!"] }, sp, seed + list.length * 3, recent));
   }
 
   const avatar = photoUrl ? <img className="talk-face" src={photoUrl} alt="" /> : <span className="talk-face" aria-hidden="true">{who.slice(0, 1)}</span>;
@@ -77,7 +108,8 @@ export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, o
         {avatar}
         <div>
           <span className="talk-name">{who}</span>
-          <p className="bubble them">{body}</p>
+          <p className="bubble them">{body.replace(/\n\[사진\]$/, "")}</p>
+          {/\n\[사진\]$/.test(body) && photoUrl && <img className="bubble-photo" src={photoUrl} alt={`${who} 사진`} />}
         </div>
         {at && <span className="talk-time">{hm(at)}</span>}
       </li>
@@ -97,7 +129,7 @@ export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, o
           t.role === "me" ? (
             <li key={t.id} className="talk-row me">
               <span className="talk-time">{hm(t.created_at)}</span>
-              <p className="bubble me">{t.body}</p>
+              <p className={`bubble me${isSticker(t.body) || t.body.startsWith("🎁 ") ? " sticker" : ""}`}>{t.body}</p>
             </li>
           ) : (
             theirs(t.id, t.body, t.created_at)
@@ -112,6 +144,27 @@ export function TalkSheet({ lantern, photoUrl, talks, onLoad, onSend, onClear, o
           </li>
         )}
       </ol>
+
+      {/* 스티커와 선물: 말 대신 마음을 바로 */}
+      <div className="talk-extras">
+        <button type="button" className="text-btn" aria-expanded={tray === "sticker"} onClick={() => setTray(tray === "sticker" ? "" : "sticker")}>스티커</button>
+        <button type="button" className="text-btn" aria-expanded={tray === "gift"} onClick={() => setTray(tray === "gift" ? "" : "gift")}>{myOffer ? "오늘 선물을 건넸어요" : "선물 건네기"}</button>
+      </div>
+      {tray === "sticker" && (
+        <div className="talk-tray" role="group" aria-label="스티커">
+          {stickersFor(sp).map((st) => (
+            <button key={st.id} type="button" className="choice-pill sticker-pill" disabled={busy} onClick={() => sticker(st.id)}>{st.text}</button>
+          ))}
+        </div>
+      )}
+      {tray === "gift" && (
+        <div className="talk-tray" role="group" aria-label="선물">
+          {offeringsFor(lantern).map((k) => (
+            <button key={k} type="button" className="choice-pill" disabled={busy || !!myOffer} onClick={() => gift(k)}>🎁 {OFFER_ONE[k]}</button>
+          ))}
+          <p className="small">하루에 하나, 등불 곁에 놓여요.</p>
+        </div>
+      )}
 
       {/* 고를 수 있는 말 */}
       <div className="talk-choices" role="group" aria-label="고를 수 있는 말">

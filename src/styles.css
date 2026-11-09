@@ -354,6 +354,12 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
 .bubble.typing{letter-spacing:.2em;color:var(--muted)}
 .talk-time{flex:none;font-size:.7rem;color:var(--faint);font-variant-numeric:tabular-nums}
 .talk-input{display:flex;gap:8px;align-items:flex-end;margin-top:8px}
+/* 스티커·선물 */
+.talk-extras{display:flex;justify-content:flex-end;gap:16px;margin-top:4px}
+.talk-tray{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin:6px 0 4px}
+.talk-tray .small{flex-basis:100%;text-align:right;margin:0}
+.bubble.me.sticker{font-size:1.15rem;background:var(--field);color:var(--ink);border:1px solid var(--line)}
+.bubble-photo{display:block;margin-top:6px;width:min(56vw,220px);aspect-ratio:1;object-fit:cover;border-radius:14px;border:1px solid var(--line)}
 /* 고를 수 있는 말: 둥근 말풍선 버튼, 오른쪽(내 쪽)으로 모아요 */
 .talk-choices{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:6px}
 .choice-pill{font:inherit;font-size:.92rem;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
