@@ -1449,17 +1449,41 @@ export class Village {
       if (!it) return;
       // 등불에 다가가요. 곁에 작은 자리(사진, 쪽지, 작은 등)가 함께 보이게 조금 오른쪽을 봐요.
       // 회전 중심은 늘 등불과 자리 사이에 둬요. 시트에 가리지 않게 올려 보이는 건 화면 밀어 올리기(setSheetCover)가 해요.
-      const flat = this.camera.position.clone().sub(it.lamp).setY(0).normalize();
-      if (!flat.lengthSq()) flat.set(0, 0, 1);
+      const from = this.camera.position.clone().sub(it.lamp).setY(0).normalize();
+      if (!from.lengthSq()) from.set(0, 0, 1);
+      // 지금 보던 쪽에서 다가가되, 언덕에 가려 등불이나 곁의 자리(안내판)가 안 보이면 조금씩 돌아서 트인 쪽을 찾아요
+      const view = (flat: THREE.Vector3, lift = 0) => {
+        // 등불과 곁의 작은 자리 사이 가운데를 봐요
+        const spot = this.shrineSpot(it, flat).add(new THREE.Vector3(0, 1.5, 0));
+        // 등불보다 곁의 자리(안내판, 액자) 쪽으로 조금 더 기울여서 둘 다 화면에 들어오게
+        // 돌아온 사람의 등불은 하늘로 올라가 있어서, 그때는 안내판을 중심으로 봐요
+        const mid = it.lamp.clone().lerp(spot, it.lift > 0 ? 0.92 : 0.58);
+        const d = this.narrow ? 16.5 : 13.5;
+        // 숲은 나무 위에서 조금 더 내려다봐요
+        const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, (it.place === "숲" ? 6 : 2.8) + lift, 0));
+        // 안내판 가운데만이 아니라 아래 두 모서리까지 보여야 트였다고 봐요
+        const r = this.rightOf(flat), base = spot.clone().add(new THREE.Vector3(0, -1.1, 0));
+        const marks = [spot, it.lamp, base.clone().addScaledVector(r, 2), base.clone().addScaledVector(r, -2)];
+        return { flat, spot, mid, pos, clear: marks.every((m) => !hidden(pos, m)) };
+      };
+      const hidden = (a: THREE.Vector3, b: THREE.Vector3) => {
+        // 바로 발치(2.5 안쪽)의 땅은 빼고, 그 앞을 가로막는 언덕만 봐요
+        const len = a.distanceTo(b), end = Math.max(0, 1 - 2.5 / Math.max(len, 0.01));
+        for (let k = 1; k < 16; k++) {
+          const t = (k / 16) * end, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t, y = a.y + (b.y - a.y) * t;
+          if (groundAt(x, z) > y - 0.5) return true;
+        }
+        return false;
+      };
+      let v = view(from);
+      if (!v.clear) {
+        const turns = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.2, -2.2, Math.PI];
+        const found = turns.map((r) => view(from.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), r))).find((c) => c.clear);
+        // 어느 쪽도 트이지 않으면 조금 더 위에서 내려다봐요
+        v = found ?? [3, 6, 9].map((h) => view(from, h)).find((c) => c.clear) ?? view(from, 9);
+      }
+      const { flat, spot, mid, pos } = v;
       this.selFlat.copy(flat);
-      // 등불과 곁의 작은 자리 사이 가운데를 봐요
-      const spot = this.shrineSpot(it, flat).add(new THREE.Vector3(0, 1.5, 0));
-      // 등불보다 곁의 자리(안내판, 액자) 쪽으로 조금 더 기울여서 둘 다 화면에 들어오게
-      // 돌아온 사람의 등불은 하늘로 올라가 있어서, 그때는 안내판을 중심으로 봐요
-      const mid = it.lamp.clone().lerp(spot, it.lift > 0 ? 0.92 : 0.58);
-      const d = this.narrow ? 16.5 : 13.5;
-      // 숲은 나무 위에서 조금 더 내려다봐요
-      const pos = mid.clone().addScaledVector(flat, d).add(new THREE.Vector3(0, it.place === "숲" ? 6 : 2.8, 0));
       this.treeClear = { eye: pos.clone(), lamp: it.lamp.clone(), spot: spot.clone() };
       this.applyTreeClear();
       this.lampClear.clear();
