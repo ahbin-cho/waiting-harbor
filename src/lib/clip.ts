@@ -9,7 +9,7 @@ const TYPES = ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=v
 
 export async function startClip(text: ClipText, width = 720, height = 1280) {
   await Promise.all([
-    document.fonts.load('400 52px "Gowun Dodum"'),
+    document.fonts.load('400 52px "Poor Story"'),
     document.fonts.load('400 40px "Nanum Pen Script"'),
     document.fonts.load('400 28px "IBM Plex Sans KR"'),
   ]).catch(() => undefined);
@@ -49,7 +49,7 @@ export async function startClip(text: ClipText, width = 720, height = 1280) {
       ctx.textBaseline = "alphabetic";
       ctx.fillStyle = "#EDE5D6";
       ctx.globalAlpha = ease(k, 0.08, 0.22);
-      ctx.font = '400 52px "Gowun Dodum", sans-serif';
+      ctx.font = '400 52px "Poor Story", sans-serif';
       ctx.fillText(text.title, pad, height - 250);
       ctx.font = '400 28px "IBM Plex Sans KR", sans-serif';
       ctx.fillStyle = "#C9CBE0";
@@ -61,7 +61,7 @@ export async function startClip(text: ClipText, width = 720, height = 1280) {
         wrap(ctx, text.line, pad, height - 130, width - pad * 2, 46);
       }
       ctx.globalAlpha = 0.7;
-      ctx.font = '400 30px "Gowun Dodum", sans-serif';
+      ctx.font = '400 30px "Poor Story", sans-serif';
       ctx.fillStyle = "#EDE5D6";
       ctx.fillText("기다림 항구", pad, 90);
       // 끝은 천천히 어두워지며 닫혀요
