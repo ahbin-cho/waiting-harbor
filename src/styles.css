@@ -397,6 +397,14 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
 /* 승선권 */
 .pass-box{margin:16px 0 8px}
 .pass-img{display:block;width:100%;max-width:360px;border-radius:12px;border:1px solid var(--line);margin:8px 0 10px}
+/* 등불 곁에 머무는 중 표시: 바닥 줄 바로 위 가운데 */
+.staying{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:6;
+  display:flex;align-items:center;gap:14px;white-space:nowrap;max-width:calc(100% - 32px);
+  padding:8px 16px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-size:.88rem;color:var(--muted);
+}
+.staying b{color:var(--ink);font-weight:600}
+.staying .text-btn{padding:2px 0;font-size:.85rem;color:var(--ink)}
 /* 날짜 계산기 목록 */
 .tool-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .tool-list a{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;color:var(--ink);text-decoration:none}

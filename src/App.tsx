@@ -381,6 +381,16 @@ export default function App() {
           </div>
         </aside>
       )}
+      {/* 상세를 닫고도 그 등불 곁에 머무는 중: 곁의 자리가 남고 아이는 멈춰 있어요. 떠나면 다시 움직여요. */}
+      {view.type === "none" && focused && story == null && !recording && (
+        <div className="staying" role="status">
+          <span>
+            <b>{focused.who}</b> 곁에 머무는 중
+          </span>
+          <button className="text-btn" onClick={() => setView({ type: "detail", id: focused.id })}>다시 보기</button>
+          <button className="text-btn" onClick={() => setKept(null)}>떠나기</button>
+        </div>
+      )}
       <div className="bar">
         <span className="hint">{hint}</span>
         {mine.length > 0 && (
