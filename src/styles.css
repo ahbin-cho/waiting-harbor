@@ -437,7 +437,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
   .sheet.open,.scene.focusing .sheet.open{transform:none}
   .veil.open{display:none}
   .scene.focusing header{opacity:1;pointer-events:auto}
-  .scene.focusing header{right:calc(min(460px,38vw) + 32px)}
+  .scene.focusing header{padding-right:calc(min(460px,38vw) + 52px)}
   img.photo{max-height:340px}
 }
 /* 같은 곳의 이전·다음 등불 */
