@@ -12,6 +12,14 @@
     {
       "source": "/rainbow",
       "destination": "/rainbow/index.html"
+    },
+    {
+      "source": "/memorial",
+      "destination": "/memorial/index.html"
+    },
+    {
+      "source": "/ldr",
+      "destination": "/ldr/index.html"
     }
   ],
   "crons": [
