@@ -46,54 +46,105 @@
     </script>
     <style>
       /* 배를 타고 항구로 들어가는 로딩 화면. 앱의 스타일이 오기 전에 바로 그려져야 해서 여기에 둬요.
-         색은 styles.css 의 노을/밤 토큰과 같은 값이에요. */
+         색은 styles.css 의 노을/밤 토큰과 3D 장면 팔레트와 같은 값이에요. */
       html, body { margin: 0; height: 100%; background: #2D3566; }
       html[data-theme="night"], html[data-theme="night"] body { background: #0A1028; }
       .seo-copy { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-      #arrive {
-        position: fixed; inset: 0; z-index: 50; overflow: hidden; pointer-events: none;
-        background: linear-gradient(#2D3566 0%, #6B5A86 45%, #E8956F 68%, #2F3F70 68.2%, #1C2448 100%);
-        transition: opacity .7s ease;
-        animation: arrive-out .6s 15s forwards; /* 앱이 끝내 뜨지 않아도 15초 뒤엔 걷혀요 */
-      }
-      html[data-theme="night"] #arrive { background: linear-gradient(#0A1028 0%, #151C42 45%, #3A3060 68%, #0F1A40 68.2%, #070B22 100%); }
-      #arrive.docked { opacity: 0; }
-      #arrive svg { position: absolute; left: 0; right: 0; top: 68%; width: 100%; height: 90px; transform: translateY(-62px); }
-      #arrive .harbor { fill: #1C2448; }
-      #arrive .lamp { fill: #FFB867; }
-      #arrive .glow { fill: #FFB867; opacity: .35; animation: arrive-glow 2.2s ease-in-out infinite; }
-      #arrive .boat { animation: arrive-sail 3.2s cubic-bezier(.3, .1, .3, 1) forwards, arrive-bob 1.6s ease-in-out infinite; transform-box: fill-box; }
-      #arrive.docked .boat { animation: none; transform: translateX(0); }
-      #arrive .wake { stroke: rgba(255, 241, 214, .55); stroke-width: 2; fill: none; stroke-dasharray: 6 8; animation: arrive-wake 1s linear infinite; }
-      #arrive p { position: absolute; left: 0; right: 0; top: calc(68% + 54px); margin: 0; text-align: center; color: #F4E6C6;
-        font: 16px/1.5 "Poor Story", "Apple SD Gothic Neo", sans-serif; letter-spacing: -.01em; opacity: .9; }
-      @keyframes arrive-sail { from { transform: translateX(-62vw); } to { transform: translateX(-6vw); } }
-      @keyframes arrive-bob { 50% { translate: 0 2px; } }
-      @keyframes arrive-wake { to { stroke-dashoffset: -14; } }
-      @keyframes arrive-glow { 50% { opacity: .6; } }
-      @keyframes arrive-out { to { opacity: 0; visibility: hidden; } }
-      @media (prefers-reduced-motion: reduce) { #arrive .boat, #arrive .wake, #arrive .glow { animation: none; } }
+      #arrive { position: fixed; inset: 0; z-index: 50; overflow: hidden; pointer-events: none; background: #2D3566;
+        transition: opacity .9s ease, transform 1.1s cubic-bezier(.3,.1,.2,1); animation: arrive-out .6s 15s forwards; }
+      #arrive.docked { opacity: 0; transform: scale(1.08); }
+      #arrive svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      #arrive .title { position: absolute; left: 0; right: 0; top: 24%; text-align: center; color: #F7EBD6; }
+      #arrive .title b { display: block; font: 400 34px/1.1 "Poor Story", "Apple SD Gothic Neo", sans-serif; letter-spacing: -.01em; }
+      #arrive .title span { display: block; margin-top: 10px; font: 14px/1.5 "IBM Plex Sans KR", "Apple SD Gothic Neo", sans-serif; opacity: .78; }
+      /* 노을 / 밤 색 */
+      .k-s1 { stop-color: #2D3566 } .k-s2 { stop-color: #6B5A86 } .k-s3 { stop-color: #E8956F } .k-s4 { stop-color: #F6B98A }
+      .k-w1 { stop-color: #4A4A7A } .k-w2 { stop-color: #1C2448 }
+      .k-far { fill: #5C4C76 } .k-near { fill: #2E2850 } .k-ink { fill: #1A1F3D }
+      html[data-theme="night"] .k-s1 { stop-color: #070B22 } html[data-theme="night"] .k-s2 { stop-color: #0F1638 }
+      html[data-theme="night"] .k-s3 { stop-color: #2E2A58 } html[data-theme="night"] .k-s4 { stop-color: #3A3466 }
+      html[data-theme="night"] .k-w1 { stop-color: #16204A } html[data-theme="night"] .k-w2 { stop-color: #060A1E }
+      html[data-theme="night"] .k-far { fill: #1F2550 } html[data-theme="night"] .k-near { fill: #121634 } html[data-theme="night"] .k-ink { fill: #0A0D24 }
+      .k-sun { opacity: 1 } .k-moon { opacity: 0 } .k-stars { opacity: .35 }
+      html[data-theme="night"] .k-sun { opacity: 0 } html[data-theme="night"] .k-moon { opacity: 1 } html[data-theme="night"] .k-stars { opacity: .95 }
+      /* 움직임 */
+      #arrive .stars circle { animation: k-twinkle 3.2s ease-in-out infinite; }
+      #arrive .stars circle:nth-child(3n) { animation-delay: -1.1s } #arrive .stars circle:nth-child(3n+1) { animation-delay: -2.2s }
+      #arrive .beam { transform-origin: 662px 452px; animation: k-beam 4.2s ease-in-out infinite alternate; }
+      #arrive .shimmer { stroke-dasharray: 22 30; animation: k-shimmer 3.6s linear infinite; }
+      #arrive .shimmer:nth-child(2n) { animation-duration: 5s; animation-direction: reverse }
+      #arrive .boat { animation: k-sail 3.8s cubic-bezier(.25,.1,.25,1) forwards; }
+      #arrive .rock { transform-origin: 0 0; animation: k-rock 2.6s ease-in-out infinite; }
+      #arrive .lampglow { animation: k-glow 2.4s ease-in-out infinite; }
+      #arrive .glints rect { animation: k-glint 2.8s ease-in-out infinite; }
+      #arrive .glints rect:nth-child(2n) { animation-delay: -1.4s }
+      @keyframes k-glint { 50% { transform: translateX(6px); opacity: .1 } }
+      #arrive .wake { stroke-dasharray: 8 10; animation: k-shimmer 1.2s linear infinite; }
+      @keyframes k-twinkle { 50% { opacity: .3 } }
+      @keyframes k-beam { from { transform: rotate(-10deg); opacity: .55 } to { transform: rotate(14deg); opacity: .9 } }
+      @keyframes k-shimmer { to { stroke-dashoffset: -104 } }
+      @keyframes k-sail { from { transform: translate(250px, 560px) } to { transform: translate(476px, 560px) } }
+      @keyframes k-rock { 0%, 100% { transform: rotate(-1.6deg) translateY(0) } 50% { transform: rotate(1.6deg) translateY(1.5px) } }
+      @keyframes k-glow { 50% { opacity: .55 } }
+      @keyframes arrive-out { to { opacity: 0; visibility: hidden } }
+      @media (prefers-reduced-motion: reduce) { #arrive * { animation: none !important } #arrive .boat { transform: translate(476px, 560px) } }
     </style>
   </head>
   <body>
     <div id="arrive" aria-hidden="true">
-      <svg viewBox="0 0 400 90" preserveAspectRatio="xMidYMax meet">
-        <!-- 오른쪽 항구: 부두와 등불 기둥 -->
-        <path class="harbor" d="M318 62 C330 58 352 59 400 57 L400 90 L310 90 Z" />
-        <rect class="harbor" x="300" y="58" width="44" height="4" rx="1" />
-        <rect class="harbor" x="332" y="30" width="2.4" height="30" />
-        <circle class="glow" cx="333.2" cy="28" r="9" />
-        <circle class="lamp" cx="333.2" cy="28" r="3.4" />
-        <!-- 다가오는 작은 배 -->
+      <svg viewBox="0 0 1000 844" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="k-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" class="k-s1" /><stop offset=".42" class="k-s2" /><stop offset=".56" class="k-s3" /><stop offset=".62" class="k-s4" />
+          </linearGradient>
+          <linearGradient id="k-sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="k-w1" /><stop offset="1" class="k-w2" /></linearGradient>
+          <radialGradient id="k-sunglow"><stop offset="0" stop-color="#FFD9B0" stop-opacity=".9" /><stop offset=".35" stop-color="#F6A97E" stop-opacity=".45" /><stop offset="1" stop-color="#F6A97E" stop-opacity="0" /></radialGradient>
+          <radialGradient id="k-lamp"><stop offset="0" stop-color="#FFE3AE" /><stop offset=".3" stop-color="#FFB867" stop-opacity=".7" /><stop offset="1" stop-color="#FFB867" stop-opacity="0" /></radialGradient>
+          <linearGradient id="k-beam" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFF1D6" stop-opacity=".55" /><stop offset="1" stop-color="#FFF1D6" stop-opacity="0" /></linearGradient>
+          <linearGradient id="k-sail" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBF1E1" /><stop offset="1" stop-color="#E4CDB3" /></linearGradient>
+          <linearGradient id="k-refl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB867" stop-opacity=".55" /><stop offset="1" stop-color="#FFB867" stop-opacity="0" /></linearGradient>
+        </defs>
+        <rect width="1000" height="522" fill="url(#k-sky)" />
+        <g class="k-stars stars" fill="#FFF4DE">
+          <circle cx="330" cy="70" r="1.4" /><circle cx="372" cy="128" r="1" /><circle cx="418" cy="54" r="1.6" /><circle cx="455" cy="160" r="1" />
+          <circle cx="492" cy="96" r="1.2" /><circle cx="540" cy="40" r="1.4" /><circle cx="566" cy="140" r="1" /><circle cx="604" cy="82" r="1.5" />
+          <circle cx="642" cy="186" r="1" /><circle cx="676" cy="60" r="1.2" /><circle cx="312" cy="196" r="1" /><circle cx="700" cy="132" r="1" />
+          <circle cx="250" cy="110" r="1.3" /><circle cx="760" cy="90" r="1.3" /><circle cx="520" cy="210" r=".9" /><circle cx="388" cy="232" r=".9" />
+        </g>
+        <g class="k-sun"><circle cx="560" cy="522" r="190" fill="url(#k-sunglow)" /><circle cx="560" cy="522" r="40" fill="#FFE2BF" /></g>
+        <g class="k-moon"><circle cx="640" cy="170" r="60" fill="url(#k-sunglow)" opacity=".5" /><path d="M652 146 a26 26 0 1 0 6 46 a21 21 0 1 1 -6 -46 z" fill="#F4E6C6" /></g>
+        <!-- 먼 섬들 -->
+        <path class="k-far" d="M180 522 C230 500 270 492 320 500 C356 506 380 496 420 498 C452 500 470 510 500 522 Z" />
+        <path class="k-far" d="M820 522 C840 508 880 500 940 504 L1000 508 L1000 522 Z" />
+        <!-- 등대가 선 곶 -->
+        <path class="k-near" d="M560 522 C590 500 620 486 660 484 C700 482 730 492 760 504 C780 512 800 516 820 522 Z" />
+        <g class="beam"><path d="M662 452 L300 400 L300 500 Z" fill="url(#k-beam)" /></g>
+        <path class="k-ink" d="M655 486 L658 452 L666 452 L669 486 Z" />
+        <rect class="k-ink" x="654" y="446" width="16" height="7" rx="1.5" />
+        <circle cx="662" cy="449" r="14" fill="url(#k-lamp)" class="lampglow" /><circle cx="662" cy="449" r="3" fill="#FFF1D6" />
+        <!-- 바다 -->
+        <rect y="522" width="1000" height="322" fill="url(#k-sea)" />
+        <g class="k-sun glints" fill="#FFD9B0"><rect x="525" y="530" width="70" height="3" rx="1.5" opacity="0.55" /><rect x="534" y="540" width="52" height="3" rx="1.5" opacity="0.5" /><rect x="528" y="551" width="64" height="3" rx="1.5" opacity="0.42" /><rect x="540" y="563" width="40" height="3" rx="1.5" opacity="0.38" /><rect x="535" y="576" width="50" height="3" rx="1.5" opacity="0.3" /><rect x="545" y="590" width="30" height="3" rx="1.5" opacity="0.26" /><rect x="541" y="605" width="38" height="3" rx="1.5" opacity="0.2" /><rect x="549" y="622" width="22" height="3" rx="1.5" opacity="0.15" /></g>
+        <g stroke="#FFF1D6" stroke-opacity=".14" stroke-width="2" stroke-linecap="round">
+          <line class="shimmer" x1="200" y1="548" x2="820" y2="548" /><line class="shimmer" x1="160" y1="590" x2="860" y2="590" />
+          <line class="shimmer" x1="120" y1="640" x2="900" y2="640" /><line class="shimmer" x1="80" y1="700" x2="940" y2="700" />
+          <line class="shimmer" x1="40" y1="772" x2="980" y2="772" />
+        </g>
+        <!-- 항구로 들어오는 돛단배: 고물에 작은 등불 하나 -->
         <g class="boat">
-          <path class="wake" d="M228 66 L200 66 M222 71 L188 71" />
-          <path fill="#1C2448" d="M240 58 L290 58 L283 67 L247 67 Z" />
-          <path fill="#F4E6C6" d="M263 56 L263 28 L282 55 Z" />
-          <rect fill="#1C2448" x="261.6" y="24" width="2" height="34" />
-          <circle class="lamp" cx="250" cy="55" r="2" />
+          <g class="rock">
+            <path class="wake" d="M-50 6 L-110 6 M-44 13 L-130 13" stroke="#FFF1D6" stroke-opacity=".45" stroke-width="2" fill="none" stroke-linecap="round" />
+            <rect x="-35" y="4" width="8" height="46" fill="url(#k-refl)" class="lampglow" />
+            <path class="k-ink" d="M-46 -2 C-40 12 40 12 52 -2 L46 -8 L-48 -8 Z" />
+            <rect class="k-ink" x="1" y="-92" width="3" height="86" />
+            <path d="M5 -88 L5 -10 L50 -12 Z" fill="url(#k-sail)" />
+            <path d="M-1 -80 L-1 -12 L-34 -12 Z" fill="url(#k-sail)" opacity=".86" />
+            <rect class="k-ink" x="-33" y="-24" width="2" height="16" />
+            <circle cx="-32" cy="-26" r="16" fill="url(#k-lamp)" class="lampglow" /><circle cx="-32" cy="-26" r="3.6" fill="#FFE3AE" />
+          </g>
         </g>
       </svg>
-      <p>항구로 들어가는 중이에요</p>
+      <div class="title"><b>기다림 항구</b><span>항구로 들어가는 중이에요</span></div>
     </div>
     <div id="root">
       <!-- 자바스크립트를 읽지 않는 검색 엔진과 미리보기를 위한 본문. 앱이 뜨면 이 내용은 바뀌어요. -->
