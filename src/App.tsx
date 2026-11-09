@@ -23,7 +23,7 @@ import { canRecord } from "./lib/clip";
 import { track } from "./lib/track";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string } | { type: "talk"; id: string };
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string } | { type: "talk"; id: string } | { type: "tools" };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -263,6 +263,7 @@ export default function App() {
               ))}
             </span>}
             <button className="text-btn" onClick={() => setStory(0)}>이야기</button>
+            <button className="text-btn" onClick={() => setView({ type: "tools" })}>계산기</button>
             <button className="text-btn" onClick={() => setView({ type: "feedback" })}>의견</button>
           </div>
         </div>
@@ -460,6 +461,41 @@ export default function App() {
           return l ? <ShareSheet lantern={l} demo={demo} onBack={() => setView({ type: "detail", id: l.id })} /> : null;
         })()}
         {view.type === "feedback" && <Feedback onSend={h.sendFeedback} onClose={close} demo={demo} />}
+        {view.type === "tools" && (
+          <>
+            <div className="sheet-tools">
+              <button className="text-btn" onClick={close}>닫기</button>
+            </div>
+            <h2 id="sheet-title">날짜 계산기</h2>
+            <p className="small">기다리는 날과 기억하는 날을 세어 봐요. 계산한 날짜로 바로 등불을 걸 수 있어요.</p>
+            <ul className="tool-list">
+              <li>
+                <a href="/discharge/">
+                  <b>전역일 계산기</b>
+                  <span>입대일과 군별로 전역일, D-day, 복무율</span>
+                </a>
+              </li>
+              <li>
+                <a href="/ldr/">
+                  <b>장거리 연애 디데이·시차 계산기</b>
+                  <span>만나는 날, 그 사람의 지금 시간, 통화하기 좋은 시간</span>
+                </a>
+              </li>
+              <li>
+                <a href="/memorial/">
+                  <b>49재·기일 계산기</b>
+                  <span>초재부터 49재, 100일, 1주기 (반려동물도)</span>
+                </a>
+              </li>
+              <li>
+                <a href="/rainbow/">
+                  <b>무지개마을 이야기</b>
+                  <span>무지개다리 건넌 아이들이 지내는 곳</span>
+                </a>
+              </li>
+            </ul>
+          </>
+        )}
         {view.type === "mine" && (
           <>
             <h2 id="sheet-title">내 등불</h2>
