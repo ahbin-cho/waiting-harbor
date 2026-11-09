@@ -11,7 +11,7 @@
   --paper:#0F1329; --line:rgba(237,229,214,.14); --field:rgba(237,229,214,.04);
   --danger:#FF9C86;
   --fade-top:10,16,40; --fade-bottom:8,12,32; --veil:rgba(2,4,14,.25); --tag-shadow:rgba(0,0,0,.9); --lamp-ink:#2A170A;
-  --display:"Gowun Dodum","Apple SD Gothic Neo","Noto Sans KR",sans-serif; /* 등대지기의 글씨: 제목, 이야기, 질문. 따뜻하지만 또렷하게 */
+  --display:"Poor Story","Apple SD Gothic Neo","Noto Sans KR",sans-serif; /* 등대지기의 글씨: 제목, 이야기, 질문. 손글씨 맛이 살짝, 그래도 또렷하게 */
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   --hand:"Nanum Pen Script",cursive; /* 사람들이 직접 쓴 한 줄: 크게 보이는 곳에만 */
   color-scheme: dark;
