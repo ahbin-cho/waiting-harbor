@@ -15,7 +15,7 @@ export type Status = "loading" | "ready" | "error" | "unconfigured";
 /** 한 사람이 걸 수 있는 등불 수 (DB 정책에서도 같은 수로 막아요) */
 export const MAX_LANTERNS = 5;
 
-type LanternValues = Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode" | "species">;
+type LanternValues = Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode" | "species" | "branch">;
 
 export function useHarbor(onWarmed?: (lanternId: string) => void) {
   const [me, setMe] = useState<string | null>(demo ? DEMO_ME : null);
@@ -251,9 +251,13 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
         setLanterns((all) => [...all.filter((x) => x.id !== row.id), row]);
         return row;
       }
+      // 군 종류(branch)는 있을 때만 보내요. (schema.sql 을 다시 실행하기 전에도 다른 등불은 걸 수 있게)
+      const had = id ? lanterns.find((x) => x.id === id)?.branch : null;
+      const { branch, ...rest } = v;
+      const body = branch || had ? v : rest;
       const q = id
-        ? supabase.from("lanterns").update(v).eq("id", id).select().single()
-        : supabase.from("lanterns").insert({ user_id: me, ...v }).select().single();
+        ? supabase.from("lanterns").update(body).eq("id", id).select().single()
+        : supabase.from("lanterns").insert({ user_id: me, ...body }).select().single();
       const { data, error } = await q;
       if (error) throw error;
       const row = data as Lantern;

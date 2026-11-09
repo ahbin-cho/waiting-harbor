@@ -29,6 +29,11 @@ alter table public.lanterns add constraint lanterns_color_check check (color in 
 alter table public.lanterns drop constraint if exists lanterns_shape_check;
 alter table public.lanterns add constraint lanterns_shape_check check (shape in ('둥근', '네모', '초롱', '별', '달', '연꽃', '집', '풍등'));
 
+-- 군대를 기다릴 때 군 종류: 전역일 계산과 도착 안내판 꾸밈에 써요
+alter table public.lanterns add column if not exists branch text;
+alter table public.lanterns drop constraint if exists lanterns_branch_check;
+alter table public.lanterns add constraint lanterns_branch_check check (branch is null or branch in ('육군', '해군', '공군', '해병대', '카투사', '사회복무요원'));
+
 -- 등불 종류: wait(돌아올 사람을 기다려요), miss(떠나보낸 사람을 그리워해요, 하늘에 띄우는 풍등)
 -- miss 에서 start_date 는 처음 만난 날, end_date 는 떠난 날이에요.
 alter table public.lanterns add column if not exists mode text not null default 'wait';

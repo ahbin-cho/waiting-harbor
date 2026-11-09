@@ -35,6 +35,8 @@ export const demoLanterns = (): Lantern[] =>
     color,
     shape,
     mode: "wait",
+    // 체험용: 군대를 기다리는 등불엔 군 종류를 돌아가며
+    branch: kind === "군대" ? (["육군", "공군", "해군", "해병대", "카투사"] as const)[i % 5] : null,
     created_at: new Date(Date.now() - (sample.length - i) * 60_000).toISOString(),
   }));
 

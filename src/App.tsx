@@ -6,6 +6,7 @@ import { PLACE_LABEL, WORLD_NAME, WORLD_PLACES, neighbors, placeOf, worldOf, typ
 import { COLORS, colorOf } from "./lib/looks";
 import type { ShrineInfo } from "./three/shrine";
 import { dailyWord, type DailyWord } from "./lib/daily";
+import { branchOf } from "./lib/branches";
 import { daysLeft, fliesHome, isMiss, parseDate, progressOf, today as todayDate, ymd as ymdOf } from "./lib/waiting";
 import { LanternDetail } from "./components/LanternDetail";
 import { LanternForm } from "./components/LanternForm";
@@ -187,10 +188,16 @@ export default function App() {
           const date = d ? `${d.getMonth() + 1}월 ${d.getDate()}일` : "";
           return {
             dday: n == null ? "" : n > 0 ? `D-${n}` : n === 0 ? "오늘!" : "만났어요",
-            arrive: n != null && n < 0 ? `${date} 도착 · ${focused.kind}` : `${date} 도착 예정 · ${focused.kind}`,
+            arrive: focused.kind === "군대" && focused.branch
+              ? `${date} 전역${n != null && n < 0 ? "" : " 예정"} · ${focused.branch}`
+              : n != null && n < 0 ? `${date} 도착 · ${focused.kind}` : `${date} 도착 예정 · ${focused.kind}`,
             pct: progressOf(focused),
             arrived: n != null && n <= 0,
             mode: fliesHome(focused.kind) ? ("plane" as const) : ("ship" as const),
+            branch: (() => {
+              const b = focused.kind === "군대" ? branchOf(focused.branch) : undefined;
+              return b ? { name: b.name, color: b.color, accent: b.accent, vehicle: b.vehicle } : undefined;
+            })(),
           };
         })(),
       }
