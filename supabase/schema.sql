@@ -159,12 +159,19 @@ create table if not exists public.offerings (
   id         bigint generated always as identity primary key,
   lantern_id uuid not null references public.lanterns(id) on delete cascade,
   from_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  kind       text not null check (kind in ('국화', '들꽃', '간식', '공', '종이배', '조약돌')),
+  kind       text not null,
   day        date not null default current_date,
   created_at timestamptz not null default now(),
   unique (from_id, lantern_id, day)
 );
 create index if not exists offerings_lantern_idx on public.offerings (lantern_id, day);
+-- 놓을 수 있는 것 (등불 종류마다 어울리는 것으로 늘었어요)
+alter table public.offerings drop constraint if exists offerings_kind_check;
+alter table public.offerings add constraint offerings_kind_check check (kind in (
+  '국화', '들꽃', '간식', '공', '종이배', '조약돌',
+  '편지', '위문상자', '핫팩', '종이비행기', '풍선', '도시락', '찻잔',
+  '츄르', '상자', '해바라기씨', '방울', '먹이', '당근', '상추', '뼈다귀'
+));
 alter table public.offerings enable row level security;
 drop policy if exists "offerings read" on public.offerings;
 create policy "offerings read"   on public.offerings for select using (true);

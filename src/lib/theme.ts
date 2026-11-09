@@ -5,7 +5,7 @@ export type ThemeName = "night" | "dusk" | "dawn" | "haven";
 export type ThemeChoice = "night" | "dusk";
 
 export const THEME_LABEL: Record<ThemeChoice, string> = { night: "밤", dusk: "노을" };
-export const THEME_ORDER: ThemeChoice[] = ["night", "dusk"];
+export const THEME_ORDER: ThemeChoice[] = ["dusk", "night"];
 
 /** 3D 장면 색과 빛. styles.css 의 같은 테마 토큰과 맞춰요. */
 export type Palette = {
@@ -66,10 +66,10 @@ export const PALETTES: Record<ThemeName, Palette> = {
 };
 
 const KEY = "harbor-theme";
-export function savedTheme(fallback: ThemeChoice = "night"): ThemeChoice {
+export function savedTheme(fallback: ThemeChoice = "dusk"): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY);
-    return v === "night" || v === "dusk" ? v : fallback; // 예전 '새벽', '시간 따라' 는 밤으로
+    return v === "night" || v === "dusk" ? v : fallback; // 처음 온 사람은 노을로 시작해요
   } catch {
     return fallback;
   }

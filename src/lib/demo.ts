@@ -110,15 +110,15 @@ export const demoMessages = (): Message[] => {
 
 /** 체험용 놓고 간 것 */
 export const demoOfferings = (): OfferingCount[] => [
-  { lantern_id: "demo-0", kind: "들꽃", n: 4, yesterday: 1 },
-  { lantern_id: "demo-0", kind: "조약돌", n: 2, yesterday: 0 },
-  { lantern_id: "demo-1", kind: "종이배", n: 3, yesterday: 1 },
-  { lantern_id: "demo-3", kind: "들꽃", n: 6, yesterday: 2 },
-  { lantern_id: "demo-3", kind: "종이배", n: 2, yesterday: 1 },
+  { lantern_id: "demo-0", kind: "편지", n: 4, yesterday: 1 },
+  { lantern_id: "demo-0", kind: "핫팩", n: 2, yesterday: 0 },
+  { lantern_id: "demo-1", kind: "종이비행기", n: 3, yesterday: 1 },
+  { lantern_id: "demo-3", kind: "위문상자", n: 3, yesterday: 2 },
+  { lantern_id: "demo-3", kind: "편지", n: 5, yesterday: 1 },
   { lantern_id: "demo-8", kind: "조약돌", n: 3, yesterday: 0 },
   { lantern_id: "demo-miss-0", kind: "국화", n: 7, yesterday: 2 },
-  { lantern_id: "demo-pet-0", kind: "간식", n: 3, yesterday: 1 },
-  { lantern_id: "demo-pet-0", kind: "공", n: 2, yesterday: 0 },
+  { lantern_id: "demo-pet-0", kind: "츄르", n: 3, yesterday: 1 },
+  { lantern_id: "demo-pet-0", kind: "상자", n: 2, yesterday: 0 },
   { lantern_id: "demo-pet-1", kind: "국화", n: 4, yesterday: 1 },
   { lantern_id: "demo-pet-1", kind: "간식", n: 2, yesterday: 1 },
 ];

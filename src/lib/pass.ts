@@ -123,3 +123,113 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
 
   return new Promise((ok, no2) => c.toBlob((b) => (b ? ok(b) : no2(new Error("blob"))), "image/png"));
 }
+
+/**
+ * 추모 카드: 그리움 등불을 조용한 카드 이미지로. 카운트다운 없이 함께한 날로만 말해요.
+ * 사람은 "추모관 하늘의 풍등", 반려동물은 "무지개마을 주민 카드".
+ */
+export async function makeMemoryCard(l: Lantern, no: string): Promise<Blob> {
+  await document.fonts?.ready;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d")!;
+  const pet = l.place === "무지개";
+  const color = COLORS[colorOf(l.color)];
+  const d = (s: string) => {
+    const x = parseDate(s);
+    return x ? `${x.getFullYear()}.${String(x.getMonth() + 1).padStart(2, "0")}.${String(x.getDate()).padStart(2, "0")}` : "";
+  };
+  const a = parseDate(l.start_date), b = parseDate(l.end_date);
+  const together = a && b ? Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1 : 0;
+
+  // 포근한 낮 하늘 바탕
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#9FD2EC");
+  bg.addColorStop(1, "#FAE3D4");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, W, H);
+  // 구름 몇 송이
+  g.fillStyle = "rgba(255,255,255,.75)";
+  for (const [x, y, r] of [[160, 120, 60], [230, 110, 80], [310, 130, 55], [820, 1250, 70], [900, 1235, 90], [985, 1260, 60]]) {
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // 카드
+  const x0 = 90, y0 = 200, pw = W - 180, ph = 960;
+  g.fillStyle = "#FFFAF4";
+  g.beginPath();
+  g.roundRect(x0, y0, pw, ph, 40);
+  g.fill();
+  // 무지개 띠 (반려동물) 또는 등불 색 띠 (사람)
+  if (pet) {
+    ["#ff8f8f", "#ffb27e", "#ffe08e", "#a2e2a4", "#8fcaff", "#a9a2ff", "#d8a8ff"].forEach((col, k) => {
+      g.fillStyle = col;
+      g.fillRect(x0 + 40 + k * ((pw - 80) / 7), y0 + 36, (pw - 80) / 7, 14);
+    });
+  } else {
+    g.fillStyle = color;
+    g.fillRect(x0 + 40, y0 + 36, pw - 80, 14);
+  }
+
+  const ink = "#24304A", soft = "#6B7189";
+  g.textBaseline = "middle";
+  g.fillStyle = ink;
+  g.font = '400 60px "Poor Story", sans-serif';
+  g.fillText(pet ? "무지개마을 주민 카드" : "추모관 풍등 카드", x0 + 56, y0 + 120);
+  g.fillStyle = soft;
+  g.font = '500 28px "IBM Plex Sans KR", sans-serif';
+  g.fillText(pet ? `${no} · ${l.species ?? "반려동물"}` : `${no} · ${l.kind}`, x0 + 58, y0 + 175);
+
+  const label = (t: string, x: number, y: number) => {
+    g.fillStyle = soft;
+    g.font = '500 28px "IBM Plex Sans KR", sans-serif';
+    g.fillText(t, x, y);
+  };
+  const value = (t: string, x: number, y: number, size = 50, font = "IBM Plex Sans KR") => {
+    g.fillStyle = ink;
+    g.font = `${font === "Poor Story" ? 400 : 500} ${size}px "${font}", sans-serif`;
+    g.fillText(t, x, y);
+  };
+
+  label(pet ? "보호자" : "이름", x0 + 56, y0 + 270);
+  value(`${pick(l.who.trim() || "그 사람", "을", "를")} 그리워하는 사람`, x0 + 56, y0 + 340, 64, "Poor Story");
+
+  label("처음 만난 날", x0 + 56, y0 + 450);
+  value(d(l.start_date), x0 + 56, y0 + 510);
+  label(pet ? "무지개다리 건넌 날" : "떠난 날", x0 + pw / 2 + 20, y0 + 450);
+  value(d(l.end_date), x0 + pw / 2 + 20, y0 + 510);
+
+  label("함께한 날", x0 + 56, y0 + 620);
+  value(together ? `${together.toLocaleString()}일` : "", x0 + 56, y0 + 690, 72, "Poor Story");
+  label(pet ? "지내는 곳" : "있는 곳", x0 + pw / 2 + 20, y0 + 620);
+  value(pet ? "무지개마을" : "추모관 하늘", x0 + pw / 2 + 20, y0 + 684, 46);
+
+  // 점선
+  g.strokeStyle = "#E3D9CB";
+  g.lineWidth = 4;
+  g.setLineDash([16, 14]);
+  g.beginPath();
+  g.moveTo(x0 + 40, y0 + 780);
+  g.lineTo(x0 + pw - 40, y0 + 780);
+  g.stroke();
+  g.setLineDash([]);
+
+  if (l.line.trim()) {
+    g.fillStyle = ink;
+    g.font = '52px "Nanum Pen Script", cursive';
+    g.fillText(`“${l.line.trim().slice(0, 30)}”`, x0 + 56, y0 + 860);
+  }
+  g.fillStyle = soft;
+  g.font = '500 28px "IBM Plex Sans KR", sans-serif';
+  g.fillText("waiting-harbor-one.vercel.app", x0 + 56, y0 + 920);
+
+  g.fillStyle = "#4F5B74";
+  g.textAlign = "center";
+  g.font = '400 46px "Poor Story", sans-serif';
+  g.fillText(pet ? "무지개다리 건너, 잘 지내고 있어요" : "함께한 날들을 기억해요", W / 2, 1240);
+
+  return new Promise((ok, no2) => c.toBlob((bl) => (bl ? ok(bl) : no2(new Error("blob"))), "image/png"));
+}
