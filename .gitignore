@@ -29,3 +29,6 @@ service-account*.json
 .idea
 .vscode/*
 !.vscode/extensions.json
+
+# 홍보용 스크린샷 (로컬에서만)
+shots/
