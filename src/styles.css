@@ -376,6 +376,27 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
 .date-tool .text-btn{font-size:.88rem;color:var(--ink)}
 /* 군 고르기: 군마다 왼쪽에 색 띠 */
 .choice.branch-choice{border-left:6px solid var(--b)}
+/* 도착 안내판: 전광판처럼 줄 맞춘 목록. 오늘 도착은 등불 색으로, 돌아온 사람은 흐리게 */
+.stats-link{font-size:.8rem;padding:0;margin-left:4px;pointer-events:auto;color:var(--ink)}
+.arrivals{list-style:none;margin:14px 0 0;padding:0;font-variant-numeric:tabular-nums}
+.arrivals li button,.arrivals-head{display:grid;grid-template-columns:4.6em 1fr 3.4em 5.2em;gap:8px;align-items:center;width:100%;text-align:left}
+.arrivals-head{font-size:.72rem;color:var(--muted);padding:0 4px 6px;border-bottom:1px solid var(--line)}
+.arrivals li button{font:inherit;color:var(--ink);background:none;border:0;border-bottom:1px solid var(--line);padding:11px 4px;cursor:pointer}
+.arrivals li button:hover{background:var(--field)}
+.arrivals li button:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.a-no{font-size:.8rem;color:var(--muted)}
+.a-who{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;min-width:0}
+.a-who b{font-family:var(--hand);font-size:1.25rem;font-weight:400}
+.a-who em{font-style:normal;font-size:.7rem;color:var(--muted)}
+.a-who small{flex-basis:100%;font-size:.75rem;color:var(--muted)}
+.a-date{font-size:.85rem}
+.a-state{font-family:var(--display);font-weight:700;font-size:1.05rem;text-align:right}
+.arrivals li.today .a-state{color:var(--lamp)}
+.arrivals li.soon .a-state{color:var(--ink)}
+.arrivals li.landed{opacity:.55}
+/* 승선권 */
+.pass-box{margin:16px 0 8px}
+.pass-img{display:block;width:100%;max-width:360px;border-radius:12px;border:1px solid var(--line);margin:8px 0 10px}
 /* 날짜 계산기 목록 */
 .tool-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .tool-list a{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;color:var(--ink);text-decoration:none}
