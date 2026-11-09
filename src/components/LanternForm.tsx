@@ -224,6 +224,22 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
             </div>
           </div>
         )}
+        {at === "dates" && (() => {
+          // 날짜가 헷갈리면 계산기로: 새 탭에서 열어서 쓰던 등불은 그대로 남아요
+          const tool = miss
+            ? { href: `/memorial/?${new URLSearchParams({ ...(end ? { d: end } : {}), ...(pet ? { pet: "1" } : {}) })}`, text: "49재·기일 날짜 보기" }
+            : kind === "군대"
+              ? { href: `/discharge/${start ? `?d=${start}` : ""}`, text: "입대일로 전역일 계산하기" }
+              : kind === "장거리 연애" || kind === "해외에 있는 가족"
+                ? { href: `/ldr/${end ? `?m=${end}` : ""}`, text: "만나는 날 디데이·시차 계산하기" }
+                : null;
+          return tool ? (
+            <p className="small date-tool">
+              <a className="text-btn" href={tool.href} target="_blank" rel="noopener">{tool.text}</a>
+              <span> · 새 창에서 열려요</span>
+            </p>
+          ) : null;
+        })()}
 
         {at === "look" && (
           <div className="look">
