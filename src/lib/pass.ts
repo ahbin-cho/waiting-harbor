@@ -6,12 +6,15 @@ import { daysLeft, fliesHome, parseDate, pick } from "./waiting";
 import { branchOf } from "./branches";
 
 const W = 1080, H = 1350;
+/** 스토리용 세로 카드 (9:16). 같은 카드를 더 긴 바탕 가운데에 놓아요. */
+const TALL = 1920;
 
-export async function makePass(l: Lantern, no: string): Promise<Blob> {
+export async function makePass(l: Lantern, no: string, tall = false): Promise<Blob> {
   await document.fonts?.ready;
   const c = document.createElement("canvas");
+  const h = tall ? TALL : H;
   c.width = W;
-  c.height = H;
+  c.height = h;
   const g = c.getContext("2d")!;
   const color = branchOf(l.branch)?.color ?? COLORS[colorOf(l.color)];
   const plane = fliesHome(l.kind);
@@ -22,11 +25,12 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
   };
 
   // 밤바다 바탕
-  const bg = g.createLinearGradient(0, 0, 0, H);
+  const bg = g.createLinearGradient(0, 0, 0, h);
   bg.addColorStop(0, "#0A1028");
   bg.addColorStop(1, "#151C42");
   g.fillStyle = bg;
-  g.fillRect(0, 0, W, H);
+  g.fillRect(0, 0, W, h);
+  g.translate(0, (h - H) / 2);
 
   // 승선권 종이
   const x0 = 90, y0 = 170, pw = W - 180, ph = 1010;
@@ -128,11 +132,12 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
  * 추모 카드: 그리움 등불을 조용한 카드 이미지로. 카운트다운 없이 함께한 날로만 말해요.
  * 사람은 "추모관 하늘의 풍등", 반려동물은 "무지개마을 주민 카드".
  */
-export async function makeMemoryCard(l: Lantern, no: string): Promise<Blob> {
+export async function makeMemoryCard(l: Lantern, no: string, tall = false): Promise<Blob> {
   await document.fonts?.ready;
   const c = document.createElement("canvas");
+  const h = tall ? TALL : H;
   c.width = W;
-  c.height = H;
+  c.height = h;
   const g = c.getContext("2d")!;
   const pet = l.place === "무지개";
   const color = COLORS[colorOf(l.color)];
@@ -144,11 +149,12 @@ export async function makeMemoryCard(l: Lantern, no: string): Promise<Blob> {
   const together = a && b ? Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1 : 0;
 
   // 포근한 낮 하늘 바탕
-  const bg = g.createLinearGradient(0, 0, 0, H);
+  const bg = g.createLinearGradient(0, 0, 0, h);
   bg.addColorStop(0, "#9FD2EC");
   bg.addColorStop(1, "#FAE3D4");
   g.fillStyle = bg;
-  g.fillRect(0, 0, W, H);
+  g.fillRect(0, 0, W, h);
+  g.translate(0, (h - H) / 2);
   // 구름 몇 송이
   g.fillStyle = "rgba(255,255,255,.75)";
   for (const [x, y, r] of [[160, 120, 60], [230, 110, 80], [310, 130, 55], [820, 1250, 70], [900, 1235, 90], [985, 1260, 60]]) {

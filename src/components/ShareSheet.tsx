@@ -3,12 +3,13 @@ import type { Lantern } from "../lib/supabase";
 import { badgeText, isMiss, titleOf } from "../lib/waiting";
 import { makeMemoryCard, makePass } from "../lib/pass";
 import { track } from "../lib/track";
+import { kakaoReady, shareKakao } from "../lib/kakao";
 
 /** 등불 보내기: 링크 복사, (폰이면) 다른 앱으로 */
 export function ShareSheet({ lantern, demo, onBack, no }: { lantern: Lantern; demo: boolean; onBack: () => void; no: string }) {
   const url = `${location.origin}/l/${lantern.id}`;
   const [msg, setMsg] = useState("");
-  const [pass, setPass] = useState<{ url: string; file: File } | null>(null);
+  const [pass, setPass] = useState<{ url: string; file: File; story: { url: string; file: File } } | null>(null);
   const [making, setMaking] = useState(false);
   const miss = isMiss(lantern);
   const pet = lantern.place === "무지개";
@@ -17,9 +18,12 @@ export function ShareSheet({ lantern, demo, onBack, no }: { lantern: Lantern; de
   async function makeIt() {
     setMaking(true);
     try {
-      const blob = miss ? await makeMemoryCard(lantern, no) : await makePass(lantern, no);
-      const file = new File([blob], `기다림항구-${lantern.who}-${miss ? "추모카드" : "승선권"}.png`, { type: "image/png" });
-      setPass({ url: URL.createObjectURL(blob), file });
+      const make = miss ? makeMemoryCard : makePass;
+      const [blob, tall] = await Promise.all([make(lantern, no), make(lantern, no, true)]);
+      const name = `기다림항구-${lantern.who}-${miss ? "추모카드" : "승선권"}`;
+      const file = new File([blob], `${name}.png`, { type: "image/png" });
+      const sfile = new File([tall], `${name}-스토리.png`, { type: "image/png" });
+      setPass({ url: URL.createObjectURL(blob), file, story: { url: URL.createObjectURL(tall), file: sfile } });
       track("share_click", { how: miss ? "card" : "pass" });
     } catch {
       setMsg("승선권을 만들지 못했어요. 잠시 뒤 다시 해 주세요.");
@@ -53,13 +57,17 @@ export function ShareSheet({ lantern, demo, onBack, no }: { lantern: Lantern; de
             <>
               <img className="pass-img" src={pass.url} alt={`${titleOf(lantern)}의 ${cardName}`} />
               <div className="share-actions">
-                <a className="btn" href={pass.url} download={pass.file.name}>저장하기</a>
-                {typeof navigator.canShare === "function" && navigator.canShare({ files: [pass.file] }) && (
+                <a className="btn" href={pass.url} download={pass.file.name} onClick={() => track("share_click", { how: "save_feed" })}>피드용 저장</a>
+                <a className="ghost" href={pass.story.url} download={pass.story.file.name} onClick={() => track("share_click", { how: "save_story" })}>스토리용 저장 (세로)</a>
+                {typeof navigator.canShare === "function" && navigator.canShare({ files: [pass.story.file] }) && (
                   <button
                     className="ghost"
-                    onClick={() => navigator.share({ files: [pass.file], title: "기다림 항구" }).catch(() => {})}
+                    onClick={() => {
+                      track("share_click", { how: "story" });
+                      navigator.share({ files: [pass.story.file], title: "기다림 항구" }).catch(() => {});
+                    }}
                   >
-                    인스타·카톡으로
+                    스토리에 올리기
                   </button>
                 )}
               </div>
@@ -83,7 +91,18 @@ export function ShareSheet({ lantern, demo, onBack, no }: { lantern: Lantern; de
         <>
           <p className="share-url">{url}</p>
           <div className="share-actions">
-            <button className="btn" onClick={copy}>링크 복사</button>
+            {kakaoReady() && (
+              <button
+                className="btn kakao"
+                onClick={() => {
+                  track("share_click", { how: "kakao" });
+                  shareKakao(url).catch(() => setMsg("카카오톡을 열지 못했어요. 링크 복사로 보내 주세요."));
+                }}
+              >
+                카카오톡으로 보내기
+              </button>
+            )}
+            <button className={kakaoReady() ? "ghost" : "btn"} onClick={copy}>링크 복사</button>
             {typeof navigator.share === "function" && (
               <button
                 className="ghost"
