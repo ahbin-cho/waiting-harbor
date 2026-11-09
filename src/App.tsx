@@ -43,7 +43,9 @@ export default function App() {
     const ok = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined);
     const start_date = ok(q.get("start")), end_date = ok(q.get("end"));
     // 무지개마을 소개 페이지에서 오면 "반려동물 그리워하기"로 바로 열려요
-    if (q.get("for") === "pet") return { mode: "miss", kind: "반려동물" } as { mode: string; kind: string; start_date?: string; end_date?: string };
+    // 무지개마을 소개·49재 계산기에서 오면 그리움 등불 걸기로 바로 열려요 (떠난 날이 있으면 채워서)
+    if (q.get("for") === "pet" || q.get("for") === "miss")
+      return { mode: "miss", kind: q.get("for") === "pet" ? "반려동물" : "가족", ...(end_date ? { end_date } : {}) } as { mode: string; kind: string; start_date?: string; end_date?: string };
     return end_date ? { start_date, end_date, kind: (KINDS as readonly string[]).includes(q.get("kind") ?? "") ? q.get("kind")! : undefined } : null;
   });
   const [story, setStory] = useState<number | null>(() => (storySeen() || deepLink || preset ? null : 0));

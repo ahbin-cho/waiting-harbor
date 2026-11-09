@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko" data-theme="dawn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#8FB0D9" />
+    <link rel="icon" href="/favicon.svg" />
+    <title>장거리 연애 디데이·시차 계산기 · 만나는 날, 통화하기 좋은 시간 | 기다림 항구</title>
+    <meta name="description" content="다시 만나는 날까지 D-day, 사귄 날과 다음 기념일, 상대 도시의 지금 시간과 시차, 둘 다 깨어 있는 통화하기 좋은 시간을 한 번에 계산해요. 롱디 커플을 위한 계산기." />
+    <link rel="canonical" href="%SITE_URL%/ldr/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="기다림 항구" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:url" content="%SITE_URL%/ldr/" />
+    <meta property="og:title" content="장거리 연애 디데이·시차 계산기 | 기다림 항구" />
+    <meta property="og:description" content="만나는 날 D-day, 지금 그 사람의 시간, 통화하기 좋은 시간까지 한 번에." />
+    <meta property="og:image" content="%SITE_URL%/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "장거리 연애 디데이는 어떻게 세나요?", "acceptedAnswer": { "@type": "Answer", "text": "오늘부터 다시 만나는 날까지 남은 날을 세요. 만나는 날이 내일이면 D-1, 오늘이면 D-day예요." } },
+          { "@type": "Question", "name": "시차는 어떻게 계산하나요?", "acceptedAnswer": { "@type": "Answer", "text": "두 도시의 표준시 차이로 계산해요. 서머타임(일광 절약 시간)이 있는 도시는 계절에 따라 한 시간씩 달라지는데, 이 계산기는 오늘 날짜 기준으로 자동 반영해요." } },
+          { "@type": "Question", "name": "통화하기 좋은 시간은 어떻게 정하나요?", "acceptedAnswer": { "@type": "Answer", "text": "두 사람 모두 오전 8시부터 자정 사이에 있는 시간을 찾아 보여줘요. 둘 다 깨어 있을 가능성이 높은 시간이에요." } },
+          { "@type": "Question", "name": "사귄 날 기념일도 나오나요?", "acceptedAnswer": { "@type": "Answer", "text": "처음 사귄 날을 넣으면 오늘이 며칠째인지와 다음 100일 단위 기념일, 1주년 날짜가 나와요. 사귄 날을 1일로 세요." } }
+        ]
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500&family=Nanum+Pen+Script&display=swap" rel="stylesheet" />
+  </head>
+  <body class="page">
+    <div class="page-wrap">
+      <nav class="page-nav">
+        <a href="/" class="home">기다림 항구</a>
+      </nav>
+
+      <header class="page-head">
+        <h1>장거리 연애 디데이·시차 계산기</h1>
+        <p class="lede">만나는 날까지 남은 날, 지금 그 사람의 시간, 둘 다 깨어 있는 시간을 한 번에 봐요.</p>
+      </header>
+
+      <section class="calc" aria-label="장거리 연애 계산">
+        <label for="meet">다시 만나는 날</label>
+        <input id="meet" type="date" />
+        <label for="since">처음 사귄 날 (선택)</label>
+        <input id="since" type="date" />
+        <div class="city-row">
+          <div>
+            <label for="mine">내가 있는 곳</label>
+            <select id="mine"></select>
+          </div>
+          <div>
+            <label for="theirs">그 사람이 있는 곳</label>
+            <select id="theirs"></select>
+          </div>
+        </div>
+        <div id="result" class="result" aria-live="polite"></div>
+      </section>
+
+      <article class="guide">
+        <h2>시차와 통화하기 좋은 시간</h2>
+        <p>두 도시의 지금 시간을 나란히 보여주고, <b>둘 다 오전 8시부터 자정 사이</b>인 시간을 통화하기 좋은 시간으로 골라 줘요. 서머타임이 있는 도시는 오늘 날짜에 맞춰 자동으로 반영돼요.</p>
+
+        <h2>자주 묻는 것</h2>
+        <h3>장거리 연애 디데이는 어떻게 세나요?</h3>
+        <p>오늘부터 다시 만나는 날까지 남은 날이에요. 만나는 날이 내일이면 D-1, 오늘이면 D-day예요.</p>
+        <h3>사귄 날 기념일도 나오나요?</h3>
+        <p>처음 사귄 날을 넣으면 오늘이 며칠째인지, 다음 100일 단위 기념일과 1주년이 나와요. 사귄 날을 1일로 세요.</p>
+        <h3>매일 날짜를 세는 게 지칠 때는요?</h3>
+        <p><a href="/">기다림 항구</a>에 만나는 날을 등불로 걸어 두면, 날이 가까워질수록 등불이 밝아지고 공항 안내판에서 비행기가 활주로로 다가와요. 같은 마음으로 기다리는 사람들이 온기를 보내 주기도 해요.</p>
+      </article>
+
+      <footer class="page-foot">
+        <a href="/">기다림 항구</a> · <a href="/discharge/">전역일 계산기</a> · <a href="/memorial/">49재·기일 계산기</a> · <a href="/rainbow/">무지개마을</a>
+      </footer>
+    </div>
+    <script type="module" src="/src/ldr/main.ts"></script>
+  </body>
+</html>

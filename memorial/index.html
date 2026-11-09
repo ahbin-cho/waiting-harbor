@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko" data-theme="dawn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#8FB0D9" />
+    <link rel="icon" href="/favicon.svg" />
+    <title>49재 계산기 · 기일·100일·1주기 날짜 계산 (반려동물도) | 기다림 항구</title>
+    <meta name="description" content="떠난 날을 고르면 49재 날짜와 초재부터 7재까지, 100일, 1주기·2주기·3주기 기일을 바로 계산해요. 사람과 반려동물 모두 쓸 수 있어요." />
+    <link rel="canonical" href="%SITE_URL%/memorial/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="기다림 항구" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:url" content="%SITE_URL%/memorial/" />
+    <meta property="og:title" content="49재·기일 계산기 | 기다림 항구" />
+    <meta property="og:description" content="떠난 날만 고르면 49재, 초재~7재, 100일, 1주기 날짜가 바로 나와요." />
+    <meta property="og:image" content="%SITE_URL%/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "49재 날짜는 어떻게 계산하나요?", "acceptedAnswer": { "@type": "Answer", "text": "떠난 날을 첫째 날로 세어 49번째 날이 49재예요. 떠난 날에 48일을 더하면 돼요. 예를 들어 3월 1일에 떠났다면 4월 18일이 49재예요." } },
+          { "@type": "Question", "name": "초재, 2재 같은 칠재는 언제인가요?", "acceptedAnswer": { "@type": "Answer", "text": "떠난 날부터 7일마다 한 번씩, 7번째 날이 초재, 14번째 날이 2재이고, 49번째 날인 7재가 49재예요." } },
+          { "@type": "Question", "name": "반려동물도 49재를 하나요?", "acceptedAnswer": { "@type": "Answer", "text": "정해진 규칙은 없지만, 많은 보호자가 떠난 아이를 위해 49일째 되는 날 조용히 시간을 보내요. 이 계산기는 반려동물의 49재와 기일도 똑같이 계산해요." } },
+          { "@type": "Question", "name": "음력 기일도 계산되나요?", "acceptedAnswer": { "@type": "Answer", "text": "이 계산기는 양력 날짜로 계산해요. 제사를 음력으로 지내는 경우에는 달력 앱의 음력 변환으로 같은 날을 확인해 주세요." } }
+        ]
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500&family=Nanum+Pen+Script&display=swap" rel="stylesheet" />
+  </head>
+  <body class="page">
+    <div class="page-wrap">
+      <nav class="page-nav">
+        <a href="/" class="home">기다림 항구</a>
+      </nav>
+
+      <header class="page-head">
+        <h1>49재·기일 계산기</h1>
+        <p class="lede">떠난 날을 고르면 49재와 기일 날짜가 바로 나와요. 사람도, 반려동물도 같아요.</p>
+      </header>
+
+      <section class="calc" aria-label="49재와 기일 계산">
+        <label for="gone">떠난 날</label>
+        <input id="gone" type="date" />
+        <span class="label-text">누구인가요</span>
+        <div id="who" class="branch-chips" role="group" aria-label="누구인가요"></div>
+        <div id="result" class="result" aria-live="polite"></div>
+      </section>
+
+      <article class="guide">
+        <h2>49재는 이렇게 계산해요</h2>
+        <p>떠난 날을 <b>첫째 날</b>로 세어 <b>49번째 날</b>이 49재예요. 떠난 날에 48일을 더하면 돼요. 2026년 3월 1일에 떠났다면 <b>2026년 4월 18일</b>이 49재예요.</p>
+        <p>그 사이 7일마다 칠재가 있어요. 7번째 날이 초재, 14번째 날이 2재, 그렇게 이어서 49번째 날인 7재가 49재예요.</p>
+
+        <h2>기일과 100일</h2>
+        <p>100일은 떠난 날을 첫째 날로 세어 100번째 날이에요. 기일(1주기)은 이듬해 같은 날이고, 2주기·3주기도 해마다 같은 날이에요.</p>
+
+        <h2>자주 묻는 것</h2>
+        <h3>반려동물도 49재를 하나요?</h3>
+        <p>정해진 규칙은 없어요. 그래도 많은 보호자가 49일째 되는 날 아이를 떠올리며 조용히 시간을 보내요. 이 계산기는 반려동물의 날짜도 똑같이 계산해요.</p>
+        <h3>음력 기일도 계산되나요?</h3>
+        <p>이 계산기는 양력으로 계산해요. 제사를 음력으로 지낸다면 달력 앱의 음력 변환으로 같은 날을 확인해 주세요.</p>
+        <h3>날짜를 잊지 않게 해 둘 수 있나요?</h3>
+        <p>네. <a href="/">기다림 항구</a>의 추모관에 풍등을 띄워 두면, 기일과 처음 만난 날이 다가올 때 풍등이 조금 더 밝아지고 하루 한 번 등대지기가 안부를 전해요. 반려동물은 <a href="/rainbow/">무지개마을</a>에서 지내요.</p>
+      </article>
+
+      <footer class="page-foot">
+        <a href="/">기다림 항구</a> · <a href="/discharge/">전역일 계산기</a> · <a href="/ldr/">장거리 연애 디데이·시차 계산기</a> · <a href="/rainbow/">무지개마을</a>
+      </footer>
+    </div>
+    <script type="module" src="/src/memorial/main.ts"></script>
+  </body>
+</html>
