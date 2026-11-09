@@ -1,5 +1,31 @@
 node_modules
 dist
-.env
-.env.local
 tsconfig.tsbuildinfo
+
+# 민감한 값: Supabase 주소·키, Resend·Anthropic 키 등은 저장소에 올리지 않아요.
+# 값은 로컬 .env 와 Vercel 환경 변수에만 둬요. (.env.example 은 빈 틀이라 올려요)
+.env
+.env.*
+!.env.example
+*.local
+
+# Vercel·Supabase CLI 가 만드는 로컬 설정 (프로젝트 id, 토큰이 들어갈 수 있어요)
+.vercel
+supabase/.temp
+supabase/.branches
+supabase/config.toml
+
+# 키·인증서 파일
+*.pem
+*.key
+*.p12
+*.crt
+service-account*.json
+*secret*
+*credentials*
+
+# 편집기·운영체제
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
