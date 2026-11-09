@@ -201,6 +201,9 @@ export class Village {
   private props: { o: THREE.Object3D; c: THREE.Vector3; r: number }[] = [];
   /** 열린 등불과 작은 자리를 가리는 다른 등불 (열려 있는 동안 숨겨요) */
   private lampClear = new Set<string>();
+  /** 등불을 열어 둔 동안 화면에서 그 등불이나 곁의 자리와 겹치는 다른 등불·아이 (잠시 숨겨요) */
+  private crowd = new Set<string>();
+  private sv = new THREE.Vector3();
   /** 열린 등불에서 카메라 쪽 (바닥 방향) */
   private selFlat = new THREE.Vector3(0, 0, 1);
   private down: { x: number; y: number; t: number } | null = null;
@@ -274,6 +277,7 @@ export class Village {
     const el = this.renderer.domElement;
     el.addEventListener("pointerdown", this.onDown);
     el.addEventListener("pointerup", this.onUp);
+    el.addEventListener("pointercancel", this.onCancel);
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
@@ -1347,6 +1351,34 @@ export class Village {
     this.world = w;
   }
 
+  private hidden(it: Item) {
+    return !!this.selected && it.id !== this.selected && (this.lampClear.has(it.id) || this.crowd.has(it.id));
+  }
+
+  /** 열어 둔 등불과 곁의 자리를 화면에서 가리거나 붙어 있는 것들을 찾아요 (돌아다니는 아이도 함께) */
+  private findCrowd() {
+    this.crowd.clear();
+    const sel = this.selected ? this.items.get(this.selected) : undefined;
+    if (!sel) return;
+    const w = this.host.clientWidth, h = this.host.clientHeight;
+    const scr = (p: THREE.Vector3) => {
+      this.sv.copy(p).project(this.camera);
+      return { x: (this.sv.x * 0.5 + 0.5) * w, y: (-this.sv.y * 0.5 + 0.5) * h, z: this.sv.z };
+    };
+    const a = scr(sel.lamp);
+    const b = this.shrine ? scr(this.shrine.group.position.clone().setY(this.shrine.group.position.y + 1.2)) : a;
+    const r = Math.min(w, h) * 0.16;
+    for (const it of this.items.values()) {
+      if (it.id === sel.id || !this.shown(it)) continue;
+      const p = scr(it.lamp);
+      if (p.z > 1) continue;
+      // 등불과 자리를 잇는 선분까지의 화면 거리
+      const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+      const t = L ? THREE.MathUtils.clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / L, 0, 1) : 0;
+      if (Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t)) < r) this.crowd.add(it.id);
+    }
+  }
+
   private shown(it: Item) {
     return this.world === "all" || worldOf(it.data) === this.world;
   }
@@ -1484,18 +1516,33 @@ export class Village {
 
   // ---------- 입력 ----------
 
+  private fingers = new Set<number>();
+  private multi = false;
   private onDown = (e: PointerEvent) => {
+    this.fingers.add(e.pointerId);
+    // 두 손가락(확대·돌리기)을 쓴 동작은 누르기로 치지 않아요
+    if (this.fingers.size > 1) this.multi = true;
+    else this.multi = false;
     this.down = { x: e.clientX, y: e.clientY, t: performance.now() };
   };
 
+  private onCancel = (e: PointerEvent) => {
+    this.fingers.delete(e.pointerId);
+    this.down = null;
+  };
+
   private onUp = (e: PointerEvent) => {
+    this.fingers.delete(e.pointerId);
     const d = this.down;
     this.down = null;
-    if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8 || performance.now() - d.t > 600) return;
+    if (this.multi) return;
+    // 살짝 끌거나 오래 누른 건 화면을 돌리려던 거예요. 짧고 거의 움직이지 않은 누르기만 열어요.
+    if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6 || performance.now() - d.t > 450) return;
     const r = this.renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
-    const hits = this.raycaster.intersectObjects([...this.items.values()].filter((i) => this.shown(i)).map((i) => i.hit), false);
+    // 숨긴 것(다른 곳, 열어 둔 등불과 겹치는 것)은 눌리지 않아요
+    const hits = this.raycaster.intersectObjects([...this.items.values()].filter((i) => this.shown(i) && !this.hidden(i)).map((i) => i.hit), false);
     const id = hits[0]?.object.userData.id as string | undefined;
     if (!id) return;
     const it = this.items.get(id)!;
@@ -1628,13 +1675,15 @@ export class Village {
     }
 
     const focus = this.selected;
+    this.findCrowd();
     for (const it of this.items.values()) {
-      // 다른 곳(기다림/추모관)의 등불은 숨겨요
-      const vis = this.shown(it) && !(this.selected && this.lampClear.has(it.id));
+      // 다른 곳(기다림/추모관)의 등불은 숨겨요. 열어 둔 등불과 겹치는 것도 잠시 숨겨요.
+      const vis = this.shown(it) && !this.hidden(it);
       it.group.visible = vis;
       if (it.pile) it.pile.visible = vis;
       // 멀리서도 누르기 쉽게, 멀수록 누르는 자리를 조금 키워요
-      it.hit.scale.setScalar(THREE.MathUtils.clamp(this.camera.position.distanceTo(it.lamp) / 24, 1, 2.2));
+      // 등불을 열어 둔 동안 다른 등불은 누르는 자리를 키우지 않아요 (잘못 눌리지 않게)
+      it.hit.scale.setScalar(focus && focus !== it.id ? 1 : THREE.MathUtils.clamp(this.camera.position.distanceTo(it.lamp) / 24, 1, 2.2));
       if (it.refl) it.refl.visible = vis;
       if (!vis) continue;
       if (it.pet) {
@@ -1742,7 +1791,7 @@ export class Village {
   private placeTags() {
     const w = this.host.clientWidth, h = this.host.clientHeight;
     for (const it of this.items.values()) {
-      if (!this.shown(it) || (this.selected && this.lampClear.has(it.id))) {
+      if (!this.shown(it) || this.hidden(it)) {
         it.tag.style.opacity = "0";
         continue;
       }
