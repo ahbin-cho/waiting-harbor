@@ -248,6 +248,31 @@ export default function App() {
     return () => clearTimeout(t);
   }, [sceneReady, h.status]);
 
+  // 추모관 안내: 떠나보낸 사람(아이)과 이야기할 수 있다는 걸 처음 몇 번 알려요
+  const [talkTip, setTalkTip] = useState(false);
+  const showTalkTip = useCallback(() => {
+    let n = 0;
+    try {
+      n = Number(localStorage.getItem("harbor.talktip") ?? 0);
+      if (n >= 3) return;
+      localStorage.setItem("harbor.talktip", String(n + 1));
+    } catch {
+      /* 저장이 막혀 있으면 그냥 보여줘요 */
+    }
+    setTalkTip(true);
+  }, []);
+  useEffect(() => {
+    if (!talkTip) return;
+    const t = setTimeout(() => setTalkTip(false), 9000);
+    return () => clearTimeout(t);
+  }, [talkTip]);
+  // 처음부터 추모관으로 들어온 사람(공유 링크, 반려동물 소개 글)에게도
+  useEffect(() => {
+    if (world === "miss" && h.status === "ready" && story == null) showTalkTip();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [h.status]);
+  const myMiss = mine.find((l) => l.mode === "miss");
+
   const empty =
     h.status === "unconfigured" ? "Supabase 설정이 아직 없어요. README의 1~3단계를 따라 .env 파일을 만들어주세요."
     : h.status === "error" ? "항구에 연결하지 못했어요. 인터넷 연결을 확인하고 새로고침해주세요."
@@ -294,6 +319,7 @@ export default function App() {
               onClick={() => {
                 if (w === world) return;
                 setWorld(w);
+                if (w === "miss") showTalkTip();
                 if (view.type === "detail") close();
                 setFocus({ place: "all", n: Date.now() });
               }}
@@ -318,7 +344,25 @@ export default function App() {
       </header>
       {h.status !== "ready" || !here.length ? <p className="empty">{empty}</p> : null}
 
-      {daily && (
+      {talkTip && world === "miss" && view.type === "none" && story == null && (
+        <aside className="daily talk-tip" role="status">
+          <p className="daily-from">추모관에서는</p>
+          <p className="daily-text">
+            {myMiss
+              ? `${myMiss.who}에게 말을 걸 수 있어요. 고른 말에 ${myMiss.who}의 마음을 빌린 짧은 답장이 와요.`
+              : "떠나보낸 사람이나 아이의 풍등을 띄우면, 말을 걸고 짧은 답장을 받을 수 있어요."}
+          </p>
+          <div className="daily-tools">
+            {myMiss ? (
+              <button className="btn" onClick={() => (setTalkTip(false), setView({ type: "talk", id: myMiss.id }))}>말 걸러 가기</button>
+            ) : (
+              <button className="btn" onClick={() => (setTalkTip(false), setPreset({ mode: "miss", kind: "가족" }), setView({ type: "form" }))}>풍등 띄우기</button>
+            )}
+            <button className="text-btn" onClick={() => setTalkTip(false)}>닫기</button>
+          </div>
+        </aside>
+      )}
+      {daily && !(talkTip && world === "miss") && (
         <aside className="daily" aria-label="하루 한마디">
           <p className="daily-from">{daily.from}</p>
           <p className="daily-text">{daily.text}</p>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Lantern } from "../lib/supabase";
 import type { Place, World } from "../lib/places";
 import { Village } from "../three/Village";
@@ -59,7 +59,19 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   useEffect(() => v.current?.setOfferings(offerings), [offerings]);
   useEffect(() => v.current?.setTheme(theme), [theme]);
   useEffect(() => v.current?.setWorld(world), [world]);
-  useEffect(() => v.current?.setSheetCover(cover), [cover]);
+  // 넓은 화면에선 상세가 오른쪽 옆 패널이라, 장면을 왼쪽 남은 자리로
+  const [wide, setWide] = useState(() => window.matchMedia("(min-width: 900px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 900px)");
+    const on = () => setWide(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  useEffect(() => {
+    if (!cover) return v.current?.setSheetCover(0);
+    if (wide) v.current?.setSheetCover(Math.min(0.6, 480 / window.innerWidth), "right");
+    else v.current?.setSheetCover(cover, "bottom");
+  }, [cover, wide]);
   const clipDone = useRef(onClip);
   clipDone.current = onClip;
   useEffect(() => {
