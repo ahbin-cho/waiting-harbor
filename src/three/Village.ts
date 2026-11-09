@@ -1521,15 +1521,19 @@ export class Village {
    * 화면 아래를 덮는 시트의 높이(0~1). 덮인 만큼 화면을 위로 밀어 올려서, 보고 있는 것이
    * 시트 위 남은 자리 가운데에 와요. 카메라가 도는 중심(controls.target)은 그대로라 손가락으로 돌려도 어긋나지 않아요.
    */
-  setSheetCover(f: number) {
+  setSheetCover(f: number, side: "bottom" | "right" = "bottom") {
     this.coverGoal = f;
+    if (f > 0) this.coverSide = side;
   }
+  private coverSide: "bottom" | "right" = "bottom";
   private cover = 0;
   private coverGoal = 0;
   private applyCover() {
     const w = this.host.clientWidth, h = this.host.clientHeight;
     if (!w || !h) return;
     if (this.cover < 0.002) this.camera.clearViewOffset();
+    // 아래를 덮으면 장면을 위로, 오른쪽을 덮으면(넓은 화면의 옆 패널) 왼쪽으로 밀어 남은 자리 가운데에
+    else if (this.coverSide === "right") this.camera.setViewOffset(w, h, (w * this.cover) / 2, 0, w, h);
     else this.camera.setViewOffset(w, h, 0, (h * this.cover) / 2, w, h);
   }
 

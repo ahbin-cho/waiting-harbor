@@ -419,6 +419,19 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 
 /* 등불을 보고 있을 땐 시트를 화면 2/3까지만: 위쪽에 그 등불이 보이게. 나머지는 시트 안에서 스크롤 */
 .scene.focusing .sheet{max-height:52%}
+/* 넓은 화면(PC): 바텀시트 대신 오른쪽 옆 패널. 마을은 왼쪽 남은 자리에 크게 보여요 */
+@media (min-width:900px){
+  .sheet,.scene.focusing .sheet{
+    left:auto;right:16px;top:16px;bottom:16px;width:min(460px,38vw);max-width:none;max-height:none;margin:0;
+    border-radius:18px;border:1px solid var(--line);
+    padding:26px 26px 24px;transform:translateX(calc(100% + 24px));
+  }
+  .sheet.open,.scene.focusing .sheet.open{transform:none}
+  .veil.open{display:none}
+  .scene.focusing header{opacity:1;pointer-events:auto}
+  .scene.focusing header{right:calc(min(460px,38vw) + 32px)}
+  img.photo{max-height:340px}
+}
 /* 같은 곳의 이전·다음 등불 */
 .lantern-nav{display:flex;align-items:center;gap:14px;margin:-6px 0 6px;font-size:.85rem;color:var(--muted)}
 .lantern-nav span{font-family:var(--display);font-size:1rem;color:var(--ink)}
