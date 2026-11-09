@@ -31,9 +31,8 @@ export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
   const [pulseId, setPulseId] = useState<string | null>(null);
   const [focus, setFocus] = useState<Focus | null>(null);
-  const [hint, setHint] = useState(
-    demo ? "체험 모드라 걸어 둔 등불은 새로고침하면 사라져요." : "불빛을 누르면 그 사람의 기다림이 보여요.",
-  );
+  // 바닥 한 줄 안내. 따로 알릴 게 없으면 지금 있는 곳(기다림 항구/추모관)에 맞는 말을 보여요.
+  const [hint, setHint] = useState<string | null>(null);
   // 공유 링크(/l/아이디)로 들어오면 ?l=아이디 로 열려요. 이야기는 건너뛰고 그 등불로 바로 가요.
   // /?l=아이디 또는 /l/아이디 (서버 함수를 거치지 않고 앱이 바로 열린 경우) 둘 다 알아봐요
   const [deepLink, setDeepLink] = useState(
@@ -162,7 +161,12 @@ export default function App() {
   // 다른 장소나 전체로 옮겨 갈 때 놓아줘요.
   const [kept, setKept] = useState<string | null>(null);
   useEffect(() => setKept(null), [focus, story]);
-  const focusId = view.type === "detail" ? view.id : kept;
+  // 상세·이야기하기·보내기 중에는 그 등불에 머물러요. 닫으면 마지막에 본 등불 곁에 그대로 남아요.
+  const viewId = view.type === "detail" || view.type === "talk" || view.type === "share" ? view.id : null;
+  useEffect(() => {
+    if (viewId) setKept(viewId);
+  }, [viewId]);
+  const focusId = viewId ?? kept;
   const focused = focusId ? h.lanterns.find((l) => l.id === focusId) : undefined;
   // 등불을 열면 그 등불이 있는 곳으로 (공유 링크로 들어온 그리움 등불이면 추모관)
   const pickedWorld = picked ? worldOf(picked) : null;
@@ -392,7 +396,9 @@ export default function App() {
         </div>
       )}
       <div className="bar">
-        <span className="hint">{hint}</span>
+        <span className="hint">
+          {hint ?? (demo ? "체험 모드라 걸어 둔 등불은 새로고침하면 사라져요." : world === "miss" ? "풍등이나 무지개마을 아이를 누르면 그 이야기가 보여요." : "불빛을 누르면 그 사람의 기다림이 보여요.")}
+        </span>
         {mine.length > 0 && (
           <button className="ghost bar-ghost" disabled={h.status !== "ready"} onClick={openMine}>
             내 등불 {mine.length > 1 && <small>{mine.length}</small>}
