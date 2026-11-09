@@ -15,6 +15,7 @@ import { Story } from "./components/Story";
 import { Feedback } from "./components/Feedback";
 import { ShareSheet } from "./components/ShareSheet";
 import { TalkSheet } from "./components/TalkSheet";
+import { ArrivalBoard } from "./components/ArrivalBoard";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
 import { THEME_LABEL, THEME_ORDER, applyUiTheme, saveTheme, savedTheme, type ThemeChoice } from "./lib/theme";
@@ -24,7 +25,7 @@ import { canRecord } from "./lib/clip";
 import { track } from "./lib/track";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string } | { type: "talk"; id: string } | { type: "tools" };
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string } | { type: "talk"; id: string } | { type: "tools" } | { type: "arrivals" };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -292,7 +293,7 @@ export default function App() {
         </div>
         <p className="stats">
           {world === "wait"
-            ? `기다림 등불 ${here.length}개, 지금 ${h.hereCount}명이 깨어 있어요.`
+            ? <>기다림 등불 {here.length}개, 지금 {h.hereCount}명이 깨어 있어요. <button className="text-btn stats-link" onClick={() => setView({ type: "arrivals" })}>도착 안내판</button></>
             : `풍등 ${here.filter((l) => placeOf(l.place) !== "무지개").length}개, 무지개마을 아이 ${here.filter((l) => placeOf(l.place) === "무지개").length}명. 지금 ${h.hereCount}명이 함께 있어요.`}
         </p>
         <nav className="places" aria-label="장소로 이동">
@@ -470,8 +471,9 @@ export default function App() {
         })()}
         {view.type === "share" && (() => {
           const l = h.lanterns.find((x) => x.id === view.id);
-          return l ? <ShareSheet lantern={l} demo={demo} onBack={() => setView({ type: "detail", id: l.id })} /> : null;
+          return l ? <ShareSheet lantern={l} demo={demo} no={neighbors(h.lanterns, l.id)?.no ?? ""} onBack={() => setView({ type: "detail", id: l.id })} /> : null;
         })()}
+        {view.type === "arrivals" && <ArrivalBoard lanterns={h.lanterns} me={h.me} onPick={(id) => setView({ type: "detail", id })} onClose={close} />}
         {view.type === "feedback" && <Feedback onSend={h.sendFeedback} onClose={close} demo={demo} />}
         {view.type === "tools" && (
           <>
