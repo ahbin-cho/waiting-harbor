@@ -40,7 +40,7 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
   g.roundRect(x0, y0, pw, 170, [36, 36, 0, 0]);
   g.fill();
   g.fillStyle = "#F7F3EA";
-  g.font = '700 64px "Gaegu", sans-serif';
+  g.font = '400 64px "Gowun Dodum", sans-serif';
   g.textBaseline = "middle";
   g.fillText(plane ? "탑승권" : l.kind === "군대" ? "귀향권" : "승선권", x0 + 56, y0 + 70);
   g.font = '500 30px "IBM Plex Sans KR", sans-serif';
@@ -48,7 +48,7 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
   g.fillText(plane ? "BOARDING PASS" : "WAITING HARBOR", x0 + 58, y0 + 125);
   g.globalAlpha = 1;
   g.textAlign = "right";
-  g.font = '700 44px "Gaegu", sans-serif';
+  g.font = '400 44px "Gowun Dodum", sans-serif';
   g.fillText("기다림 항구", x0 + pw - 56, y0 + 88);
   g.textAlign = "left";
 
@@ -66,7 +66,7 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
 
   // 승객: ○○를 기다리는 사람
   label("승객", x0 + 56, y0 + 250);
-  value(`${pick(l.who.trim() || "그 사람", "을", "를")} 기다리는 사람`, x0 + 56, y0 + 320, 66, "Gaegu", 700);
+  value(`${pick(l.who.trim() || "그 사람", "을", "를")} 기다리는 사람`, x0 + 56, y0 + 320, 66, "Gowun Dodum", 700);
 
   // 출발 → 도착
   label("기다린 날부터", x0 + 56, y0 + 430);
@@ -75,7 +75,7 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
   value(d(l.end_date), x0 + pw / 2 + 20, y0 + 490);
   // 가운데 화살표 (탈것)
   g.fillStyle = color;
-  g.font = '700 54px "IBM Plex Sans KR", sans-serif';
+  g.font = '400 54px "IBM Plex Sans KR", sans-serif';
   g.textAlign = "center";
   g.fillText(plane ? "✈" : "→", x0 + pw / 2 - 20, y0 + 486);
   g.textAlign = "left";
@@ -86,7 +86,7 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
   label(l.kind === "군대" ? "군" : "기다림", x0 + 330, y0 + 600);
   value(l.kind === "군대" ? (l.branch ?? "군대") : l.kind, x0 + 330, y0 + 660, 44);
   label("남은 날", x0 + pw - 300, y0 + 600);
-  value(n == null ? "" : n > 0 ? `D-${n}` : n === 0 ? "오늘!" : "도착", x0 + pw - 300, y0 + 664, 64, "Gaegu", 700);
+  value(n == null ? "" : n > 0 ? `D-${n}` : n === 0 ? "오늘!" : "도착", x0 + pw - 300, y0 + 664, 64, "Gowun Dodum", 700);
 
   // 절취선
   g.strokeStyle = "#C9C2B2";
@@ -118,7 +118,7 @@ export async function makePass(l: Lantern, no: string): Promise<Blob> {
   // 아래 바깥: 작은 문구
   g.fillStyle = "#B9BED8";
   g.textAlign = "center";
-  g.font = '700 46px "Gaegu", sans-serif';
+  g.font = '400 46px "Gowun Dodum", sans-serif';
   g.fillText("돌아오는 날까지, 등불 하나", W / 2, 1270);
 
   return new Promise((ok, no2) => c.toBlob((b) => (b ? ok(b) : no2(new Error("blob"))), "image/png"));

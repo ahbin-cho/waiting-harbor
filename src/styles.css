@@ -11,9 +11,9 @@
   --paper:#0F1329; --line:rgba(237,229,214,.14); --field:rgba(237,229,214,.04);
   --danger:#FF9C86;
   --fade-top:10,16,40; --fade-bottom:8,12,32; --veil:rgba(2,4,14,.25); --tag-shadow:rgba(0,0,0,.9); --lamp-ink:#2A170A;
-  --display:"Gaegu","Nanum Pen Script","Apple SD Gothic Neo",sans-serif; /* 등대지기의 글씨: 제목, 이야기, 질문 */
+  --display:"Gowun Dodum","Apple SD Gothic Neo","Noto Sans KR",sans-serif; /* 등대지기의 글씨: 제목, 이야기, 질문. 따뜻하지만 또렷하게 */
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
-  --hand:"Nanum Pen Script","Gaegu",cursive; /* 사람들이 직접 쓴 한 줄 */
+  --hand:"Nanum Pen Script",cursive; /* 사람들이 직접 쓴 한 줄: 크게 보이는 곳에만 */
   color-scheme: dark;
   box-sizing:border-box;
   /* 화면 끝(노치, 홈 표시줄 아래)까지 마을이 채워요. 안전 영역 여백은 머리글과 바닥 줄이 각자 둬요. */
@@ -94,13 +94,13 @@ header{
   /* 하늘이 밝아도 글자가 묻히지 않게 아주 옅은 그림자 */
   text-shadow:0 1px 6px rgba(var(--fade-top),.9);
 }
-h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;margin:0;letter-spacing:-.06em}
+h1{font-family:var(--display);font-weight:400;font-size:1.6rem;line-height:1.1;margin:0;letter-spacing:-.02em}
 .title-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .title-row .text-btn{pointer-events:auto}
 /* 기다림 항구 · 추모관: 머리글에서 오가는 두 곳. 지금 있는 곳에 밑줄 */
 .worlds{display:flex;gap:18px;margin-top:12px;pointer-events:auto}
 .worlds button{
-  font-family:var(--display);font-weight:700;font-size:1.08rem;background:none;border:0;padding:2px 0;cursor:pointer;
+  font-family:var(--display);font-weight:400;font-size:1.08rem;background:none;border:0;padding:2px 0;cursor:pointer;
   color:var(--muted);text-decoration:underline;text-decoration-color:transparent;text-decoration-thickness:2px;text-underline-offset:6px;
 }
 .worlds button[aria-pressed="true"]{color:var(--ink);text-decoration-color:var(--ink)}
@@ -123,9 +123,9 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;m
   position:absolute;left:0;top:0;opacity:0;text-align:center;white-space:nowrap;will-change:transform,opacity;
   text-shadow:0 1px 6px var(--tag-shadow);transition:opacity .2s linear;
 }
-.tag b{display:block;font-family:var(--display);font-weight:700;font-size:.92rem;line-height:1.15}
+.tag b{display:block;font-weight:600;font-size:.9rem;line-height:1.2}
 .tag span{display:block;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.tag.mine b{font-family:var(--hand);font-size:1.1rem;line-height:1}
+.tag.mine b{font-weight:600}
 
 .empty{position:absolute;left:20px;right:20px;top:46%;z-index:4;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;pointer-events:none}
 
@@ -160,13 +160,13 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1;m
 }
 .sheet.open{transform:none}
 @media (prefers-reduced-motion: reduce){.sheet{transition:none}}
-.sheet h2{font-family:var(--display);font-weight:700;font-size:1.35rem;margin:0 0 6px;line-height:1.25;text-wrap:balance;white-space:pre-line}
+.sheet h2{font-family:var(--display);font-weight:400;font-size:1.35rem;margin:0 0 6px;line-height:1.25;text-wrap:balance;white-space:pre-line}
 .sheet .kind{color:var(--muted);font-size:.85rem;line-height:1.6}
 .here-now{display:block;color:var(--ink)}
-.big{font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1;margin:14px 0 4px}
+.big{font-family:var(--display);font-weight:400;font-size:2.2rem;line-height:1;margin:14px 0 4px}
 .small{font-size:.85rem;color:var(--muted);line-height:1.65}
 .note-line{
-  margin:20px 0;padding:2px 2px 0;font-family:var(--hand);font-size:1.25rem;line-height:30px;color:var(--ink);
+  margin:20px 0;padding:2px 2px 0;font-family:var(--hand);font-size:1.5rem;line-height:30px;color:var(--ink);
   background:repeating-linear-gradient(to bottom,transparent 0 37px,var(--line) 37px 38px);
 }
 .row{display:flex;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
@@ -177,7 +177,7 @@ input,textarea{
   border:1px solid var(--line);border-radius:8px;padding:11px 12px;
 }
 input::placeholder,textarea::placeholder{color:var(--faint)}
-textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-size:1.15rem}
+textarea{resize:none;height:84px;line-height:1.55;font-size:1rem}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .chip{font:inherit;font-size:.88rem;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:8px 12px;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
@@ -245,11 +245,11 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .choice span{font-size:.82rem;color:var(--muted)}
 .choice[aria-pressed="true"]{border-color:var(--ink);background:var(--field)}
 .choice:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-.answer input#who{font-family:var(--hand);font-size:1.35rem;padding:8px 12px}
+.answer input#who{font-size:1.15rem;padding:10px 12px}
 .answer textarea{height:110px}
 
-/* Gaegu 는 글자 사이가 넓어서 조금 좁혀요 */
-.sheet h2,.big,.story-text,.tag b,.ask{letter-spacing:-.04em}
+/* 등대지기 글씨는 글자 사이를 살짝 좁혀요 */
+.sheet h2,.big,.story-text,.tag b,.ask{letter-spacing:-.01em}
 
 /* 앱이 뜨기 전, 그리고 자바스크립트를 읽지 않는 곳에서 보이는 본문 */
 .seo-copy{max-width:34em;padding:40px max(24px,env(safe-area-inset-right,0px)) 40px max(24px,env(safe-area-inset-left,0px));color:var(--muted);line-height:1.75;font-size:.95rem;height:100%;overflow:auto}
@@ -283,7 +283,7 @@ textarea{resize:none;height:84px;line-height:1.4;font-family:var(--hand);font-si
 .diary li:first-child{border-top:0;padding-top:4px}
 .diary-day{font-size:.75rem;color:var(--faint);font-variant-numeric:tabular-nums;display:flex;gap:8px}
 .diary-day em{font-style:normal;color:var(--muted)}
-.diary-body{margin:0;font-family:var(--hand);font-size:1.15rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.diary-body{margin:0;font-size:.95rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 .diary .text-btn{align-self:flex-start;font-size:.72rem;padding:0}
 .warmth-line{margin-top:20px}
 .shared{margin-top:10px;overflow-wrap:anywhere}
@@ -332,8 +332,8 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
   position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:6;
   max-width:420px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px 12px;
 }
-.daily-from{margin:0 0 6px;font-family:var(--display);font-weight:700;font-size:.95rem;color:var(--muted)}
-.daily-text{margin:0;font-family:var(--hand);font-size:1.35rem;line-height:1.35;color:var(--ink)}
+.daily-from{margin:0 0 6px;font-weight:600;font-size:.85rem;color:var(--muted)}
+.daily-text{margin:0;font-size:1rem;line-height:1.6;color:var(--ink)}
 .daily-facts{margin:8px 0 0;font-size:.82rem;color:var(--muted);line-height:1.6}
 .daily-tools{display:flex;align-items:center;gap:16px;margin-top:12px}
 .daily-in{margin:14px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:10px}
@@ -346,7 +346,7 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
 .talk-hint{align-self:center;text-align:center;font-size:.85rem;color:var(--muted);padding:24px 8px;line-height:1.6}
 .talk-row{display:flex;align-items:flex-end;gap:8px;max-width:100%}
 .talk-row.me{justify-content:flex-end}
-.talk-face{flex:none;width:36px;height:36px;border-radius:14px;object-fit:cover;display:grid;place-items:center;background:var(--field);border:1px solid var(--line);font-family:var(--display);font-weight:700;color:var(--ink);align-self:flex-start}
+.talk-face{flex:none;width:36px;height:36px;border-radius:14px;object-fit:cover;display:grid;place-items:center;background:var(--field);border:1px solid var(--line);font-family:var(--display);font-weight:400;color:var(--ink);align-self:flex-start}
 .talk-name{display:block;font-size:.75rem;color:var(--muted);margin:0 0 4px 2px}
 .bubble{margin:0;padding:9px 13px;border-radius:16px;font-size:.95rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-width:min(72vw,360px)}
 .bubble.me{background:var(--lamp);color:var(--lamp-ink);border-top-right-radius:4px}
@@ -386,11 +386,11 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
 .arrivals li button:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
 .a-no{font-size:.8rem;color:var(--muted)}
 .a-who{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;min-width:0}
-.a-who b{font-family:var(--hand);font-size:1.25rem;font-weight:400}
+.a-who b{font-size:1rem;font-weight:600}
 .a-who em{font-style:normal;font-size:.7rem;color:var(--muted)}
 .a-who small{flex-basis:100%;font-size:.75rem;color:var(--muted)}
 .a-date{font-size:.85rem}
-.a-state{font-family:var(--display);font-weight:700;font-size:1.05rem;text-align:right}
+.a-state{font-weight:600;font-size:.95rem;text-align:right}
 .arrivals li.today .a-state{color:var(--lamp)}
 .arrivals li.soon .a-state{color:var(--ink)}
 .arrivals li.landed{opacity:.55}
@@ -401,7 +401,7 @@ img.photo{display:block;width:100%;max-height:min(62vh,460px);object-fit:cover;b
 .tool-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .tool-list a{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;color:var(--ink);text-decoration:none}
 .tool-list a:hover{border-color:var(--ink)}
-.tool-list b{font-family:var(--display);font-size:1.1rem;font-weight:700}
+.tool-list b{font-family:var(--display);font-size:1.1rem;font-weight:400}
 .tool-list span{font-size:.85rem;color:var(--muted)}
 .tool-list a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 /* 남긴 마음 */
