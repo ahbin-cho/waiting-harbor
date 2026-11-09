@@ -237,6 +237,17 @@ export default function App() {
     if (then === "write") setView({ type: "form" });
   }, []);
 
+  // 배가 항구에 닿았어요: 마을이 그려지고 등불을 불러오면 로딩 화면을 걷어요
+  const [sceneReady, setSceneReady] = useState(false);
+  useEffect(() => {
+    if (!sceneReady || h.status === "loading") return;
+    const el = document.getElementById("arrive");
+    if (!el) return;
+    el.classList.add("docked");
+    const t = setTimeout(() => el.remove(), 800);
+    return () => clearTimeout(t);
+  }, [sceneReady, h.status]);
+
   const empty =
     h.status === "unconfigured" ? "Supabase 설정이 아직 없어요. README의 1~3단계를 따라 .env 파일을 만들어주세요."
     : h.status === "error" ? "항구에 연결하지 못했어요. 인터넷 연결을 확인하고 새로고침해주세요."
@@ -248,7 +259,7 @@ export default function App() {
   return (
     <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} cover={view.type === "detail" && !recording ? 0.52 : 0} onPick={(id) => !recording && setView({ type: "detail", id })} theme={sceneTheme} world={story != null ? "all" : world}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} cover={view.type === "detail" && !recording ? 0.52 : 0} onPick={(id) => !recording && setView({ type: "detail", id })} theme={sceneTheme} world={story != null ? "all" : world} onReady={() => setSceneReady(true)}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {

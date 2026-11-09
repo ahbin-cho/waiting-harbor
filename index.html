@@ -40,8 +40,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Poor+Story&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Pen+Script&display=swap" rel="stylesheet" />
+    <script>
+      // 고른 테마(밤/노을)를 그리기 전에 맞춰서, 로딩 화면부터 같은 색으로 보여요
+      try { var t = localStorage.getItem("harbor-theme"); if (t === "night") document.documentElement.dataset.theme = "night"; } catch (e) {}
+    </script>
+    <style>
+      /* 배를 타고 항구로 들어가는 로딩 화면. 앱의 스타일이 오기 전에 바로 그려져야 해서 여기에 둬요.
+         색은 styles.css 의 노을/밤 토큰과 같은 값이에요. */
+      html, body { margin: 0; height: 100%; background: #2D3566; }
+      html[data-theme="night"], html[data-theme="night"] body { background: #0A1028; }
+      .seo-copy { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      #arrive {
+        position: fixed; inset: 0; z-index: 50; overflow: hidden; pointer-events: none;
+        background: linear-gradient(#2D3566 0%, #6B5A86 45%, #E8956F 68%, #2F3F70 68.2%, #1C2448 100%);
+        transition: opacity .7s ease;
+        animation: arrive-out .6s 15s forwards; /* 앱이 끝내 뜨지 않아도 15초 뒤엔 걷혀요 */
+      }
+      html[data-theme="night"] #arrive { background: linear-gradient(#0A1028 0%, #151C42 45%, #3A3060 68%, #0F1A40 68.2%, #070B22 100%); }
+      #arrive.docked { opacity: 0; }
+      #arrive svg { position: absolute; left: 0; right: 0; top: 68%; width: 100%; height: 90px; transform: translateY(-62px); }
+      #arrive .harbor { fill: #1C2448; }
+      #arrive .lamp { fill: #FFB867; }
+      #arrive .glow { fill: #FFB867; opacity: .35; animation: arrive-glow 2.2s ease-in-out infinite; }
+      #arrive .boat { animation: arrive-sail 3.2s cubic-bezier(.3, .1, .3, 1) forwards, arrive-bob 1.6s ease-in-out infinite; transform-box: fill-box; }
+      #arrive.docked .boat { animation: none; transform: translateX(0); }
+      #arrive .wake { stroke: rgba(255, 241, 214, .55); stroke-width: 2; fill: none; stroke-dasharray: 6 8; animation: arrive-wake 1s linear infinite; }
+      #arrive p { position: absolute; left: 0; right: 0; top: calc(68% + 54px); margin: 0; text-align: center; color: #F4E6C6;
+        font: 16px/1.5 "Poor Story", "Apple SD Gothic Neo", sans-serif; letter-spacing: -.01em; opacity: .9; }
+      @keyframes arrive-sail { from { transform: translateX(-62vw); } to { transform: translateX(-6vw); } }
+      @keyframes arrive-bob { 50% { translate: 0 2px; } }
+      @keyframes arrive-wake { to { stroke-dashoffset: -14; } }
+      @keyframes arrive-glow { 50% { opacity: .6; } }
+      @keyframes arrive-out { to { opacity: 0; visibility: hidden; } }
+      @media (prefers-reduced-motion: reduce) { #arrive .boat, #arrive .wake, #arrive .glow { animation: none; } }
+    </style>
   </head>
   <body>
+    <div id="arrive" aria-hidden="true">
+      <svg viewBox="0 0 400 90" preserveAspectRatio="xMidYMax meet">
+        <!-- 오른쪽 항구: 부두와 등불 기둥 -->
+        <path class="harbor" d="M318 62 C330 58 352 59 400 57 L400 90 L310 90 Z" />
+        <rect class="harbor" x="300" y="58" width="44" height="4" rx="1" />
+        <rect class="harbor" x="332" y="30" width="2.4" height="30" />
+        <circle class="glow" cx="333.2" cy="28" r="9" />
+        <circle class="lamp" cx="333.2" cy="28" r="3.4" />
+        <!-- 다가오는 작은 배 -->
+        <g class="boat">
+          <path class="wake" d="M228 66 L200 66 M222 71 L188 71" />
+          <path fill="#1C2448" d="M240 58 L290 58 L283 67 L247 67 Z" />
+          <path fill="#F4E6C6" d="M263 56 L263 28 L282 55 Z" />
+          <rect fill="#1C2448" x="261.6" y="24" width="2" height="34" />
+          <circle class="lamp" cx="250" cy="55" r="2" />
+        </g>
+      </svg>
+      <p>항구로 들어가는 중이에요</p>
+    </div>
     <div id="root">
       <!-- 자바스크립트를 읽지 않는 검색 엔진과 미리보기를 위한 본문. 앱이 뜨면 이 내용은 바뀌어요. -->
       <main class="seo-copy">

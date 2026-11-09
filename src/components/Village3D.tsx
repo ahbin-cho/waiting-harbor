@@ -11,7 +11,7 @@ import type { OfferingKind } from "../lib/offerings";
 export type Focus = { place: Place | "all"; n: number };
 
 /** three.js 로 그린 3D 밤 마을. 이름표는 HTML 로 그 위에 얹어요. */
-export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, offerings, cover, onPick, theme, world, record, onClip }: {
+export function Village3D({ lanterns, me, online, pulseId, focus, shot, selectedId, shrine, offerings, cover, onPick, theme, world, record, onClip, onReady }: {
   lanterns: Lantern[];
   me: string | null;
   online: Set<string>;
@@ -32,16 +32,22 @@ export function Village3D({ lanterns, me, online, pulseId, focus, shot, selected
   /** 10초 영상 찍기 요청 */
   record: { id: string; n: number; text: ClipText } | null;
   onClip: (r: { blob: Blob; ext: string } | { error: string }) => void;
+  /** 마을의 첫 장면이 그려졌어요 */
+  onReady?: () => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const tags = useRef<HTMLDivElement>(null);
   const v = useRef<Village | null>(null);
+  const readyRef = useRef(onReady);
+  readyRef.current = onReady;
   const pick = useRef(onPick);
   pick.current = onPick;
 
   useEffect(() => {
     const village = new Village(stage.current!, tags.current!, (id) => pick.current(id), theme);
     v.current = village;
+    // 첫 장면이 실제로 화면에 그려진 다음에 알려요
+    requestAnimationFrame(() => requestAnimationFrame(() => readyRef.current?.()));
     if (import.meta.env.DEV) (window as unknown as { __village?: Village }).__village = village; // 개발 중 확인용
     return () => {
       village.dispose();
