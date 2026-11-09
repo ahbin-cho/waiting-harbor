@@ -75,11 +75,17 @@ select * from analytics.sources_30d;  -- 최근 30일 어디서 들어왔는지 
    - `FEEDBACK_TO`: 의견을 받을 메일 주소 (도메인을 인증하기 전에는 Resend 가입 메일 주소만 받을 수 있어요)
    - `FEEDBACK_FROM` (선택): 보내는 주소. 도메인을 인증했다면 `기다림 항구 <hello@내도메인>`처럼 적어요
 
+## 카카오톡 공유 (선택)
+보내기 화면에 "카카오톡으로 보내기" 버튼이 생겨요. 받은 사람 카톡에 등불 미리보기(이름, 남은 날)가 함께 가요.
+1. https://developers.kakao.com 에서 애플리케이션을 만들어요.
+2. 앱 설정 → 플랫폼 → Web 에 사이트 주소(예: `https://waiting-harbor-one.vercel.app`)를 등록해요.
+3. 앱 키의 **JavaScript 키**를 Vercel 환경 변수 `VITE_KAKAO_JS_KEY` 에 넣고 다시 배포해요. (공개돼도 되는 키예요. REST API 키나 Admin 키는 넣지 않아요.)
+키가 없으면 버튼은 보이지 않아요.
+
 ## 배포
 Vercel 이나 Netlify 에 저장소를 연결하고, 환경 변수 두 개(`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)만 넣으면 돼요.
 
 ## 다음에 해볼 것
-- 공유 카드: 내 등불을 이미지로 저장해서 인스타 스토리에 올리기
 - 돌아오는 날 알림, 매일 한 줄 남기라는 알림 (PWA 푸시)
 - 신고와 차단, 금칙어 필터
 - 등불이 많아지면 온기 개수를 DB 뷰로 집계

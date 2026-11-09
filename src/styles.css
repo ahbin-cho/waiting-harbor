@@ -447,3 +447,7 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 /* 등불 보내기 */
 .share-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .share-url{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:.82rem;color:var(--muted);overflow-wrap:anywhere;user-select:all}
+/* 보내기: 저장 링크도 버튼처럼, 카카오톡 버튼은 카카오 노란색 */
+.share-actions a.btn,.share-actions a.ghost{text-decoration:none;display:inline-flex;align-items:center}
+:root{--kakao:#FEE500;--kakao-ink:#191600}
+.btn.kakao{background:var(--kakao);color:var(--kakao-ink);border-color:var(--kakao)}
