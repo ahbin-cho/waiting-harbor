@@ -371,7 +371,8 @@ export class Shrine {
       c.fillStyle = ink;
       c.font = '400 88px "Poor Story", sans-serif';
       c.fillText((info.who || "그 사람").slice(0, 8), x0, 186);
-      c.fillStyle = info.color;
+      // 밝은 안내판에선 옅은 등불 색이 잘 안 보여서, 군 색이나 짙은 글씨로
+      c.fillStyle = light ? (w.branch?.color ?? ink) : info.color;
       c.font = '400 136px "Poor Story", sans-serif';
       c.fillText(w.dday, x0 - 4, 320);
       c.fillStyle = soft;

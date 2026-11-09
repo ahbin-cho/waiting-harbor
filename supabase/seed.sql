@@ -101,14 +101,26 @@ where l.id::text like '5eed1000-%'
   and abs(hashtext(l.id::text || u.id::text || g::text)) % 100 < 8 + abs(hashtext(l.id::text)) % 28  -- 등불마다 들른 정도가 달라요
 on conflict do nothing;
 
--- 6) 놓고 간 것: 지난 엿새 동안 등불마다 조금씩 (기다림엔 들꽃·종이배·조약돌, 그리움엔 국화, 아이들에겐 간식·공도)
+-- 6) 놓고 간 것: 지난 엿새 동안 등불마다 조금씩, 그 등불에 어울리는 것으로
 insert into public.offerings (lantern_id, from_id, kind, day)
 select l.id, u.id,
-       (case when l.place = '무지개' then array['국화', '간식', '공', '조약돌']
-             when l.mode = 'miss' then array['국화', '국화', '들꽃', '조약돌']
-             else array['들꽃', '종이배', '조약돌'] end)[1 + abs(hashtext(u.id::text || l.id::text || g::text)) % (case when l.place = '무지개' then 4 when l.mode = 'miss' then 4 else 3 end)],
+       k.kinds[1 + abs(hashtext(u.id::text || l.id::text || g::text)) % array_length(k.kinds, 1)],
        current_date - g
 from public.lanterns l
+cross join lateral (select case
+  when l.place = '무지개' then case l.species
+    when '강아지' then array['국화', '간식', '공', '뼈다귀']
+    when '고양이' then array['국화', '츄르', '상자', '공']
+    when '새' then array['국화', '해바라기씨', '방울']
+    when '물고기' then array['국화', '먹이', '조약돌']
+    when '햄스터·토끼' then array['국화', '해바라기씨', '당근']
+    when '거북이·도마뱀' then array['국화', '상추', '조약돌']
+    else array['국화', '간식', '공'] end
+  when l.mode = 'miss' then array['국화', '들꽃', '편지', '찻잔']
+  when l.kind = '군대' then array['편지', '위문상자', '핫팩']
+  when l.kind = '장거리 연애' then array['편지', '종이비행기', '풍선']
+  when l.kind = '해외에 있는 가족' then array['편지', '종이비행기', '도시락']
+  else array['편지', '들꽃', '풍선'] end as kinds) k
 cross join (select id from auth.users where id::text like '5eed0000-%') u
 cross join generate_series(0, 5) g
 where l.id::text like '5eed1000-%'
