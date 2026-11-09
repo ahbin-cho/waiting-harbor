@@ -194,7 +194,7 @@ export class Shrine {
         c.fillStyle = INK;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        c.font = '700 64px "Gaegu", sans-serif';
+        c.font = '400 64px "Gowun Dodum", sans-serif';
         const lines = wrap(c, info.who || "그 사람", 220, 2);
         lines.forEach((t, i) => c.fillText(t, 128, 160 + (i - (lines.length - 1) / 2) * 70));
       }));
@@ -254,7 +254,7 @@ export class Shrine {
           c.fillStyle = INK;
           c.textAlign = "center";
           c.textBaseline = "middle";
-          c.font = '700 46px "Gaegu", sans-serif';
+          c.font = '400 46px "Gowun Dodum", sans-serif';
           c.fillText(`${info.no} · ${info.who}`.slice(0, 22), 256, 44);
         })),
       })),
@@ -359,20 +359,20 @@ export class Shrine {
       c.fillRect(0, 0, 1024, 104);
       c.fillStyle = br ? br.accent : ink;
       c.textBaseline = "middle";
-      c.font = '700 60px "Gaegu", sans-serif';
+      c.font = '400 60px "Gowun Dodum", sans-serif';
       c.fillText(br ? (w.arrived ? "전역했어요" : "전역 예정") : w.arrived ? "도착했어요" : w.mode === "plane" ? "도착 예정" : "입항 예정", 40, 56);
       c.textAlign = "right";
-      c.font = '700 44px "Gaegu", sans-serif';
+      c.font = '400 44px "Gowun Dodum", sans-serif';
       c.fillStyle = br ? br.accent : soft;
       c.fillText(br ? `${br.name} · ${info.no}` : info.no, 984, 56);
       // 오른쪽: 이름, D-day, 도착 날짜, 한 줄
       c.textAlign = "left";
       const x0 = 420;
       c.fillStyle = ink;
-      c.font = '700 88px "Gaegu", sans-serif';
+      c.font = '400 88px "Gowun Dodum", sans-serif';
       c.fillText((info.who || "그 사람").slice(0, 8), x0, 186);
       c.fillStyle = info.color;
-      c.font = '700 136px "Gaegu", sans-serif';
+      c.font = '400 136px "Gowun Dodum", sans-serif';
       c.fillText(w.dday, x0 - 4, 320);
       c.fillStyle = soft;
       c.font = '500 40px "IBM Plex Sans KR", sans-serif';
@@ -502,7 +502,7 @@ export class Shrine {
       c.fillStyle = INK;
       c.textAlign = "center";
       c.textBaseline = "middle";
-      c.font = '700 60px "Gaegu", sans-serif';
+      c.font = '400 60px "Gowun Dodum", sans-serif';
       c.fillText((info.who || "그 사람").slice(0, 4), 128, 128);
     }));
     const PW = 0.84, PH = 0.84;

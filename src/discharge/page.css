@@ -6,7 +6,7 @@ body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260p
 :root[data-theme="night"] body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260px,var(--paper) 520px)}
 .page-wrap{max-width:600px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(48px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
 .page-nav{display:flex;justify-content:space-between;align-items:center}
-.page-nav .home{font-family:var(--display);font-weight:700;font-size:1.15rem;letter-spacing:-.05em;color:var(--ink);text-decoration:none}
+.page-nav .home{font-family:var(--display);font-weight:400;font-size:1.15rem;letter-spacing:-.02em;color:var(--ink);text-decoration:none}
 .page-head{position:static;margin:34px 0 22px;padding:0;background:none;pointer-events:auto}
 .page-head h1{font-size:2rem}
 .page-head .lede{margin:8px 0 0;color:var(--muted);line-height:1.6}
@@ -20,7 +20,7 @@ body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260p
 .result{margin-top:22px;display:flex;flex-direction:column;gap:6px}
 .result .label{margin:14px 0 0;font-size:.8rem;color:var(--muted)}
 .result .date{margin:0;font-size:1.25rem;font-weight:500;font-variant-numeric:tabular-nums}
-.result .dday{margin:0;font-family:var(--display);font-weight:700;font-size:2.4rem;letter-spacing:-.05em;line-height:1.1}
+.result .dday{margin:0;font-family:var(--display);font-weight:400;font-size:2.4rem;letter-spacing:-.02em;line-height:1.1}
 .result .hint{margin:4px 0 0;font-size:.82rem;color:var(--muted)}
 .bar-line{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:8px 0 4px}
 .bar-line i{display:block;height:100%;background:var(--lamp)}
@@ -34,7 +34,7 @@ body.page{background:linear-gradient(180deg,var(--sky-top) 0,var(--sky-mid) 260p
 .marks li.past{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--line)}
 .result .btn{align-self:flex-start;margin-top:16px;text-decoration:none;display:inline-block}
 .guide{margin-top:40px;line-height:1.75;color:var(--ink)}
-.guide h2{font-family:var(--display);font-size:1.4rem;letter-spacing:-.04em;margin:32px 0 10px}
+.guide h2{font-family:var(--display);font-size:1.4rem;letter-spacing:-.01em;margin:32px 0 10px}
 .guide h3{font-size:1rem;margin:18px 0 4px}
 .guide p{margin:0 0 10px;color:var(--muted)}
 .guide b{color:var(--ink);font-weight:500}
