@@ -4,6 +4,7 @@
 export const BRANCHES = [
   { id: "army", name: "육군", months: 18 },
   { id: "marine", name: "해병대", months: 18 },
+  { id: "katusa", name: "카투사", months: 18 },
   { id: "navy", name: "해군", months: 20 },
   { id: "airforce", name: "공군", months: 21 },
   { id: "social", name: "사회복무요원", months: 21 },

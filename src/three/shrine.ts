@@ -26,7 +26,11 @@ export type ShrineInfo = {
    * 기다림 등불이면 추모의 등판 대신 항구 터미널의 "도착 안내판"이 서요.
    * dday: "D-145" 같은 말, arrive: "4월 2일 도착", pct: 기다린 만큼(0~1, 바다의 작은 배 자리), arrived: 돌아왔는지
    */
-  wait?: { dday: string; arrive: string; pct: number; arrived: boolean; mode: "ship" | "plane" };
+  wait?: {
+    dday: string; arrive: string; pct: number; arrived: boolean; mode: "ship" | "plane";
+    /** 군대: 군 종류의 색과 돌아오는 탈것 (안내판 머리띠, 작은 깃발, 버스·배·비행기) */
+    branch?: { name: string; color: string; accent: string; vehicle: "bus" | "ship" | "jet" };
+  };
 };
 
 /** 모서리가 둥근 판: 가로 w, 세로 h 는 둥글게, 두께 d 는 앞뒤로 (액자, 이름판 받침) */
@@ -320,6 +324,21 @@ export class Shrine {
       m.rotation.z = rz;
       g.add(m);
     });
+    // 군대면 오른쪽 기둥 위에 그 군의 색 작은 깃발
+    if (w.branch) {
+      const tip = CY + BH / 2 + 0.15;
+      const flagShape = new THREE.Shape();
+      flagShape.moveTo(0, 0);
+      flagShape.lineTo(0.5, -0.13);
+      flagShape.lineTo(0, -0.27);
+      flagShape.closePath();
+      const flag = new THREE.Mesh(keep(new THREE.ShapeGeometry(flagShape)), keep(new THREE.MeshStandardMaterial({ color: w.branch.color, roughness: 0.8, side: THREE.DoubleSide })));
+      flag.position.set(1.28, tip + 0.36, -0.06);
+      flag.rotation.y = -0.25;
+      const stick = new THREE.Mesh(keep(new THREE.CylinderGeometry(0.02, 0.02, 0.42, 6).translate(0, 0.21, 0)), wood);
+      stick.position.set(1.27, tip, -0.06);
+      g.add(flag, stick);
+    }
     // 테두리
     const frame = new THREE.Mesh(keep(roundedPanel(BW + 0.14, BH + 0.14, 0.1, 0.12)), wood);
     frame.position.set(0, CY, -0.01);
@@ -334,17 +353,18 @@ export class Shrine {
     const tex = keep(canvasTex(1024, 688, (c) => {
       c.fillStyle = hex(p.tower);
       c.fillRect(0, 0, 1024, 688);
-      // 머리띠: 입항 예정 / 도착했어요
-      c.fillStyle = light ? "rgba(36,48,74,.08)" : "rgba(255,247,234,.08)";
+      // 머리띠: 입항 예정 / 도착 예정 / 전역 예정 (군대면 그 군의 색으로)
+      const br = w.branch;
+      c.fillStyle = br ? br.color : light ? "rgba(36,48,74,.08)" : "rgba(255,247,234,.08)";
       c.fillRect(0, 0, 1024, 104);
-      c.fillStyle = ink;
+      c.fillStyle = br ? br.accent : ink;
       c.textBaseline = "middle";
       c.font = '700 60px "Gaegu", sans-serif';
-      c.fillText(w.arrived ? "도착했어요" : w.mode === "plane" ? "도착 예정" : "입항 예정", 40, 56);
+      c.fillText(br ? (w.arrived ? "전역했어요" : "전역 예정") : w.arrived ? "도착했어요" : w.mode === "plane" ? "도착 예정" : "입항 예정", 40, 56);
       c.textAlign = "right";
       c.font = '700 44px "Gaegu", sans-serif';
-      c.fillStyle = soft;
-      c.fillText(info.no, 984, 56);
+      c.fillStyle = br ? br.accent : soft;
+      c.fillText(br ? `${br.name} · ${info.no}` : info.no, 984, 56);
       // 오른쪽: 이름, D-day, 도착 날짜, 한 줄
       c.textAlign = "left";
       const x0 = 420;
@@ -364,7 +384,36 @@ export class Shrine {
         c.fillText(first ?? "", x0, 492);
       }
       const t = Math.max(0, Math.min(1, w.arrived ? 1 : w.pct));
-      if (w.mode === "plane") {
+      const vehicle = w.branch?.vehicle ?? (w.mode === "plane" ? "jet" : "ship");
+      if (vehicle === "bus") {
+        // 길: 왼쪽에서 오른쪽 집까지, 기다린 만큼 다가온 휴가 버스
+        const roadY = 640;
+        c.fillStyle = soft;
+        c.fillRect(30, roadY + 18, 870, 4);
+        for (let x = 40; x < 880; x += 60) c.fillRect(x, roadY + 34, 30, 3);
+        // 집: 지붕과 문, 창문은 불을 켜지 않아요
+        c.fillStyle = ink;
+        c.fillRect(916, roadY - 50, 70, 70);
+        c.beginPath();
+        c.moveTo(904, roadY - 48); c.lineTo(951, roadY - 92); c.lineTo(998, roadY - 48); c.closePath();
+        c.fill();
+        c.fillStyle = hex(p.tower);
+        c.fillRect(942, roadY - 16, 18, 36);
+        // 버스
+        const bx = 70 + t * 760;
+        c.fillStyle = w.branch?.color ?? info.color;
+        c.beginPath();
+        c.roundRect(bx - 58, roadY - 42, 116, 56, 12);
+        c.fill();
+        c.fillStyle = w.branch?.accent ?? hex(p.beacon);
+        for (let k = 0; k < 4; k++) c.fillRect(bx - 48 + k * 26, roadY - 34, 18, 16);
+        c.fillStyle = ink;
+        for (const wx of [bx - 32, bx + 32]) {
+          c.beginPath();
+          c.arc(wx, roadY + 16, 10, 0, Math.PI * 2);
+          c.fill();
+        }
+      } else if (vehicle === "jet") {
         // 하늘길: 왼쪽 위에서 오른쪽 활주로로 내려오는 점선, 기다린 만큼 다가온 비행기
         const ax = 50, ay = 520, bx2 = 880, by = 640;
         const arc = (u: number) => ({ x: ax + (bx2 - ax) * u, y: ay + (by - ay) * u * u - Math.sin(Math.PI * u) * 40 });
@@ -391,7 +440,7 @@ export class Shrine {
         c.save();
         c.translate(at.x, t >= 1 ? 632 : at.y);
         c.rotate(ang);
-        c.fillStyle = info.color;
+        c.fillStyle = w.branch?.color ?? info.color;
         c.beginPath();
         c.ellipse(0, 0, 50, 10, 0, 0, Math.PI * 2); // 몸통
         c.fill();
@@ -424,7 +473,7 @@ export class Shrine {
         c.fill();
         // 작은 배 (도착하면 항구 바로 앞)
         const bx = 60 + t * 790;
-        c.fillStyle = info.color;
+        c.fillStyle = w.branch?.color ?? info.color;
         c.beginPath();
         c.moveTo(bx - 46, seaY - 18); c.lineTo(bx + 46, seaY - 18); c.lineTo(bx + 30, seaY + 6); c.lineTo(bx - 30, seaY + 6); c.closePath();
         c.fill();

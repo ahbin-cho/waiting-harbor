@@ -185,7 +185,7 @@ export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, 
         </nav>
       )}
       <p className="where">
-        {lantern.place === "무지개" ? `무지개마을에서 지내요 · ${lantern.species ?? "반려동물"}` : miss ? `추모관 하늘에 띄운 풍등 · ${lantern.kind}` : `${placeOf(lantern.place)}에 걸린 등불 · ${lantern.kind}`}
+        {lantern.place === "무지개" ? `무지개마을에서 지내요 · ${lantern.species ?? "반려동물"}` : miss ? `추모관 하늘에 띄운 풍등 · ${lantern.kind}` : `${placeOf(lantern.place)}에 걸린 등불 · ${lantern.kind}${lantern.kind === "군대" && lantern.branch ? ` · ${lantern.branch}` : ""}`}
       </p>
       <h2 id="sheet-title">{titleOf(lantern)}</h2>
       {isMine && <p className="here-now">당신의 등불이에요.</p>}

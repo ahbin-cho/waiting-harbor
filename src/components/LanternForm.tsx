@@ -4,8 +4,9 @@ import { KINDS, MISS_KINDS, parseDate, pick, today, ymd } from "../lib/waiting";
 import { GROUND_PLACES, PLACE_INFO, placeOf } from "../lib/places";
 import { COLORS, COLOR_NAMES, SHAPES, colorOf, shapeOf } from "../lib/looks";
 import { SPECIES, SPECIES_SAY, speciesOf, type Species } from "../lib/pets";
+import { ARMY, branchOf, dischargeOf, type BranchName } from "../lib/branches";
 
-type Values = Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode" | "species">;
+type Values = Pick<Lantern, "who" | "kind" | "start_date" | "end_date" | "line" | "place" | "color" | "shape" | "mode" | "species" | "branch">;
 type Mode = "wait" | "miss";
 
 // 기다림 종류는 DB 값 그대로 두고, 묻는 말만 사람 말투로
@@ -22,8 +23,10 @@ const KIND_SAY: Record<string, string> = {
 
 // 그리움 등불은 하늘에 띄우는 풍등이라 장소와 모양을 묻지 않아요.
 // 반려동물이면 어떤 아이였는지 묻고, 그 아이는 무지개마을에서 지내요.
-const STEPS: Record<Mode | "pet", readonly string[]> = {
+// 군대를 기다리면 어느 군인지 묻고, 입대일로 전역일을 채워 줘요.
+const STEPS: Record<Mode | "pet" | "army", readonly string[]> = {
   wait: ["mode", "who", "kind", "dates", "look", "place", "line"],
+  army: ["mode", "who", "kind", "branch", "dates", "look", "place", "line"],
   miss: ["mode", "who", "kind", "dates", "look", "line"],
   pet: ["mode", "who", "kind", "species", "dates", "look", "line"],
 };
@@ -45,7 +48,11 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
   const [kind, setKind] = useState<string>(initial?.kind ?? preset?.kind ?? KINDS[0]);
   const [species, setSpecies] = useState<Species>(speciesOf(initial?.species ?? "강아지"));
   const pet = mode === "miss" && kind === "반려동물";
-  const steps = STEPS[pet ? "pet" : mode];
+  const army = mode === "wait" && kind === "군대";
+  const [branch, setBranch] = useState<BranchName>((branchOf(initial?.branch)?.name ?? "육군") as BranchName);
+  /** 전역일을 직접 고쳤으면 더는 자동으로 바꾸지 않아요 */
+  const [endTouched, setEndTouched] = useState(!!initial || !!preset?.end_date);
+  const steps = STEPS[pet ? "pet" : army ? "army" : mode];
   const [step, setStep] = useState<number>(initial ? steps.length - 1 : preset ? 1 : 0);
   const [who, setWho] = useState(initial?.who ?? "");
   const [start, setStart] = useState(initial?.start_date ?? preset?.start_date ?? (preset?.mode === "miss" ? "" : ymd(today())));
@@ -63,6 +70,12 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
   const at = steps[Math.min(step, steps.length - 1)];
   const last = step >= steps.length - 1;
   const miss = mode === "miss";
+
+  // 군대: 입대일이나 군을 바꾸면 전역일을 다시 계산해요 (직접 고친 뒤로는 그대로)
+  useEffect(() => {
+    if (army && !endTouched && start) setEnd(dischargeOf(start, branch));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [army, branch, start]);
 
   useEffect(() => {
     setErr("");
@@ -118,6 +131,7 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
         who: who.trim(), kind, start_date: start, end_date: end, line: line.trim(), mode,
         place: pet ? "무지개" : miss ? "하늘" : place === "하늘" || place === "무지개" ? "항구" : place,
         species: pet ? species : null,
+        branch: army ? branch : null,
         shape: miss ? "풍등" : shape === "풍등" ? "둥근" : shape,
         color,
       });
@@ -148,7 +162,10 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
     kind: miss ? [`${pick(name, "은", "는")} 어떤 사람이었어요?`, ""] : [`${pick(name, "은", "는")} 지금 어디에 있어요?`, ""],
     dates: miss
       ? [`${pick(name, "과", "와")} 처음 만난 날,\n그리고 떠난 날을 알려 주세요.`, "그 두 날이 다가오면 등불이 밝아져요. 정확하지 않아도 괜찮아요."]
-      : ["언제부터 기다렸어요?\n그리고 언제 돌아와요?", "그날이 가까워질수록 등불이 밝아져요."],
+      : army
+        ? [`${pick(name, "이", "가")} 입대한 날을 알려 주세요.`, `${branch} ${branchOf(branch)?.months}개월로 전역일을 계산했어요. 다르면 고쳐 주세요.`]
+        : ["언제부터 기다렸어요?\n그리고 언제 돌아와요?", "그날이 가까워질수록 등불이 밝아져요."],
+    branch: [`${pick(name, "은", "는")} 어느 군에 있어요?`, "복무 기간으로 전역일을 계산해 드려요. 도착 안내판도 그 군에 맞게 꾸며져요."],
     species: ["어떤 아이였어요?", `${pick(name, "은", "는")} 무지개다리 건너 무지개마을에서 지내요. 아이마다 지내는 모습이 달라요.`],
     look: pet ? [`${name}의 빛깔을 골라요.`, "무지개마을에서 이 빛깔로 지내요."] : miss ? [`${name}에게 띄울 풍등의 빛을 골라요.`, ""] : [`${name}에게 걸어 둘 등불을 골라요.`, ""],
     place: ["어디에 걸어 둘까요?", ""],
@@ -201,6 +218,24 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
           </div>
         )}
 
+        {at === "branch" && (
+          <div className="choices">
+            {ARMY.map((b) => (
+              <button
+                key={b.name}
+                type="button"
+                className="choice branch-choice"
+                style={{ ["--b" as string]: b.color }}
+                aria-pressed={b.name === branch}
+                onClick={() => (setBranch(b.name), setEndTouched(false))}
+              >
+                <b>{b.name}</b>
+                <span>{b.months}개월 · {b.say} 돌아와요</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {at === "species" && (
           <div className="choices">
             {SPECIES.map((s) => (
@@ -215,12 +250,12 @@ export function LanternForm({ initial, preset, onSave, onRemove, onClose }: {
         {at === "dates" && (
           <div className="two">
             <div>
-              <label htmlFor="sd">{miss ? "처음 만난 날" : "기다리기 시작한 날"}</label>
+              <label htmlFor="sd">{miss ? "처음 만난 날" : army ? "입대한 날" : "기다리기 시작한 날"}</label>
               <input id="sd" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
             </div>
             <div>
-              <label htmlFor="ed">{miss ? "떠난 날" : "돌아오는 날"}</label>
-              <input id="ed" type="date" value={end} max={miss ? ymd(today()) : undefined} onChange={(e) => setEnd(e.target.value)} />
+              <label htmlFor="ed">{miss ? "떠난 날" : army ? "전역일" : "돌아오는 날"}</label>
+              <input id="ed" type="date" value={end} max={miss ? ymd(today()) : undefined} onChange={(e) => (setEnd(e.target.value), setEndTouched(true))} />
             </div>
           </div>
         )}
