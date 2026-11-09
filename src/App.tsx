@@ -457,6 +457,11 @@ export default function App() {
               onLoad={() => h.loadTalks(l.id)}
               onSend={(text, reply) => h.sendTalk(l.id, text, reply)}
               onClear={() => h.clearTalks(l.id)}
+              myOffer={h.myOffers[l.id]}
+              onOffer={async (k) => {
+                await h.leaveOffering(l.id, k);
+                pulse(l.id);
+              }}
               onBack={() => setView({ type: "detail", id: l.id })}
               onClose={close}
               demo={demo}
