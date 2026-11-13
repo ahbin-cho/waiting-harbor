@@ -216,6 +216,74 @@ create policy "talks insert" on public.talks for insert with check (
 drop policy if exists "talks delete" on public.talks;
 create policy "talks delete" on public.talks for delete using (public.owns_lantern(lantern_id));
 
+-- 병에 담은 편지: 기다리는 사람이 돌아올 사람에게 쓰는 편지. 유리병에 담겨 항구로 떠 오다가, 돌아오는 날 닿아서 열려요.
+-- 쓴 사람(등불 주인)만 읽고 쓰고 지워요. 하루 3통, 등불마다 100통까지. 기다림 등불에만.
+create table if not exists public.letters (
+  id         bigint generated always as identity primary key,
+  lantern_id uuid not null references public.lanterns(id) on delete cascade,
+  body       text not null check (char_length(btrim(body)) between 1 and 1000),
+  created_at timestamptz not null default now()
+);
+create index if not exists letters_lantern_idx on public.letters (lantern_id, created_at);
+alter table public.letters enable row level security;
+create or replace function public.my_letters(lid uuid, since interval) returns bigint
+  language sql stable security definer set search_path = public as $$
+  select count(*) from public.letters t
+  where t.lantern_id = lid and t.created_at > now() - since
+    and exists (select 1 from public.lanterns l where l.id = lid and l.user_id = auth.uid())
+$$;
+drop policy if exists "letters read" on public.letters;
+create policy "letters read"   on public.letters for select using (public.owns_lantern(lantern_id));
+drop policy if exists "letters insert" on public.letters;
+create policy "letters insert" on public.letters for insert with check (
+  public.owns_lantern(lantern_id)
+  and exists (select 1 from public.lanterns l where l.id = lantern_id and coalesce(l.mode, 'wait') <> 'miss')
+  and public.my_letters(lantern_id, interval '1 day') < 3
+  and public.my_letters(lantern_id, interval '100 years') < 100
+);
+drop policy if exists "letters delete" on public.letters;
+create policy "letters delete" on public.letters for delete using (public.owns_lantern(lantern_id));
+
+-- 병을 받을 사람에게 보내는 링크의 열쇠. 등불 주인만 만들고 볼 수 있어요 (등불 표는 누구나 읽으니 따로 둬요).
+create table if not exists public.letter_keys (
+  lantern_id uuid primary key references public.lanterns(id) on delete cascade,
+  key        uuid not null default gen_random_uuid()
+);
+alter table public.letter_keys enable row level security;
+drop policy if exists "letter_keys read" on public.letter_keys;
+create policy "letter_keys read"   on public.letter_keys for select using (public.owns_lantern(lantern_id));
+drop policy if exists "letter_keys insert" on public.letter_keys;
+create policy "letter_keys insert" on public.letter_keys for insert with check (public.owns_lantern(lantern_id));
+
+-- 바다에 떠 있는 병의 수 (내용 없이 수만, 누구나)
+create or replace function public.bottle_counts() returns table (lantern_id uuid, n bigint)
+  language sql stable security definer set search_path = public as $$
+  select t.lantern_id, count(*) from public.letters t group by t.lantern_id
+$$;
+grant execute on function public.bottle_counts() to anon, authenticated;
+
+-- 열쇠를 가진 사람이 병을 열어 봐요. 돌아오는 날(한국 날짜)이 되기 전에는 수만 알려 주고, 그날부터 편지를 돌려줘요.
+create or replace function public.open_bottles(lid uuid, k uuid) returns jsonb
+  language plpgsql stable security definer set search_path = public as $$
+declare
+  l public.lanterns;
+  arrived boolean;
+begin
+  if not exists (select 1 from public.letter_keys where lantern_id = lid and key = k) then
+    return null;
+  end if;
+  select * into l from public.lanterns where id = lid;
+  arrived := l.end_date <= (now() at time zone 'Asia/Seoul')::date;
+  return jsonb_build_object(
+    'n', (select count(*) from public.letters where lantern_id = lid),
+    'arrived', arrived,
+    'letters', case when arrived then coalesce(
+      (select jsonb_agg(jsonb_build_object('body', t.body, 'created_at', t.created_at) order by t.created_at)
+       from public.letters t where t.lantern_id = lid), '[]'::jsonb) else '[]'::jsonb end
+  );
+end $$;
+grant execute on function public.open_bottles(uuid, uuid) to anon, authenticated;
+
 -- 등불 사진: 등불마다 한 장. 다른 사람에게 보일지는 등불 주인이 정해요 (photo_public).
 -- 파일은 Storage 'photos' 버킷의 {user_id}/{등불 id}.jpg 에 있어요.
 alter table public.lanterns add column if not exists photo_path text;
@@ -269,7 +337,7 @@ create table if not exists public.events (
   user_id    uuid default auth.uid() references auth.users(id) on delete set null,
   name       text not null check (name in (
     'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
-    'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left', 'talk_sent'
+    'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left', 'talk_sent', 'letter_sent', 'bottle_opened'
   )),
   props      jsonb not null default '{}' check (octet_length(props::text) <= 400),
   via        text not null default '' check (char_length(via) <= 60),   -- 어디서 왔는지 (share, rainbow, discharge, 검색 사이트 이름, utm_source)
@@ -280,7 +348,7 @@ create index if not exists events_name_time_idx on public.events (name, created_
 alter table public.events drop constraint if exists events_name_check;
 alter table public.events add constraint events_name_check check (name in (
   'visit', 'story_end', 'form_open', 'lantern_created', 'note_written', 'warmth_sent',
-  'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left', 'talk_sent'
+  'share_click', 'clip_made', 'photo_added', 'feedback_sent', 'message_left', 'offering_left', 'talk_sent', 'letter_sent', 'bottle_opened'
 ));
 create index if not exists events_user_idx on public.events (user_id, created_at);
 alter table public.events enable row level security;

@@ -4,7 +4,7 @@ import { configured, supabase } from "./supabase";
 
 export type EventName =
   | "visit" | "story_end" | "form_open" | "lantern_created" | "note_written" | "warmth_sent"
-  | "share_click" | "clip_made" | "photo_added" | "feedback_sent" | "message_left" | "offering_left" | "talk_sent";
+  | "share_click" | "clip_made" | "photo_added" | "feedback_sent" | "message_left" | "offering_left" | "talk_sent" | "letter_sent" | "bottle_opened";
 
 let ready = false;
 const queue: { name: EventName; props: Record<string, string | number | boolean> }[] = [];

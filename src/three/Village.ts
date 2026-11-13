@@ -9,7 +9,7 @@ import { makePet, type PetRig } from "./pets";
 import { Shrine, type ShrineInfo } from "./shrine";
 import { makeOffering, spread } from "./offerings";
 import type { OfferingKind } from "../lib/offerings";
-import { badgeText, daysLeft, glowOf, isMiss } from "../lib/waiting";
+import { badgeText, daysLeft, glowOf, isMiss, progressOf } from "../lib/waiting";
 import type { Shot } from "../lib/story";
 import { PALETTES, RAINBOW_BANDS, type Palette, type ThemeName } from "../lib/theme";
 
@@ -201,6 +201,11 @@ export class Village {
   private props: { o: THREE.Object3D; c: THREE.Vector3; r: number }[] = [];
   /** 열린 등불과 작은 자리를 가리는 다른 등불 (열려 있는 동안 숨겨요) */
   private lampClear = new Set<string>();
+  /** 병에 담은 편지: 등불마다 몇 병이 바다를 건너오는지, 그리고 떠 있는 병들 */
+  private bottleCounts = new Map<string, number>();
+  private bottles = new THREE.Group();
+  private bottleKey = "";
+  private floats: { o: THREE.Object3D; ph: number; yaw: number }[] = [];
   /** 등불을 열어 둔 동안 화면에서 그 등불이나 곁의 자리와 겹치는 다른 등불·아이 (잠시 숨겨요) */
   private crowd = new Set<string>();
   private sv = new THREE.Vector3();
@@ -970,6 +975,7 @@ export class Village {
       this.upsert(l, place, i);
     }
     for (const [id, it] of this.items) if (!seen.has(id)) this.remove(it);
+    this.placeBottles();
   }
 
   private upsert(l: Lantern, place: Place, i: number) {
@@ -1227,6 +1233,76 @@ export class Village {
   setOfferings(counts: Map<string, Partial<Record<OfferingKind, number>>>) {
     this.offerCounts = counts;
     for (const it of this.items.values()) this.placePile(it);
+  }
+
+  /** 병에 담은 편지의 수. 병은 돌아오는 날이 가까울수록 부두 끝으로 다가와요. */
+  setBottles(counts: Map<string, number>) {
+    this.bottleCounts = counts;
+    this.placeBottles();
+  }
+
+  /** 그 등불의 병이 떠 있는 자리: 부두 끝에서 바다 쪽으로, 돌아오는 날이 가까울수록 부두에 가까이 */
+  private bottleSpot(it: Item) {
+    let h = 2166136261;
+    for (const c of it.id) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+    const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ (h >>> 13)) >>> 0) / 4294967296;
+    const end = pierAt(1);
+    const f = new THREE.Vector3(Math.sin(end.yaw), 0, Math.cos(end.yaw)), r = new THREE.Vector3(Math.cos(end.yaw), 0, -Math.sin(end.yaw));
+    const p = progressOf(it.data), arrived = (daysLeft(it.data) ?? 1) <= 0;
+    const dist = arrived ? 3.5 + rnd() * 2.5 : 7 + (1 - p) * 46;
+    const side = (rnd() - 0.5) * (arrived ? 9 : 10 + (1 - p) * 26);
+    return { base: new THREE.Vector3(end.x, 0.1, end.z).addScaledVector(f, dist).addScaledVector(r, side), f, r, rnd };
+  }
+
+  /** 병에 담은 편지를 볼 때: 바다 쪽에서 그 병을 가까이, 뒤로 부두와 등불이 보이게 */
+  focusBottle(id: string) {
+    const it = this.items.get(id);
+    if (!it) return;
+    const { base, f, r } = this.bottleSpot(it);
+    const k = this.narrow ? 1.25 : 1;
+    this.flyTo(base.clone().addScaledVector(f, 8.5 * k).addScaledVector(r, 3 * k).setY(3.6 * k), base.clone().setY(0.6), 1400);
+  }
+
+  private placeBottles() {
+    const list = [...this.items.values()]
+      .filter((it) => !isMiss(it.data) && (this.bottleCounts.get(it.id) ?? 0) > 0)
+      .slice(0, 40)
+      .map((it) => ({ id: it.id, n: this.bottleCounts.get(it.id)!, p: progressOf(it.data), left: daysLeft(it.data) ?? 1 }));
+    const key = list.map((b) => `${b.id}:${Math.min(b.n, 15)}:${b.p.toFixed(3)}`).join();
+    if (key === this.bottleKey) return;
+    this.bottleKey = key;
+    if (!this.bottles.parent) this.scene.add(this.bottles);
+    this.bottles.clear();
+    this.floats = [];
+    // 바닷물에 닳은 유리병. 빛은 내지 않아요 (빛은 등불만).
+    const glass = new THREE.MeshStandardMaterial({ color: 0xbfe3d2, roughness: 0.18, metalness: 0, transparent: true, opacity: 0.62 });
+    const cork = new THREE.MeshStandardMaterial({ color: 0xb98a5a, roughness: 0.9 });
+    const paper = new THREE.MeshStandardMaterial({ color: 0xf6ecd6, roughness: 0.95 });
+    for (const b of list) {
+      const { base, f, r, rnd } = this.bottleSpot(this.items.get(b.id)!);
+      // 편지가 쌓일수록 병이 하나씩 더 (1통, 5통, 15통부터)
+      const k = b.n >= 15 ? 3 : b.n >= 5 ? 2 : 1;
+      for (let i = 0; i < k; i++) {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.52, 10), glass);
+        const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.17, 0.16, 10).translate(0, 0.34, 0), glass);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.16, 8).translate(0, 0.5, 0), glass);
+        const stop = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.055, 0.1, 8).translate(0, 0.62, 0), cork);
+        const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.36, 8), paper);
+        g.add(roll, body, shoulder, neck, stop);
+        // 비스듬히 누워 물에 반쯤 잠겨 떠 있어요
+        const tilt = new THREE.Group();
+        g.rotation.z = 1.05 + rnd() * 0.3;
+        tilt.add(g);
+        tilt.scale.setScalar(1.7);
+        const pos = base.clone().addScaledVector(f, i * 1.3 + rnd() * 0.8).addScaledVector(r, (i - (k - 1) / 2) * 1.6);
+        tilt.position.copy(pos);
+        const yaw = rnd() * Math.PI * 2;
+        tilt.rotation.y = yaw;
+        this.bottles.add(tilt);
+        this.floats.push({ o: tilt, ph: rnd() * 6.28, yaw });
+      }
+    }
   }
 
   private placePile(it: Item) {
@@ -1677,6 +1753,15 @@ export class Village {
       }
     }
     this.sailFerry(calm ? null : t);
+    // 병에 담은 편지: 물결 따라 천천히 까딱이고 돌아요 (추모관에선 숨겨요)
+    this.bottles.visible = this.world !== "miss";
+    if (this.bottles.visible && !calm) {
+      for (const b of this.floats) {
+        b.o.position.y = 0.1 + Math.sin(t * 1.1 + b.ph) * 0.07;
+        b.o.rotation.y = b.yaw + Math.sin(t * 0.23 + b.ph) * 0.5;
+        b.o.rotation.x = Math.sin(t * 0.8 + b.ph * 1.7) * 0.12;
+      }
+    }
     for (const pl of this.planes) {
       pl.o.visible = this.world !== "miss";
       if (!pl.o.visible) continue;

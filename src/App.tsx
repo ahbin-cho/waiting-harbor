@@ -15,6 +15,7 @@ import { Story } from "./components/Story";
 import { Feedback } from "./components/Feedback";
 import { ShareSheet } from "./components/ShareSheet";
 import { TalkSheet } from "./components/TalkSheet";
+import { BottleSheet } from "./components/BottleSheet";
 import { ArrivalBoard } from "./components/ArrivalBoard";
 import { STORY, markStorySeen, storySeen, type Shot } from "./lib/story";
 import { KINDS, pick } from "./lib/waiting";
@@ -25,7 +26,7 @@ import { canRecord } from "./lib/clip";
 import { track } from "./lib/track";
 
 // form 에 id 가 있으면 그 등불을 고쳐요, 없으면 새 등불을 걸어요. mine 은 내 등불 목록.
-type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string } | { type: "talk"; id: string } | { type: "tools" } | { type: "arrivals" };
+type View = { type: "none" } | { type: "detail"; id: string } | { type: "form"; id?: string } | { type: "mine" } | { type: "feedback" } | { type: "clip"; id: string } | { type: "share"; id: string } | { type: "talk"; id: string } | { type: "bottle"; id: string; key?: string } | { type: "tools" } | { type: "arrivals" };
 
 export default function App() {
   const [view, setView] = useState<View>({ type: "none" });
@@ -38,6 +39,10 @@ export default function App() {
   const [deepLink, setDeepLink] = useState(
     () => new URLSearchParams(location.search).get("l") ?? location.pathname.match(/^\/l\/([0-9a-f-]{36})\/?$/i)?.[1] ?? null,
   );
+  const [bottleKey] = useState(() => {
+    const k = new URLSearchParams(location.search).get("k");
+    return k && /^[0-9a-f-]{36}$/i.test(k) ? k : demo && k === "demo" ? k : null;
+  });
   // 전역일 계산기에서 "이 날을 기다리는 등불 걸기"로 오면 날짜가 채워진 채로 등불 걸기가 열려요
   const [preset, setPreset] = useState(() => {
     const q = new URLSearchParams(location.search);
@@ -133,7 +138,8 @@ export default function App() {
     if (!deepLink || h.status !== "ready") return;
     const go = (id: string) => {
       setInvitedId(id);
-      setView({ type: "detail", id });
+      // 병에 담은 편지 링크(?k=열쇠)로 왔으면 병부터 보여 줘요
+      setView(bottleKey ? { type: "bottle", id, key: bottleKey } : { type: "detail", id });
       history.replaceState(null, "", "/");
       setDeepLink(null);
     };
@@ -165,7 +171,7 @@ export default function App() {
   const [invitedId, setInvitedId] = useState<string | null>(null);
   useEffect(() => setKept(null), [focus, story]);
   // 상세·이야기하기·보내기 중에는 그 등불에 머물러요. 닫으면 마지막에 본 등불 곁에 그대로 남아요.
-  const viewId = view.type === "detail" || view.type === "talk" || view.type === "share" ? view.id : null;
+  const viewId = view.type === "detail" || view.type === "talk" || view.type === "share" || view.type === "bottle" ? view.id : null;
   useEffect(() => {
     if (viewId) setKept(viewId);
   }, [viewId]);
@@ -289,9 +295,9 @@ export default function App() {
       : "아직 걸린 등불이 없어요. 첫 등불을 걸어 주세요.";
 
   return (
-    <div className={`scene${view.type === "detail" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
+    <div className={`scene${view.type === "detail" || view.type === "bottle" || story != null || recording ? " focusing" : ""}${recording ? " recording" : ""}`}>
       <Suspense fallback={null}>
-      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={focusId} shrine={shrine} offerings={h.offerings.counts} cover={view.type === "detail" && !recording ? 0.52 : 0} onPick={(id) => !recording && setView({ type: "detail", id })} theme={sceneTheme} world={story != null ? "all" : world} onReady={() => setSceneReady(true)}
+      <Village3D lanterns={h.lanterns} me={h.me} online={h.online} pulseId={pulseId} focus={focus} shot={shot} selectedId={view.type === "bottle" ? null : focusId} shrine={view.type === "bottle" ? null : shrine} offerings={h.offerings.counts} bottles={h.bottles} bottleFocus={view.type === "bottle" ? view.id : null} cover={(view.type === "detail" || view.type === "bottle") && !recording ? 0.52 : 0} onPick={(id) => !recording && setView({ type: "detail", id })} theme={sceneTheme} world={story != null ? "all" : world} onReady={() => setSceneReady(true)}
         record={record}
         onClip={(r) => {
           if ("blob" in r) {
@@ -458,6 +464,8 @@ export default function App() {
             me={h.me}
             daily={picked.user_id === h.me ? wordFor(picked) : undefined}
             invited={invitedId === picked.id}
+            bottles={h.bottles.get(picked.id)}
+            onBottle={picked.user_id === h.me && picked.mode !== "miss" ? () => setView({ type: "bottle", id: picked.id }) : undefined}
             onHang={mine.length === 0 ? () => setView({ type: "form" }) : undefined}
             offerings={h.offerings.counts.get(picked.id)}
             myOffer={h.myOffers[picked.id]}
@@ -524,6 +532,26 @@ export default function App() {
             )}
           </>
         )}
+        {view.type === "bottle" && (() => {
+          const l = h.lanterns.find((x) => x.id === view.id);
+          if (!l) return null;
+          return (
+            <BottleSheet
+              lantern={l}
+              count={h.bottles.get(l.id) ?? 0}
+              letters={h.letters[l.id]}
+              onLoad={() => h.loadLetters(l.id)}
+              onAdd={(body) => h.addLetter(l.id, body)}
+              onRemove={(id) => h.removeLetter(l.id, id)}
+              onKey={() => h.letterKey(l.id)}
+              openKey={view.key}
+              onOpen={(k) => h.openBottles(l.id, k)}
+              onBack={() => setView({ type: "detail", id: l.id })}
+              onSee={() => setView({ type: "detail", id: l.id })}
+              demo={demo}
+            />
+          );
+        })()}
         {view.type === "talk" && (() => {
           const l = h.lanterns.find((x) => x.id === view.id);
           return l ? (
