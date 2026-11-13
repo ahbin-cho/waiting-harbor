@@ -23,6 +23,7 @@
 - `discharge/`, `src/discharge/`: 전역일 계산기 (검색으로 들어오는 글 페이지, 3D 없이 가볍게)
 - `api/feedback.ts`, `src/components/Feedback.tsx`: 의견 남기기 (Supabase `feedback` 저장 + Resend 메일, 받는 주소는 환경 변수 `FEEDBACK_TO`에만)
 - `rainbow/`, `src/rainbow/`: 무지개마을 소개 글 페이지 (반려동물 추모 검색 유입, `/?for=pet` 으로 등불 걸기 연결)
+- `letter/`, `gomsin/`: 검색으로 들어오는 글 페이지 (돌아오는 날 열리는 편지 안내, 곰신 용어와 군별 복무기간). 글 페이지를 더하면 `vite.config.ts`(input, sitemap), `vercel.json`(rewrite), `index.html` 의 더 보기, 앱의 "계산기와 안내" 목록에 함께 넣는다. 페이지마다 FAQPage 구조화 데이터를 본문과 같은 내용으로 둔다.
 - `src/lib/talkTree.ts`, `src/lib/talk.ts`, `src/components/TalkSheet.tsx`: 이야기하기. 그리움 등불의 주인만, 떠나보낸 사람(아이)과 카톡처럼 이야기한다. 유료 API 없이: 정해진 선택지를 골라 가며 이어지는 대화 길(`TREE`, 마디마다 사람/아이(종류별) 말 여러 가지)이 기본이고, "직접 쓰기"는 주제를 알아듣는 무료 답장(`templateReply`). 서버 없이 `talks` 테이블에 바로 저장(주인만, 하루 30번은 RLS). 진짜 그 사람이 아니라는 안내를 늘 보이고, 다시 만나자는 약속·죽음 쪽 말·"잊어" 같은 말은 쓰지 않는다. 많이 힘들다는 선택지와 위험한 말엔 등대지기가 상담 전화를 안내한다.
 - `src/lib/letters.ts`, `src/components/BottleSheet.tsx`: 병에 담은 편지. 기다림 등불의 주인이 돌아올 사람에게 쓰는 편지(`letters`, 주인만 읽고 씀, 하루 3통·등불마다 100통). 유리병으로 부두 앞 바다에 떠서 돌아오는 날이 가까울수록 부두로 다가오고(`Village.placeBottles`, 병은 빛을 내지 않는다), 받을 사람은 열쇠가 든 링크(`/l/아이디?k=열쇠`, `letter_keys`)로 몇 병이 오는지만 보다가 돌아오는 날(한국 날짜)부터 읽는다(`open_bottles()`). 마을 사람에겐 병의 수만 보인다(`bottle_counts()`). 그리움 등불엔 없다.
 - `api/ping.ts`: Vercel Cron 이 하루 한 번 불러 Supabase 무료 프로젝트가 멈추지 않게 해요
