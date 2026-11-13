@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Lantern } from "../lib/supabase";
-import { badgeText, isMiss, titleOf } from "../lib/waiting";
-import { makeMemoryCard, makePass } from "../lib/pass";
+import { badgeText, isMiss, milestoneOf, titleOf } from "../lib/waiting";
+import { makeMemoryCard, makeMilestone, makePass } from "../lib/pass";
 import { track } from "../lib/track";
 import { kakaoReady, shareKakao } from "../lib/kakao";
 
@@ -11,6 +11,22 @@ export function ShareSheet({ lantern, demo, onBack, no }: { lantern: Lantern; de
   const [msg, setMsg] = useState("");
   const [pass, setPass] = useState<{ url: string; file: File; story: { url: string; file: File } } | null>(null);
   const [making, setMaking] = useState(false);
+  // 오늘이 100일, 절반, D-30 같은 날이면 기념 카드를 먼저 권해요
+  const stone = milestoneOf(lantern);
+  const [stoneCard, setStoneCard] = useState<{ url: string; file: File } | null>(null);
+  async function makeStone() {
+    if (!stone) return;
+    setMaking(true);
+    try {
+      const blob = await makeMilestone(lantern, stone);
+      setStoneCard({ url: URL.createObjectURL(blob), file: new File([blob], `기다림항구-${lantern.who}-${stone.title}.png`, { type: "image/png" }) });
+      track("share_click", { how: "milestone" });
+    } catch {
+      setMsg("카드를 만들지 못했어요. 잠시 뒤 다시 해 주세요.");
+    } finally {
+      setMaking(false);
+    }
+  }
   const miss = isMiss(lantern);
   const pet = lantern.place === "무지개";
   const cardName = miss ? (pet ? "무지개마을 주민 카드" : "추모 카드") : lantern.kind === "군대" ? "귀향권" : lantern.kind === "장거리 연애" || lantern.kind === "해외에 있는 가족" ? "탑승권" : "승선권";
@@ -50,6 +66,27 @@ export function ShareSheet({ lantern, demo, onBack, no }: { lantern: Lantern; de
       <h2 id="sheet-title" className="ask">{titleOf(lantern)}의 등불 보내기</h2>
       <p className="small">{badgeText(lantern)} · 받은 사람이 링크를 누르면 이 등불 앞으로 바로 와요.</p>
 
+      {stone && (
+        <div className="pass-box">
+          <p className="section">오늘의 기념 카드 · {stone.title}</p>
+          {stoneCard ? (
+            <>
+              <img className="pass-img" src={stoneCard.url} alt={`${titleOf(lantern)}, ${stone.title}`} />
+              <div className="share-actions">
+                <a className="btn" href={stoneCard.url} download={stoneCard.file.name}>저장하기</a>
+                {typeof navigator.canShare === "function" && navigator.canShare({ files: [stoneCard.file] }) && (
+                  <button className="ghost" onClick={() => navigator.share({ files: [stoneCard.file], title: "기다림 항구" }).catch(() => {})}>스토리에 올리기</button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="small">오늘은 {stone.title}인 날이에요. {stone.sub}. 오늘만 만들 수 있는 카드예요.</p>
+              <button className="btn" onClick={makeStone} disabled={making}>{making ? "만드는 중" : "기념 카드 만들기"}</button>
+            </>
+          )}
+        </div>
+      )}
       {(
         <div className="pass-box">
           <p className="section">{cardName}</p>
