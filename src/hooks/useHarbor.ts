@@ -5,6 +5,7 @@ import { track, trackReady } from "../lib/track";
 import { isOffering, type OfferingKind } from "../lib/offerings";
 import { templateReply, type Talk } from "../lib/talk";
 import { speciesOf } from "../lib/pets";
+import type { Bottles, Letter } from "../lib/letters";
 import { DEMO_ME, demoLanterns, demoMessages, demoMissing, demoNotes, demoOfferings, demoOnline, demoWarmth } from "../lib/demo";
 
 /** Supabase 설정이 없으면 체험 모드로 열려요. 아무것도 저장되지 않아요. */
@@ -51,6 +52,10 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     if (!configured || !me) return;
     let alive = true;
     (async () => {
+      // 바다에 떠 있는 병의 수 (schema 를 다시 실행하기 전이면 없을 수 있어요)
+      supabase.rpc("bottle_counts").then((r) => {
+        if (alive && !r.error) setBottleRows(Object.fromEntries((r.data as { lantern_id: string; n: number }[]).map((x) => [x.lantern_id, Number(x.n)])));
+      });
       const [l, w, o, mine] = await Promise.all([
         supabase.from("lanterns").select("*").order("created_at"),
         supabase.from("warmth").select("from_id,to_id,day"),
@@ -203,6 +208,75 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
       if (error) throw error;
     }
     setMessages((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((n) => n.id !== id) }));
+  }, []);
+
+  // ---------- 병에 담은 편지 (기다림 등불의 주인이 쓰고, 돌아오는 날 열려요) ----------
+  const [bottleRows, setBottleRows] = useState<Record<string, number>>(demo ? { "demo-0": 12, "demo-1": 4, "demo-3": 31, "demo-7": 2 } : {});
+  const bottles = useMemo(() => new Map(Object.entries(bottleRows)), [bottleRows]);
+  const [letters, setLetters] = useState<Record<string, Letter[]>>({});
+  const bump = (id: string, d: number) => setBottleRows((m) => ({ ...m, [id]: Math.max(0, (m[id] ?? 0) + d) }));
+
+  const loadLetters = useCallback(async (lanternId: string) => {
+    if (demo) return setLetters((m) => (m[lanternId] ? m : { ...m, [lanternId]: [] }));
+    const { data, error } = await supabase.from("letters").select("*").eq("lantern_id", lanternId).order("created_at", { ascending: false }).limit(100);
+    if (!error) setLetters((m) => ({ ...m, [lanternId]: data as Letter[] }));
+  }, []);
+
+  const addLetter = useCallback(async (lanternId: string, body: string) => {
+    if (demo) {
+      const n: Letter = { id: Date.now(), lantern_id: lanternId, body, created_at: new Date().toISOString() };
+      setLetters((m) => ({ ...m, [lanternId]: [n, ...(m[lanternId] ?? [])] }));
+      return bump(lanternId, 1);
+    }
+    const { data, error } = await supabase.from("letters").insert({ lantern_id: lanternId, body }).select().single();
+    if (error) throw new Error("limit");
+    track("letter_sent");
+    setLetters((m) => ({ ...m, [lanternId]: [data as Letter, ...(m[lanternId] ?? [])] }));
+    bump(lanternId, 1);
+  }, []);
+
+  const removeLetter = useCallback(async (lanternId: string, id: number) => {
+    if (!demo) {
+      const { error } = await supabase.from("letters").delete().eq("id", id);
+      if (error) throw error;
+    }
+    setLetters((m) => ({ ...m, [lanternId]: (m[lanternId] ?? []).filter((n) => n.id !== id) }));
+    bump(lanternId, -1);
+  }, []);
+
+  /** 받을 사람에게 보낼 링크의 열쇠 (없으면 만들어요) */
+  const letterKey = useCallback(async (lanternId: string): Promise<string> => {
+    if (demo) return "demo";
+    await supabase.from("letter_keys").upsert({ lantern_id: lanternId }, { onConflict: "lantern_id", ignoreDuplicates: true });
+    const { data, error } = await supabase.from("letter_keys").select("key").eq("lantern_id", lanternId).single();
+    if (error || !data) throw new Error("key");
+    return data.key as string;
+  }, []);
+
+  /** 열쇠로 병을 열어 봐요. 돌아오는 날 전이면 수만, 그날부터 편지까지. 열쇠가 틀리면 null */
+  const openBottles = useCallback(async (lanternId: string, key: string): Promise<Bottles | null> => {
+    if (demo) {
+      // 체험 모드: 돌아온 등불이면 예시 편지를 보여 줘요
+      const l = lanternsRef.current.find((x) => x.id === lanternId);
+      const arrived = !!l && l.end_date <= ymd(today());
+      const at = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+      return {
+        n: arrived ? 3 : 12,
+        arrived,
+        letters: arrived
+          ? [
+              { body: "오늘 공항에서 돌아오는 길에 한참 울었어요. 그래도 밥은 잘 먹었어요.", created_at: at(290) },
+              { body: "여기는 첫눈이 왔어요. 거기도 추운지 궁금해요.", created_at: at(140) },
+              { body: "이제 사흘 남았어요. 뭘 먹으러 갈지 벌써 정해 놨어요.", created_at: at(5) },
+            ]
+          : [],
+      };
+    }
+    const { data, error } = await supabase.rpc("open_bottles", { lid: lanternId, k: key });
+    if (error || !data) return null;
+    const b = data as Bottles;
+    if (b.arrived) track("bottle_opened");
+    return { n: Number(b.n), arrived: !!b.arrived, letters: b.letters ?? [] };
   }, []);
 
   // ---------- 놓고 가는 것 ----------
@@ -437,5 +511,5 @@ export function useHarbor(onWarmed?: (lanternId: string) => void) {
     setLanterns((all) => all.map((x) => (x.id === l.id ? { ...x, photo_public: isPublic } : x)));
   }, []);
 
-  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote, messages, loadMessages, addMessage, removeMessage, warmth, offerings, myOffers, leaveOffering, talks, loadTalks, sendTalk, clearTalks };
+  return { fetchLantern, photoUrls, loadPhoto, setPhoto, setPhotoPublic, sendFeedback, me, lanterns, online, hereCount, status, warmthCount, sentToday, saveLantern, removeLantern, sendWarmth, notes, loadNotes, addNote, removeNote, messages, loadMessages, addMessage, removeMessage, warmth, offerings, myOffers, leaveOffering, talks, loadTalks, sendTalk, clearTalks, bottles, letters, loadLetters, addLetter, removeLetter, letterKey, openBottles };
 }

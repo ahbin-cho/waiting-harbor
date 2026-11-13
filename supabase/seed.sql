@@ -3,7 +3,7 @@
 -- schema.sql 을 먼저 실행해 둔 상태여야 해요.
 --
 -- 들어가는 것: 마을 사람 10명(익명), 등불 19개(기다림 10, 하늘의 풍등 3, 무지개마을 아이 6),
---              일기, 응원·추모의 말, 지난 며칠의 온기(추모), 놓고 간 것(국화, 들꽃, 간식…).
+--              일기, 응원·추모의 말, 지난 며칠의 온기(추모), 놓고 간 것(국화, 들꽃, 간식…), 바다에 띄운 병.
 -- 날짜는 실행한 날을 기준으로 정해져요. 며칠 뒤 다시 실행해도 이미 있는 건 그대로 둬요.
 -- 지우려면 supabase/unseed.sql 을 실행하세요. 예시 사람과 그 사람들의 등불·일기·말·온기가 함께 지워져요.
 -- 예시 사람의 id 는 모두 5eed0000- 으로 시작해요.
@@ -126,6 +126,13 @@ cross join generate_series(0, 5) g
 where l.id::text like '5eed1000-%'
   and abs(hashtext('o' || l.id::text || u.id::text || g::text)) % 100 < 6 + abs(hashtext('o' || l.id::text)) % 22
 on conflict do nothing;
+
+-- 7) 병에 담은 편지: 몇몇 기다림 등불에서 바다로 띄운 병 (내용은 쓴 사람만 봐요. 마을에는 떠 있는 병만 보여요)
+insert into public.letters (lantern_id, body, created_at)
+select ('5eed1000-0000-4000-8000-' || lpad(v.n::text, 12, '0'))::uuid, '예시 편지 ' || g, now() - make_interval(days => g * 3)
+from (values (1, 6), (2, 16), (4, 9), (7, 2), (9, 5)) as v(n, k)
+cross join lateral generate_series(1, v.k) g
+where not exists (select 1 from public.letters x where x.lantern_id = ('5eed1000-0000-4000-8000-' || lpad(v.n::text, 12, '0'))::uuid);
 
 -- 직접 하나 더 넣고 싶을 때 (아래 주석을 풀고 값만 바꿔서 실행하세요)
 -- 건 사람은 예시 사람 1~10 중 하나를 쓰면 unseed.sql 로 함께 지울 수 있어요.

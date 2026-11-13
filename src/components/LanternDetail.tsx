@@ -21,7 +21,7 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, me, invited, onHang, onTalk, daily, offerings, myOffer, onOffer, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
+export function LanternDetail({ lantern, me, invited, onHang, bottles, onBottle, onTalk, daily, offerings, myOffer, onOffer, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   /** 지금 보는 사람 (자기가 남긴 말을 지울 수 있게) */
   me: string | null;
@@ -30,6 +30,9 @@ export function LanternDetail({ lantern, me, invited, onHang, onTalk, daily, off
   /** 내 등불이면 오늘의 한마디 */
   daily?: DailyWord;
   /** 누가 보내 준 링크로 이 등불에 왔어요. onHang: 나도 등불 걸기 (아직 등불이 없을 때만) */
+  /** 이 등불로 오고 있는 병(편지)의 수, 편지 쓰기 (내 기다림 등불에서만) */
+  bottles?: number;
+  onBottle?: () => void;
   invited?: boolean;
   onHang?: () => void;
   /** 놓고 간 것들 (종류별 수), 오늘 내가 놓은 것, 놓기 */
@@ -239,6 +242,16 @@ export function LanternDetail({ lantern, me, invited, onHang, onTalk, daily, off
           {daily.facts && <p className="daily-facts">{daily.facts}</p>}
         </div>
       )}
+      {onBottle ? (
+        <div className="bottle-row">
+          <p>
+            {bottles ? `병에 담은 편지 ${bottles}통이 바다를 건너오고 있어요.` : `${who}에게 편지를 써서 병에 담아 띄워요. 돌아오는 날 열려요.`}
+          </p>
+          <button className="ghost" onClick={onBottle}>편지 쓰기</button>
+        </div>
+      ) : !miss && bottles ? (
+        <p className="small">이 등불을 향해 병에 담은 편지 {bottles}통이 바다를 건너오고 있어요.</p>
+      ) : null}
       {isMine && stone && (
         <p className="stone">
           오늘은 {stone.title}인 날이에요.

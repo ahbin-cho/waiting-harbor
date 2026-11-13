@@ -12,9 +12,12 @@ export default async function handler(req: Request) {
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!l) return Response.redirect(id && UUID.test(id) ? `${home}?l=${id}` : home, 302);
 
-  const app = `${u.origin}/?l=${l.id}`;
-  const title = `${titleOf(l)} · ${facts(l).dday} | 기다림 항구`;
-  const desc = summary(l);
+  // 병에 담은 편지 링크(?k=열쇠)면 열쇠를 들고 마을로 가요. 미리보기에는 편지가 오고 있다는 사실만 보여요.
+  const k = u.searchParams.get("k");
+  const bottle = k && UUID.test(k) ? k : null;
+  const app = `${u.origin}/?l=${l.id}${bottle ? `&k=${bottle}` : ""}`;
+  const title = bottle ? `병에 담은 편지가 오고 있어요 · ${facts(l).dday} | 기다림 항구` : `${titleOf(l)} · ${facts(l).dday} | 기다림 항구`;
+  const desc = bottle ? `${titleOf(l)}이 쓴 편지가 유리병에 담겨 항구로 오고 있어요. 돌아오는 날 열려요.` : summary(l);
   // 미리보기 그림은 늘 뜨는 사이트 대표 카드. 제목과 설명이 그 등불을 알려줘요.
   const img = `${u.origin}/og.png`;
   const e = escapeHtml;
