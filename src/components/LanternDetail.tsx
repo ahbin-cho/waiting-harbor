@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Lantern, Message, Note } from "../lib/supabase";
 import type { DailyWord } from "../lib/daily";
 import { OFFER_ONE, offeringSummary, offeringsFor, type OfferingKind } from "../lib/offerings";
-import { daysGone, daysLeft, daysSince, ddayText, isMiss, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays, fliesHome } from "../lib/waiting";
+import { daysGone, daysLeft, daysSince, ddayText, isMiss, milestoneOf, nextAnniversary, parseDate, pick, progressOf, titleOf, togetherDays, fliesHome } from "../lib/waiting";
 import { placeOf } from "../lib/places";
 import { todaysAsk } from "../lib/prompts";
 import { shrinkPhoto } from "../lib/photo";
@@ -21,7 +21,7 @@ function dayLabel(note: Note, end: string, miss: boolean) {
   return `${n > 0 ? `D-${n}` : n === 0 ? "그날" : "다시 만난 뒤"} · ${md(note.day)}`;
 }
 
-export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, onOffer, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
+export function LanternDetail({ lantern, me, invited, onHang, onTalk, daily, offerings, myOffer, onOffer, no, onPrev, onNext, isMine, isHere, warmth, sent, notes, onLoadNotes, onAddNote, onRemoveNote, messages, onLoadMessages, onAddMessage, onRemoveMessage, onWarm, onEdit, onClose, onShare, onRecord, photoUrl, onLoadPhoto, onPhoto, onPhotoPublic }: {
   lantern: Lantern;
   /** 지금 보는 사람 (자기가 남긴 말을 지울 수 있게) */
   me: string | null;
@@ -29,6 +29,9 @@ export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, 
   onTalk?: () => void;
   /** 내 등불이면 오늘의 한마디 */
   daily?: DailyWord;
+  /** 누가 보내 준 링크로 이 등불에 왔어요. onHang: 나도 등불 걸기 (아직 등불이 없을 때만) */
+  invited?: boolean;
+  onHang?: () => void;
   /** 놓고 간 것들 (종류별 수), 오늘 내가 놓은 것, 놓기 */
   offerings?: Partial<Record<OfferingKind, number>>;
   myOffer?: OfferingKind;
@@ -73,6 +76,7 @@ export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, 
   const [saying, setSaying] = useState(false);
   const sayRef = useRef<HTMLTextAreaElement>(null);
   const said = messages ?? [];
+  const stone = milestoneOf(lantern);
   const [offering, setOffering] = useState(false);
   async function offer(kind: OfferingKind) {
     setOffering(true);
@@ -233,6 +237,32 @@ export function LanternDetail({ lantern, me, onTalk, daily, offerings, myOffer, 
           <p className="daily-from">오늘의 한마디 · {daily.from}</p>
           <p className="daily-text">{daily.text}</p>
           {daily.facts && <p className="daily-facts">{daily.facts}</p>}
+        </div>
+      )}
+      {isMine && stone && (
+        <p className="stone">
+          오늘은 {stone.title}인 날이에요.
+          <button className="text-btn" onClick={onShare}>기념 카드 만들기</button>
+        </p>
+      )}
+      {invited && !isMine && (
+        <div className="invited" role="note">
+          {sent ? (
+            <>
+              <p>{miss ? `${who} 곁에 작은 등이 하나 놓였어요.` : `${who}의 안내판에 꼬마전구가 하나 켜졌어요.`} 내일 또 보낼 수 있어요.</p>
+              {onHang && (
+                <p>
+                  기다리는 사람이나 그리운 사람이 있다면, 이 마을에 등불을 걸 수 있어요.
+                  <button className="text-btn" onClick={onHang}>나도 등불 걸기</button>
+                </p>
+              )}
+            </>
+          ) : (
+            <p>
+              {titleOf(lantern)}이 보여 준 등불이에요.{" "}
+              {miss ? "추모하면 곁에 작은 등이 하나 놓여요." : "온기를 보내면 도착 안내판 위에 꼬마전구가 하나 켜져요."}
+            </p>
+          )}
         </div>
       )}
       {!isMine && (

@@ -451,3 +451,9 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left}
 .share-actions a.btn,.share-actions a.ghost{text-decoration:none;display:inline-flex;align-items:center}
 :root{--kakao:#FEE500;--kakao-ink:#191600}
 .btn.kakao{background:var(--kakao);color:var(--kakao-ink);border-color:var(--kakao)}
+/* 보내 준 링크로 온 사람에게, 기념할 만한 날에 */
+.invited{margin:14px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:.9rem;line-height:1.6}
+.invited p{margin:0}
+.invited p+p{margin-top:8px}
+.invited .text-btn,.stone .text-btn{margin-left:8px}
+.stone{margin:12px 0 0;font-size:.9rem;color:var(--ink)}

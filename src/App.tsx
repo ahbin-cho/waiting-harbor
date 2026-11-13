@@ -132,6 +132,7 @@ export default function App() {
   useEffect(() => {
     if (!deepLink || h.status !== "ready") return;
     const go = (id: string) => {
+      setInvitedId(id);
       setView({ type: "detail", id });
       history.replaceState(null, "", "/");
       setDeepLink(null);
@@ -160,6 +161,8 @@ export default function App() {
   // 시트를 닫아도 그 등불 곁에 머물러요: 카메라와 작은 자리는 그대로, 아래 시트만 닫혀요.
   // 다른 장소나 전체로 옮겨 갈 때 놓아줘요.
   const [kept, setKept] = useState<string | null>(null);
+  // 누가 보내 준 링크로 연 등불: 온기를 보내 달라고, 그다음엔 등불을 걸어 보라고 알려 줘요
+  const [invitedId, setInvitedId] = useState<string | null>(null);
   useEffect(() => setKept(null), [focus, story]);
   // 상세·이야기하기·보내기 중에는 그 등불에 머물러요. 닫으면 마지막에 본 등불 곁에 그대로 남아요.
   const viewId = view.type === "detail" || view.type === "talk" || view.type === "share" ? view.id : null;
@@ -454,6 +457,8 @@ export default function App() {
             onRemoveNote={(id) => h.removeNote(picked.id, id)}
             me={h.me}
             daily={picked.user_id === h.me ? wordFor(picked) : undefined}
+            invited={invitedId === picked.id}
+            onHang={mine.length === 0 ? () => setView({ type: "form" }) : undefined}
             offerings={h.offerings.counts.get(picked.id)}
             myOffer={h.myOffers[picked.id]}
             onOffer={async (kind) => {

@@ -69,6 +69,25 @@ export function daysSince(l: Lantern) {
   return s ? Math.max(1, Math.round((today().getTime() - s.getTime()) / DAY) + 1) : null;
 }
 
+/**
+ * 오늘이 기다림의 기념할 만한 날인지: 100일 단위, 1년 단위, 절반, D-100·50·30·10·7·1, 돌아오는 날.
+ * 기다림 등불에만 있어요 (그리움 등불엔 카운트다운을 쓰지 않아요).
+ */
+export function milestoneOf(l: Lantern): { title: string; sub: string } | null {
+  if (isMiss(l)) return null;
+  const n = daysLeft(l), since = daysSince(l);
+  const s = parseDate(l.start_date), e = parseDate(l.end_date);
+  if (n == null || since == null || !s || !e || n < 0) return null;
+  const left = `${n}일 남았어요`;
+  if (n === 0) return { title: "오늘 돌아와요", sub: `${since}일을 기다렸어요` };
+  if ([100, 50, 30, 10, 7, 1].includes(n)) return { title: `D-${n}`, sub: `기다린 지 ${since}일째예요` };
+  const total = Math.round((e.getTime() - s.getTime()) / DAY);
+  if (total >= 20 && since - 1 === Math.ceil(total / 2)) return { title: "절반을 지났어요", sub: `${since}일을 기다렸고, ${left}` };
+  if ((since - 1) % 365 === 0 && since > 1) return { title: `기다린 지 ${(since - 1) / 365}년`, sub: left };
+  if (since % 100 === 0) return { title: `기다린 지 ${since}일`, sub: left };
+  return null;
+}
+
 // ---------- 그리움 등불 ----------
 
 /** 떠난 날부터 오늘까지 며칠 (떠난 날 당일은 0) */

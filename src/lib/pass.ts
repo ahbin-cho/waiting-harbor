@@ -2,7 +2,7 @@
 // 화면에서 바로 그려서 저장하거나 공유해요 (서버를 거치지 않아요).
 import type { Lantern } from "./supabase";
 import { COLORS, colorOf } from "./looks";
-import { daysLeft, fliesHome, parseDate, pick } from "./waiting";
+import { daysLeft, fliesHome, parseDate, pick, progressOf } from "./waiting";
 import { branchOf } from "./branches";
 
 const W = 1080, H = 1350;
@@ -238,4 +238,92 @@ export async function makeMemoryCard(l: Lantern, no: string, tall = false): Prom
   g.fillText(pet ? "무지개다리 건너, 잘 지내고 있어요" : "함께한 날들을 기억해요", W / 2, 1240);
 
   return new Promise((ok, no2) => c.toBlob((bl) => (bl ? ok(bl) : no2(new Error("blob"))), "image/png"));
+}
+
+/**
+ * 기념 카드: 100일, 절반, D-30 같은 날에 만드는 세로 카드 (스토리용 9:16).
+ * 밤바다 위에 등불 하나, 큰 글씨로 그날의 사실만 적어요.
+ */
+export async function makeMilestone(l: Lantern, m: { title: string; sub: string }): Promise<Blob> {
+  await document.fonts?.ready;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = TALL;
+  const g = c.getContext("2d")!;
+  const color = COLORS[colorOf(l.color)];
+  const bg = g.createLinearGradient(0, 0, 0, TALL);
+  bg.addColorStop(0, "#0A1028");
+  bg.addColorStop(0.62, "#1B2150");
+  bg.addColorStop(0.62, "#10173A");
+  bg.addColorStop(1, "#0A1028");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, W, TALL);
+  // 별 (날마다 같은 자리)
+  let r = 7;
+  const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = "rgba(255,255,255,.55)";
+  for (let i = 0; i < 70; i++) {
+    g.beginPath();
+    g.arc(rnd() * W, rnd() * TALL * 0.55, 1 + rnd() * 2.2, 0, Math.PI * 2);
+    g.fill();
+  }
+  // 등불: 빛은 등불만
+  const lx = W / 2, ly = 560;
+  const glow = g.createRadialGradient(lx, ly, 10, lx, ly, 420);
+  glow.addColorStop(0, color + "cc");
+  glow.addColorStop(0.35, color + "44");
+  glow.addColorStop(1, color + "00");
+  g.fillStyle = glow;
+  g.fillRect(0, 0, W, TALL);
+  g.fillStyle = "#2A2440";
+  g.fillRect(lx - 5, ly + 100, 10, TALL * 0.62 - ly - 100); // 기둥은 물가까지
+  g.fillRect(lx - 60, ly - 118, 120, 18);
+  g.fillStyle = "#FFF6E0";
+  g.beginPath();
+  g.roundRect(lx - 78, ly - 100, 156, 200, 34);
+  g.fill();
+  g.fillStyle = color + "66";
+  g.beginPath();
+  g.roundRect(lx - 78, ly - 100, 156, 200, 34);
+  g.fill();
+  // 물에 비친 불빛
+  const refl = g.createLinearGradient(0, TALL * 0.62, 0, TALL * 0.62 + 330);
+  refl.addColorStop(0, color + "66");
+  refl.addColorStop(1, color + "00");
+  g.fillStyle = refl;
+  g.fillRect(lx - 30, TALL * 0.62, 60, 330);
+
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillStyle = "#D9DDF2";
+  g.font = '400 54px "Poor Story", sans-serif';
+  g.fillText(`${pick(l.who.trim() || "그 사람", "을", "를")} 기다리는 사람`, W / 2, 210);
+  g.fillStyle = "#FFF3DC";
+  let size = 170;
+  g.font = `400 ${size}px "Poor Story", sans-serif`;
+  while (g.measureText(m.title).width > W - 140 && size > 90) g.font = `400 ${(size -= 8)}px "Poor Story", sans-serif`;
+  g.fillText(m.title, W / 2, 1330);
+  g.fillStyle = "#D9DDF2";
+  g.font = '500 44px "IBM Plex Sans KR", sans-serif';
+  g.fillText(m.sub, W / 2, 1460);
+  // 기다림 막대와 작은 배
+  const bx = 160, bw = W - 320, by = 1590, p = progressOf(l);
+  g.fillStyle = "rgba(255,255,255,.18)";
+  g.fillRect(bx, by, bw, 6);
+  g.fillStyle = color;
+  g.fillRect(bx, by, bw * p, 6);
+  const sx = bx + bw * p;
+  g.fillStyle = "#FFF3DC";
+  g.beginPath();
+  g.moveTo(sx - 26, by - 8); g.lineTo(sx + 26, by - 8); g.lineTo(sx + 16, by + 6); g.lineTo(sx - 16, by + 6);
+  g.closePath();
+  g.fill();
+  g.beginPath();
+  g.moveTo(sx - 2, by - 12); g.lineTo(sx - 2, by - 46); g.lineTo(sx + 20, by - 12);
+  g.closePath();
+  g.fill();
+  g.fillStyle = "#9AA1C4";
+  g.font = '500 30px "IBM Plex Sans KR", sans-serif';
+  g.fillText("기다림 항구 · waiting-harbor-one.vercel.app", W / 2, 1760);
+  return new Promise((ok, bad) => c.toBlob((b) => (b ? ok(b) : bad(new Error("blob"))), "image/png"));
 }
