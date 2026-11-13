@@ -20,6 +20,14 @@
     {
       "source": "/ldr",
       "destination": "/ldr/index.html"
+    },
+    {
+      "source": "/letter",
+      "destination": "/letter/index.html"
+    },
+    {
+      "source": "/gomsin",
+      "destination": "/gomsin/index.html"
     }
   ],
   "crons": [

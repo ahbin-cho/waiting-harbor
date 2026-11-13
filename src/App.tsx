@@ -584,9 +584,21 @@ export default function App() {
             <div className="sheet-tools">
               <button className="text-btn" onClick={close}>닫기</button>
             </div>
-            <h2 id="sheet-title">날짜 계산기</h2>
+            <h2 id="sheet-title">계산기와 안내</h2>
             <p className="small">기다리는 날과 기억하는 날을 세어 봐요. 계산한 날짜로 바로 등불을 걸 수 있어요.</p>
             <ul className="tool-list">
+              <li>
+                <a href="/letter/">
+                  <b>돌아오는 날 열리는 편지</b>
+                  <span>병에 담아 띄우는 편지, 쓰는 법과 쓸 거리</span>
+                </a>
+              </li>
+              <li>
+                <a href="/gomsin/">
+                  <b>곰신 용어와 군별 복무기간</b>
+                  <span>곰신, 꽃신, 일말상초, 인편의 뜻</span>
+                </a>
+              </li>
               <li>
                 <a href="/discharge/">
                   <b>전역일 계산기</b>
